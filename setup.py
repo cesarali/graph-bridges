@@ -18,7 +18,7 @@ try:
     with open("README.md", "r") as f:
         long_description = f.read()
 except:
-    long_description = "# discrete_diffusion"
+    long_description = "# graph_bridges"
 
 # make version string
 git_describe = "git describe --tags --always --dirty"
@@ -51,7 +51,7 @@ setuptools.setup(
     version=version if version else "0.0.0+unknownversion",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="git@github.com:cesarali/discrete_diffusion.git",
+    url="git@github.com:cesarali/graph_bridges.git",
     packages=setuptools.find_packages("src"),
     package_dir={"": "src"},
     classifiers=[],
