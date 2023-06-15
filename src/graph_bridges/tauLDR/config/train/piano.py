@@ -73,7 +73,7 @@ def get_config():
     saving.checkpoint_freq = 1000
     saving.num_checkpoints_to_keep = 2
     saving.checkpoint_archive_freq = 20000000
-    # saving.log_low_freq = config.training.n_iters / 1000
+    # saving.log_low_freq = configs.training.n_iters / 1000
     saving.log_low_freq = 1000
     saving.low_freq_loggers = []
     saving.prepare_to_resume_after_timeout = False

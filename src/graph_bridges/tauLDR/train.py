@@ -27,7 +27,7 @@ import lib.loggers.logger_utils as logger_utils
 from discrete_diffusion.data.spins_dataloaders import GraphSpinsDataLoader
 
 def main(cfg, custom_name=None):
-    print("Training with config", cfg.experiment_name)
+    print("Training with configs", cfg.experiment_name)
 
     preempted_path = Path("null")
     if cfg.saving.enable_preemption_recovery:
@@ -138,7 +138,7 @@ def main(cfg, custom_name=None):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('config')
+    parser.add_argument('configs')
     args, unknown_args = parser.parse_known_args()
     if args.config == 'cifar10':
         from config.train.cifar10 import get_config

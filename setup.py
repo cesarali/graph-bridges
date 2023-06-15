@@ -47,7 +47,7 @@ elif (git_description := subprocess.run(git_describe, capture_output=True, shell
         version = "0.0.0+commit" + git_description.stdout
 
 setuptools.setup(
-    name="discrete_diffusion",
+    name="graph_bridges",
     version=version if version else "0.0.0+unknownversion",
     long_description=long_description,
     long_description_content_type="text/markdown",

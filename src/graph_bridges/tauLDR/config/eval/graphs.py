@@ -4,7 +4,7 @@ def get_config():
 
     datasets_folder = 'C:/Users/cesar/Desktop/Projects/DiffusiveGenerativeModelling/Codes/discrete-diffusion/data/raw/cifar10/cifar10'
     model_location = 'C:/Users/cesar/Desktop/Projects/DiffusiveGenerativeModelling/Codes/discrete-diffusion/results/tauLDR/2023-06-02/18-59-11_graphs/checkpoints/ckpt_0000001999.pt'
-    model_config_location = 'C:/Users/cesar/Desktop/Projects/DiffusiveGenerativeModelling/Codes/discrete-diffusion/results/tauLDR/2023-06-02/18-59-11_graphs/config/config_001.yaml'
+    model_config_location = 'C:/Users/cesar/Desktop/Projects/DiffusiveGenerativeModelling/Codes/discrete-diffusion/results/tauLDR/2023-06-02/18-59-11_graphs/configs/config_001.yaml'
 
     config = ml_collections.ConfigDict()
     config.eval_name = 'graphs'
