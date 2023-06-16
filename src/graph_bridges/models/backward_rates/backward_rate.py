@@ -5,57 +5,14 @@ from torch import nn
 import torch.nn.functional as F
 from torch.nn.parallel import DistributedDataParallel as DDP
 
+from abc import ABC,abstractmethod
+from graph_bridges.models.backward_rates import backward_rate_utils
+from graph_bridges.models.networks_arquitectures import networks
+from graph_bridges.configs.graphs.lobster.config_base import BridgeConfig
 
-from graph_bridges.models.networks import network_utils
-from graph_bridges.models.networks import networks
 from torchtyping import TensorType
-
-
-class BackwardRate(nn.Module):
-    """
-    """
-    def __init__(self,
-                 dimension=10,
-                 num_states=2,
-                 hidden_layer=100,
-                 do_time_embed=True,
-                 time_embed_dim=9,
-                 **kwargs):
-
-        # DATA
-        self.dimension = dimension
-        self.num_states = num_states
-
-        # TIME
-        self.do_time_embed = do_time_embed
-        self.time_embed_dim = time_embed_dim
-        self.act = nn.functional.silu
-
-        # NETWORK ARCHITECTURE
-        self.hidden_layer = hidden_layer
-
-    def define_deep_models(self):
-        self.f1 = nn.Linear(self.dimension,self.hidden_layer)
-        self.f2 = nn.Linear(self.hidden_layer,1)
-
-        if self.do_time_embed:
-            self.temb_modules = []
-            self.temb_modules.append(nn.Linear(self.time_embed_dim, self.time_embed_dim*4))
-            nn.init.zeros_(self.temb_modules[-1].bias)
-            self.temb_modules.append(nn.Linear(self.time_embed_dim*4, self.time_embed_dim*4))
-            nn.init.zeros_(self.temb_modules[-1].bias)
-            self.temb_modules = nn.ModuleList(self.temb_modules)
-
-        self.expanded_time_dim = 4 * self.time_embed_dim if self.do_time_embed else None
-
-    def forward(self,
-                x: TensorType["batch_size", "dimension"],
-                times: TensorType["batch_size"]
-                )-> TensorType["batch_size", "dimension", "num_states"]:
-        return None
-
-    def stein_forward(self):
-        return None
+from graph_bridges.models.networks_arquitectures.network_utils import transformer_timestep_embedding
+from torch.nn.functional import softplus,softmax
 
 class GaussianTargetRate():
     def __init__(self, cfg, device):
@@ -135,9 +92,61 @@ class GaussianTargetRate():
 
         return transitions
 
-class ImageX0PredBase(nn.Module):
-    def __init__(self, cfg, device, rank=None):
+class BackwardRate(nn.Module,ABC):
+
+    def __init__(self,
+                 config:BridgeConfig,
+                 device,
+                 rank,
+                 **kwargs):
         super().__init__()
+
+        # DATA
+        self.dimension = config.data.D
+        self.num_states = config.data.S
+        self.data_type = config.data.type
+        self.data_min_max = config.data.data_min_max
+
+        # TIME
+        self.time_embed_dim = config.model.time_embed_dim
+        self.act = nn.functional.silu
+
+    def init_parameters(self):
+        return None
+
+    @abstractmethod
+    def _forward(self,
+                x: TensorType["batch_size", "dimension"],
+                times:TensorType["batch_size"]
+                )-> TensorType["batch_size", "dimension", "num_states"]:
+        return None
+
+    def _center_data(self, x):
+        out = (x - self.data_min_max[0]) / (self.data_min_max[1] - self.data_min_max[0])  # [0, 1]
+        return 2 * out - 1  # to put it in [-1, 1]
+
+    def forward(self,
+                x: TensorType["batch_size", "dimension"],
+                times:TensorType["batch_size"]
+                )-> TensorType["batch_size", "dimension", "num_states"]:
+
+        if self.data_type == "doucet":
+            h = self._center_data(x)
+        else:
+            h = x
+
+        return self._forward(h,times)
+
+    def stein_binary_forward(self,
+                x: TensorType["batch_size", "dimension"],
+                times: TensorType["batch_size"]
+                ) -> TensorType["batch_size", "dimension"]:
+        forward_logits = self.forward(x,times)
+        return forward_logits[:,:,0]
+
+class ImageX0PredBase(BackwardRate):
+    def __init__(self, cfg, device, rank=None):
+        BackwardRate.__init__(self,cfg,device,rank)
 
         self.fix_logistic = cfg.model.fix_logistic
         ch = cfg.model.ch
@@ -169,7 +178,7 @@ class ImageX0PredBase(nn.Module):
         self.data_shape = cfg.data.shape
         self.device = device
 
-    def forward(self,
+    def _forward(self,
         x: TensorType["B", "D"],
         times: TensorType["B"]
     ) -> TensorType["B", "D", "S"]:
@@ -307,26 +316,99 @@ class EMA():
             self.move_model_params_to_collected_params()
             self.move_shadow_params_to_model_params()
 
+from graph_bridges.configs.graphs.lobster.config_mlp import BridgeMLPConfig
+
+@backward_rate_utils.register_model
+class BackRateMLP(EMA,BackwardRate,GaussianTargetRate):
+
+    def __init__(self,config:BridgeMLPConfig,device,rank=None):
+        EMA.__init__(self,config)
+        BackwardRate.__init__(self,config,device,rank)
+
+        self.hidden_layer = config.model.hidden_layer
+        self.define_deep_models()
+        #self.init_parameters()
+        self.init_ema()
+
+    def define_deep_models(self):
+        # layers
+        self.f1 = nn.Linear(self.dimension, self.hidden_layer)
+        self.f2 = nn.Linear(self.hidden_layer + self.time_embed_dim,self.dimension*self.num_states)
+
+        # temporal encoding
+        #self.temb_modules = []
+        #self.temb_modules.append(nn.Linear(self.time_embed_dim, self.time_embed_dim * 4))
+        #nn.init.zeros_(self.temb_modules[-1].bias)
+        #self.temb_modules.append(nn.Linear(self.time_embed_dim * 4, self.time_embed_dim * 4))
+        #nn.init.zeros_(self.temb_modules[-1].bias)
+        #self.temb_modules = nn.ModuleList(self.temb_modules)
+
+        #self.expanded_time_dim = 4 * self.time_embed_dim if self.do_time_embed else None
+
+    def _forward(self,
+                x: TensorType["batch_size", "dimension"],
+                times: TensorType["batch_size"]
+                ) -> TensorType["batch_size", "dimension", "num_states"]:
+
+        batch_size = x.shape[0]
+        time_embbedings = transformer_timestep_embedding(times,
+                                                         embedding_dim=self.time_embed_dim)
+
+        step_one = self.f1(x)
+        step_two = torch.concat([step_one, time_embbedings], dim=1)
+        rate_logits = self.f2(step_two)
+        rate_logits = rate_logits.reshape(batch_size,self.dimension,self.num_states)
+        return rate_logits
+
+    def init_parameters(self):
+        nn.init.xavier_uniform_(self.f1.weight)
+        nn.init.xavier_uniform_(self.f2.weight)
 
 # make sure EMA inherited first, so it can override the state dict functions
-class GaussianTargetRateImageX0PredEMA(EMA, ImageX0PredBase, GaussianTargetRate):
+@backward_rate_utils.register_model
+class GaussianTargetRateImageX0PredEMA(EMA,ImageX0PredBase,GaussianTargetRate):
     def __init__(self, cfg, device, rank=None):
         EMA.__init__(self, cfg)
         ImageX0PredBase.__init__(self, cfg, device, rank)
-        GaussianTargetRate.__init__(self, cfg, device)
+        GaussianTargetRate.__init__(self,cfg, device)
         self.init_ema()
 
+
 if __name__=="__main__":
-    from graph_bridges.tauLDR.config.train.graphs import get_config
-    from configs.graphs.lobster.config import BridgeConfig
-    from pprint import pprint
+    from graph_bridges.configs.graphs.lobster.config_base import BridgeConfig as GaussianBridgeConfig
+    from graph_bridges.configs.graphs.lobster.config_mlp import BridgeMLPConfig
 
-    config = BridgeConfig()
+    from graph_bridges.data.dataloaders_utils import create_dataloader
+    from graph_bridges.data.dataloaders import BridgeData
 
-
+    # test gaussian
+    gaussian_config = GaussianBridgeConfig()
     device = torch.device("cpu")
-    model = GaussianTargetRateImageX0PredEMA(config,device)
-    X = torch.Tensor(size=(config.data.batch_size,45)).normal_(0.,1.)
-    time = torch.Tensor(size=(config.data.batch_size,)).uniform_(0.,1.)
-    forward = model(X,time)
 
+    dataloader:BridgeData
+    dataloader = create_dataloader(gaussian_config,device)
+    sample_ = dataloader.sample(gaussian_config.data.batch_size,device)
+
+    gaussian_model : GaussianTargetRateImageX0PredEMA
+    gaussian_model = GaussianTargetRateImageX0PredEMA(gaussian_config,device)
+
+    time = torch.full((gaussian_config.data.batch_size,),
+                      gaussian_config.sampler.min_t)
+    forward = gaussian_model(sample_,time)
+    print(sample_.shape)
+    print(forward.mean())
+
+    #test mlp
+    mlp_config = BridgeMLPConfig()
+    device = torch.device("cpu")
+
+    dataloader:BridgeData
+    dataloader = create_dataloader(mlp_config,device)
+    sample_ = dataloader.sample(mlp_config.data.batch_size,device)
+
+    mlp_model = BackRateMLP(config=mlp_config,device=device)
+    time = torch.full((mlp_config.data.batch_size,),
+                      mlp_config.sampler.min_t)
+    forward = mlp_model(sample_,time)
+    print(sample_.shape)
+    print(forward.mean())

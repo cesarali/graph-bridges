@@ -1,6 +1,5 @@
 import torch
 import numpy as np
-from torch import nn
 from tqdm import tqdm
 import torch.nn.functional as F
 
@@ -124,10 +123,9 @@ class TauLeaping():
 
 
 if __name__=="__main__":
-    from graph_bridges.models.backward_rate import ImageX0PredBase,GaussianTargetRateImageX0PredEMA
-    from configs.graphs.lobster.config import BridgeConfig
+    from graph_bridges.models.backward_rates.backward_rate import GaussianTargetRateImageX0PredEMA
+    from graph_bridges.configs.graphs.lobster.config_base import BridgeConfig
 
-    from pprint import pprint
     config = BridgeConfig()
 
     device = torch.device("cpu")

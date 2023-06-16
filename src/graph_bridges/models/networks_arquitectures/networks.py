@@ -3,7 +3,7 @@ import torch.nn as nn
 import math
 from torchtyping import TensorType
 
-import graph_bridges.models.networks.network_utils as network_utils
+import graph_bridges.models.networks_arquitectures.network_utils as network_utils
 import torch.nn.functional as F
 import numpy as np
 

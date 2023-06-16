@@ -1,50 +1,13 @@
-from configs.graphs.lobster.config import BridgeConfig
+from graph_bridges.configs.graphs.lobster.config_base import BridgeConfig
 import numpy as np
 import torch
 
 import torch.nn.functional as F
 from tqdm import tqdm
-from typing import List,Tuple
+from typing import Tuple
 from torchtyping import TensorType
 
-class BridgeData:
-    config : BridgeConfig
 
-    def __init__(self,config:BridgeConfig):
-        self.config = config
-        self.device = self.config.device
-
-        C,H,W = self.config.data.shape
-        self.D = C*H*W
-        self.S = self.config.data.S
-        sampler_config = self.config.sampler
-
-        self.initial_dist = sampler_config.initial_dist
-        if self.initial_dist == 'gaussian':
-            self.initial_dist_std  = self.config.model.Q_sigma
-        else:
-            self.initial_dist_std = None
-
-    def sample(self, num_of_paths, device=None):
-        if device is None:
-            device = self.device
-
-        if self.initial_dist == 'uniform':
-            x = torch.randint(low=0, high=self.S, size=(num_of_paths, self.D), device=device)
-        elif self.initial_dist == 'gaussian':
-            target = np.exp(
-                - ((np.arange(1, self.S + 1) - self.S // 2) ** 2) / (2 * self.initial_dist_std ** 2)
-            )
-            target = target / np.sum(target)
-
-            cat = torch.distributions.categorical.Categorical(
-                torch.from_numpy(target)
-            )
-            x = cat.sample((num_of_paths * self.D,)).view(num_of_paths, self.D)
-            x = x.to(device)
-        else:
-            raise NotImplementedError('Unrecognized initial dist ' + self.initial_dist)
-        return x
 
 class ReferenceProcess:
     """
@@ -176,7 +139,7 @@ class TauLeaping():
 
 
 if __name__=="__main__":
-    from graph_bridges.models.backward_rate import ImageX0PredBase,GaussianTargetRateImageX0PredEMA
+    from graph_bridges.models.backward_rates.backward_rate import GaussianTargetRateImageX0PredEMA
 
     config = BridgeConfig()
     device = torch.device(config.device)

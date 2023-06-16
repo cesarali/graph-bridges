@@ -1,10 +1,9 @@
 from dataclasses import dataclass
-from pprint import pprint
-import torch
 import os
 
 @dataclass
 class DataConfig:
+    # doucet variables
     name = 'lobster'
     root = "datasets_folder"
     train = True
@@ -16,9 +15,9 @@ class DataConfig:
     shape = [1,1,45]
     C,H,W = shape[0],shape[1],shape[2]
     D = C*H*W
-
     random_flips = True
 
+    # discrete diffusion variables
     type = "doucet" #one of [doucet, spins]
     full_adjacency = False
     preprocess_datapath = "lobster_graphs_upper"
@@ -30,22 +29,21 @@ class DataConfig:
 
 @dataclass
 class ModelConfig:
-    name = 'GaussianTargetRateImageX0PredEMA'
+    name = 'GraphScorePerTime'
 
     # arquitecture variables
-    ema_decay = 0.9999  # 0.9999
-    ch = 28
-    num_res_blocks = 2
-    num_scales = 4
-    ch_mult = [1, 1, 1, 1]
-    input_channels = 1
-    scale_count_to_put_attn = 1
-    data_min_max = [0, 1]
-    dropout = 0.1
-    skip_rescale = True
-    time_embed_dim = ch
-    time_scale_factor = 1000
-    fix_logistic = False
+    time_embed_dim = 9
+    channel_num_list = [2,4,4,4,2]
+    dropout_p = 0.0
+    feature_nums = [time_embed_dim+1,16,16,16,16,16]
+    gnn_hidden_num_list = [16,16,16,16]
+    graph_func_name = 'gin'
+    max_node_num = 10
+    number_of_classes = 1
+    number_of_spins = 100
+    use_norm_layers = False
+    number_of_classes = 1
+    #number_of_spins = paths_dataloader.number_of_spins
 
     # reference process variables
     initial_dist = 'gaussian'
@@ -55,7 +53,9 @@ class ModelConfig:
     time_base = 1.0
 
 class ReferenceProcessConfig:
-
+    """
+    Reference configuration for schrodinger bridge reference process
+    """
     # reference process variables
     initial_dist = 'gaussian'
     rate_sigma = 6.0
@@ -65,7 +65,11 @@ class ReferenceProcessConfig:
 
 @dataclass
 class ParametrizedSamplerConfig:
+    """
+    Sampler for Parametrized Rates
+    """
     name = 'TauLeaping' # TauLeaping or PCTauLeaping
+    type = 'doucet'
     num_steps = 1000
     min_t = 0.01
     eps_ratio = 1e-9
@@ -76,16 +80,17 @@ class ParametrizedSamplerConfig:
 
 @dataclass
 class BridgeConfig:
+
     from graph_bridges import results_path
 
-    # different elements configurations
+    # different elements configurations------------------------------------------
     model = ModelConfig()
     data = DataConfig() # corresponds to the distributions at start time
     target = DataConfig() # corresponds to the distribution at final time
     reference_process = ReferenceProcessConfig()
     sampler = ParametrizedSamplerConfig()
 
-    # files, directories and naming
+    # files, directories and naming ---------------------------------------------
     experiment_name = 'graph'
     experiment_type = 'lobster'
     experiment_indentifier = 'testing'
@@ -97,14 +102,19 @@ class BridgeConfig:
     save_location = results_dir
     init_model_path = None
 
-    # devices and parallelization
+    # devices and parallelization ----------------------------------------------
     device = 'cpu'
     distributed = False
     num_gpus = 0
 
+    def initialize(self):
+        return None
+
     def align_configurations(self):
         # data distributions matches at the end
         self.data.batch_size = self.target.batch_size
+
+        # model matches data
 
         # model matches reference process
         self.reference_process.initial_dist = self.model.initial_dist
@@ -117,16 +127,11 @@ class BridgeConfig:
         return None
 
 if __name__=="__main__":
-    from graph_bridges.models.backward_rate import GaussianTargetRateImageX0PredEMA
-
     model_config = ModelConfig()
     data_config = DataConfig()
     bridge_config = BridgeConfig()
 
     bridge_config.align_configurations()
-
-
-
 
     """
     device = torch.device("cpu")

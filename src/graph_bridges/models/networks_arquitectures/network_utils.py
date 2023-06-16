@@ -3,7 +3,7 @@ import torch.nn.functional as F
 import math 
 
 # From https://github.com/yang-song/score_sde_pytorch/ which is from
-#  https://github.com/hojonathanho/diffusion/blob/master/diffusion_tf/nn.py
+# https://github.com/hojonathanho/diffusion/blob/master/diffusion_tf/nn.py
 def transformer_timestep_embedding(timesteps, embedding_dim, max_positions=10000):
   assert len(timesteps.shape) == 1  # and timesteps.dtype == tf.int32
   half_dim = embedding_dim // 2
