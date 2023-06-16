@@ -5,7 +5,7 @@ def get_config():
     datasets_folder = 'C:/Users/cesar/Desktop/Projects/DiffusiveGenerativeModelling/Codes/discrete-diffusion/data/raw/cifar10/cifar10'
 
     config = ml_collections.ConfigDict()
-    config.experiment_name = 'graphs'
+    config.experiment_name = 'lobster'
     config.save_location = save_directory
 
     config.init_model_path = None
@@ -28,7 +28,7 @@ def get_config():
     training.warmup = 50
 
     config.data = data = ml_collections.ConfigDict()
-    data.name = 'graphs'
+    data.name = 'lobster'
     data.root = datasets_folder
     data.train = True
     data.download = True

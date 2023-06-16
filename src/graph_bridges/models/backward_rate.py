@@ -6,20 +6,55 @@ import torch.nn.functional as F
 from torch.nn.parallel import DistributedDataParallel as DDP
 
 
+from graph_bridges.models.networks import network_utils
 from graph_bridges.models.networks import networks
 from torchtyping import TensorType
+
 
 class BackwardRate(nn.Module):
     """
     """
     def __init__(self,
-                 ):
-        return None
+                 dimension=10,
+                 num_states=2,
+                 hidden_layer=100,
+                 do_time_embed=True,
+                 time_embed_dim=9,
+                 **kwargs):
+
+        # DATA
+        self.dimension = dimension
+        self.num_states = num_states
+
+        # TIME
+        self.do_time_embed = do_time_embed
+        self.time_embed_dim = time_embed_dim
+        self.act = nn.functional.silu
+
+        # NETWORK ARCHITECTURE
+        self.hidden_layer = hidden_layer
+
+    def define_deep_models(self):
+        self.f1 = nn.Linear(self.dimension,self.hidden_layer)
+        self.f2 = nn.Linear(self.hidden_layer,1)
+
+        if self.do_time_embed:
+            self.temb_modules = []
+            self.temb_modules.append(nn.Linear(self.time_embed_dim, self.time_embed_dim*4))
+            nn.init.zeros_(self.temb_modules[-1].bias)
+            self.temb_modules.append(nn.Linear(self.time_embed_dim*4, self.time_embed_dim*4))
+            nn.init.zeros_(self.temb_modules[-1].bias)
+            self.temb_modules = nn.ModuleList(self.temb_modules)
+
+        self.expanded_time_dim = 4 * self.time_embed_dim if self.do_time_embed else None
 
     def forward(self,
                 x: TensorType["batch_size", "dimension"],
                 times: TensorType["batch_size"]
                 )-> TensorType["batch_size", "dimension", "num_states"]:
+        return None
+
+    def stein_forward(self):
         return None
 
 class GaussianTargetRate():
@@ -273,7 +308,7 @@ class EMA():
             self.move_shadow_params_to_model_params()
 
 
-# make sure EMA inherited first so it can override the state dict functions
+# make sure EMA inherited first, so it can override the state dict functions
 class GaussianTargetRateImageX0PredEMA(EMA, ImageX0PredBase, GaussianTargetRate):
     def __init__(self, cfg, device, rank=None):
         EMA.__init__(self, cfg)
@@ -283,11 +318,11 @@ class GaussianTargetRateImageX0PredEMA(EMA, ImageX0PredBase, GaussianTargetRate)
 
 if __name__=="__main__":
     from graph_bridges.tauLDR.config.train.graphs import get_config
+    from configs.graphs.lobster.config import BridgeConfig
     from pprint import pprint
 
-    config = get_config()
-    pprint(config)
-    print(config.data.batch_size)
+    config = BridgeConfig()
+
 
     device = torch.device("cpu")
     model = GaussianTargetRateImageX0PredEMA(config,device)

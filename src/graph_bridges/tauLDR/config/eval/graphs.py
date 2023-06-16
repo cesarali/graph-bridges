@@ -7,7 +7,7 @@ def get_config():
     model_config_location = 'C:/Users/cesar/Desktop/Projects/DiffusiveGenerativeModelling/Codes/discrete-diffusion/results/tauLDR/2023-06-02/18-59-11_graphs/configs/config_001.yaml'
 
     config = ml_collections.ConfigDict()
-    config.eval_name = 'graphs'
+    config.eval_name = 'lobster'
     config.train_config_overrides = [
         [['device'], 'cpu'],
         [['data', 'root'], datasets_folder],
@@ -19,7 +19,7 @@ def get_config():
     config.device = 'cpu'
 
     config.data = data = ml_collections.ConfigDict()
-    data.name = 'graphs'
+    data.name = 'lobster'
     data.root = datasets_folder
     data.train = True
     data.download = True

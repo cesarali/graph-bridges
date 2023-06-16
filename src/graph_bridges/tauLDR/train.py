@@ -60,7 +60,7 @@ def main(cfg, custom_name=None):
     model = model_utils.create_model(cfg, device)
     print("number of parameters: ", sum([p.numel() for p in model.parameters()]))
 
-    if cfg.data.name == "graphs":
+    if cfg.data.name == "lobster":
         graph_dataloader_parameters = GraphSpinsDataLoader.get_parameters()
         graph_dataloader_parameters.update({"doucet": True,
                                             "remove": False,
@@ -109,7 +109,7 @@ def main(cfg, custom_name=None):
 
     while True:
         for minibatch in tqdm(dataloader):
-            if cfg.data.name == "graphs":
+            if cfg.data.name == "lobster":
                 minibatch = minibatch[0]
             training_step.step(state, minibatch, loss, writer)
 
@@ -144,7 +144,7 @@ if __name__ == "__main__":
         from config.train.cifar10 import get_config
     elif args.config == 'piano':
         from config.train.piano import get_config
-    elif args.config == 'graphs':
+    elif args.config == 'lobster':
         from config.train.graphs import get_config
     else:
         raise NotImplementedError
