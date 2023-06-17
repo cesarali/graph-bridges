@@ -1,13 +1,21 @@
 from graph_bridges.configs.graphs.lobster.config_base import BridgeConfig
+from graph_bridges.data.dataloaders import BridgeData
+from graph_bridges.models.backward_rates.backward_rate import BackwardRate
+from graph_bridges.models.schedulers.scheduling_sb import SBScheduler
 import numpy as np
 import torch
 
+from torch.distributions.poisson import Poisson
 import torch.nn.functional as F
+
 from tqdm import tqdm
 from typing import Tuple
 from torchtyping import TensorType
 
+def copy_models(model_to, model_from):
+    model_to.load_state_dict(model_from.state_dict())
 
+check_model_devices = lambda x: x.parameters().__next__().device
 
 class ReferenceProcess:
     """
@@ -67,7 +75,75 @@ class ReferenceProcess:
                    ) -> TensorType["B", "S", "S"]:
         return None
 
-class TauLeaping():
+class NaivePoisson:
+
+    def __init__(self):
+        return None
+
+    def sample(self,
+               spins_start:TensorType["batch_size","dimension","num_states"],
+               backward_model:BackwardRate,
+               scheduler:SBScheduler,
+               forward:bool=True,
+               max_iterations=1000):
+        """
+        :param spins_start: torch.Tensor(size=(batch_size,number_of_spins))
+        :param backward_model:
+        :param T:
+        :param tau:
+        :return: paths, time_grid
+
+            torch.Tensor(size=(batch_size,number_of_timesteps,number_of_spins)),
+            torch.Tensor(size=(number_of_timesteps))
+
+        """
+        assert len(spins_start.shape) == 2
+        device = spins_start.device
+
+        # NAIVE POISSON
+        time_grid = torch.arange(0., self.T + self.tau, self.tau).to(device)
+        number_of_time_steps = len(time_grid) - 1
+
+        # Initialize process and time management --------------------------
+        paths = torch.clone(spins_start)
+        paths = paths.unsqueeze(1)
+
+        current_time_index,time_sign,end_condition = scheduler.time_direction(forward)
+
+        # Simulation--------------------------------------------------------
+        number_of_iterations = 0
+        while end_condition(current_time_index):
+            # evaluates times where you are heading
+            current_time = time_grid[current_time_index + time_sign]
+
+            current_ratios = backward_model(paths[:, -1, :], current_time)
+
+            try:
+                poisson_probabilities = current_ratios * self.tau
+                events = Poisson(poisson_probabilities).sample()
+                where_to_flip = torch.where(events > 0)
+            except:
+                print(number_of_iterations)
+
+            # Copy last state
+            paths = torch.concatenate([paths,
+                                       paths[:, -1, :].unsqueeze(1)], dim=1)
+            # Flip accordingly
+            paths[:, -1, :][where_to_flip] = paths[:, -1, :][where_to_flip] * (-1.)
+            current_time_index = time_sign + current_time_index
+
+            number_of_iterations += 1
+            if number_of_iterations > max_iterations:
+                print("Next Reaction Time Stop Before Reaching End at ALl Paths")
+                break
+
+        if forward:
+            return paths, time_grid
+        else:
+            paths = torch.flip(paths, dims=[1])
+            return paths, time_grid
+
+class TauLeaping:
     """
     """
     def __init__(self, config: BridgeConfig):
@@ -137,14 +213,23 @@ class TauLeaping():
 
             return x_0max.detach().cpu().numpy().astype(int), x_hist, x0_hist
 
+class DiffusersBackwardProcess:
+    def __init__(self):
+        return None
+
+class DoucetForward:
+    def __init__(self):
+        return None
+
 
 if __name__=="__main__":
     from graph_bridges.models.backward_rates.backward_rate import GaussianTargetRateImageX0PredEMA
+    from graph_bridges.data.dataloaders_utils import create_dataloader
 
     config = BridgeConfig()
     device = torch.device(config.device)
 
-    data = BridgeData(config)
+    data = create_dataloader(config,device)
     model = GaussianTargetRateImageX0PredEMA(config,device)
     reference_process = ReferenceProcess(model,config)
 

@@ -8,7 +8,7 @@ from torch.distributions import Bernoulli
 from graph_bridges.utils.spin_utils import bool_to_spins
 from graph_bridges.configs.graphs.lobster.config_base import BridgeConfig
 from graph_bridges.models.backward_rates.backward_rate import BackwardRate
-from graph_bridges.models.estimators.estimators_utils import register_estimator
+from graph_bridges.models.losses.loss_utils import register_loss
 
 class SteinSpinEstimator:
     """
@@ -67,7 +67,7 @@ class SteinSpinEstimator:
         if X.dtype == torch.bool:
             X = bool_to_spins(X)
         S = self.epsilon_distribution.sample(sample_shape=(self.stein_sample_size,)).bool().to(self.device)
-        S = ~S  # Manfred's estimators requieres epsilon as the probability for -1.
+        S = ~S  # Manfred's losses requieres epsilon as the probability for -1.
         S = bool_to_spins(S)
 
         number_of_paths = X.shape[0]
@@ -86,7 +86,7 @@ class SteinSpinEstimator:
         stein_estimator = stein_estimator.reshape(number_of_paths * number_of_spins, 1)
         return stein_estimator
 
-@register_estimator
+@register_loss
 class BackwardRatioSteinEstimator:
     """
     """

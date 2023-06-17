@@ -112,16 +112,23 @@ class ParametrizedSamplerConfig:
 
 @dataclass
 class SteinSpinEstimatorConfig:
-
     name = "SteinSpinEstimator"
     stein_epsilon = 1e-3
     stein_sample_size = 150
 
 @dataclass
 class BackwardEstimatorConfig:
-
     name = "BackwardRatioSteinEstimator"
     dimension_to_check = None
+
+@dataclass
+class CTDDLossConfig:
+    name = 'GenericAux'
+    eps_ratio = 1e-9
+    nll_weight = 0.001
+    min_time = 0.01
+    one_forward_pass = True
+
 
 @dataclass
 class BridgeMLPConfig:

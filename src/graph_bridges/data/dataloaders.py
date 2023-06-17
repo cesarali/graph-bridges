@@ -74,7 +74,7 @@ class BridgeData:
 class DoucetTargetData(BridgeData):
 
     def __init__(self,config:BridgeConfig,device,rank=None):
-        super(DoucetTargetData,self).__init__(config,device,rank)
+        BridgeData.__init__(self,config,device,rank)
 
     def sample(self, num_of_paths:int, device=None) -> TensorType["num_of_paths","D"]:
         if device is None:
