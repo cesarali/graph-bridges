@@ -89,6 +89,7 @@ class ReferenceProcessConfig:
     Reference configuration for schrodinger bridge reference process
     """
     # reference process variables
+    name = "GaussianTargetRate"
     initial_dist = 'gaussian'
     rate_sigma = 6.0
     Q_sigma = 512.0
@@ -129,6 +130,11 @@ class CTDDLossConfig:
     min_time = 0.01
     one_forward_pass = True
 
+@dataclass
+class OptimizerConfig:
+    name = 'Adam'
+    lr = 2e-4
+    number_of_epochs = 200
 
 @dataclass
 class BridgeMLPConfig:
@@ -138,10 +144,12 @@ class BridgeMLPConfig:
     model = BackRateMLPConfig()
     data = DataConfig() # corresponds to the distributions at start time
     target = DataConfig() # corresponds to the distribution at final time
-    reference_process = ReferenceProcessConfig()
+    reference = ReferenceProcessConfig()
     sampler = ParametrizedSamplerConfig()
     stein = SteinSpinEstimatorConfig()
     backward_estimator = BackwardEstimatorConfig()
+    loss = CTDDLossConfig()
+    optimizer = OptimizerConfig()
 
     # files, directories and naming ---------------------------------------------
     delete = False
@@ -179,11 +187,11 @@ class BridgeMLPConfig:
         self.model
 
         # model matches reference process
-        self.reference_process.initial_dist = self.model.initial_dist
-        self.reference_process.rate_sigma = self.model.rate_sigma
-        self.reference_process.Q_sigma = self.model.Q_sigma
-        self.reference_process.time_exponential = self.model.time_exponential
-        self.reference_process.time_base = self.model.time_base
+        self.reference.initial_dist = self.model.initial_dist
+        self.reference.rate_sigma = self.model.rate_sigma
+        self.reference.Q_sigma = self.model.Q_sigma
+        self.reference.time_exponential = self.model.time_exponential
+        self.reference.time_base = self.model.time_base
 
     def create_directories(self):
         if not os.path.isdir(self.results_dir):

@@ -97,6 +97,7 @@ class ReferenceProcessConfig:
     Reference configuration for schrodinger bridge reference process
     """
     # reference process variables
+    name = "GaussianTargetRate"
     initial_dist = 'gaussian'
     rate_sigma = 6.0
     Q_sigma = 512.0
@@ -132,6 +133,19 @@ class BackwardEstimatorConfig:
     dimension_to_check = None
 
 @dataclass
+class CTDDLossConfig:
+    name = 'GenericAux'
+    eps_ratio = 1e-9
+    nll_weight = 0.001
+    min_time = 0.01
+    one_forward_pass = True
+
+class OptimizerConfig:
+    name = 'Adam'
+    lr = 2e-4
+    number_of_epochs = 200
+
+@dataclass
 class BridgeConfig:
     from graph_bridges import results_path
 
@@ -139,11 +153,28 @@ class BridgeConfig:
     model = ModelConfig()
     data = DataConfig() # corresponds to the distributions at start time
     target = DataConfig() # corresponds to the distribution at final time
-    reference_process = ReferenceProcessConfig()
+    reference = ReferenceProcessConfig()
     sampler = ParametrizedSamplerConfig()
     stein = SteinSpinEstimatorConfig()
     backward_estimator = BackwardEstimatorConfig()
+    loss = CTDDLossConfig()
+    optimizer = OptimizerConfig()
 
+    number_of_paths = 10
+    number_of_sinkhorn = 1
+
+    """
+    trainer_parameters = {'learning_rate': 0.01,
+                      'number_of_epochs': 200,
+                      'number_of_sinkhorn': 1,
+                      'cuda': 0,
+                      'model_name': 'graphs',
+                      'experiments_class': 'lobster_to_efficient',
+                      'metrics': ['marginal_at_spins'],
+                      'metrics_kwargs': {
+                          'marginal_at_spins': {}
+                      }}             
+    """
     # files, directories and naming ---------------------------------------------
     delete = False
     experiment_name = 'graph'
@@ -179,11 +210,11 @@ class BridgeConfig:
         #model matches data
 
         # model matches reference process
-        self.reference_process.initial_dist = self.model.initial_dist
-        self.reference_process.rate_sigma = self.model.rate_sigma
-        self.reference_process.Q_sigma = self.model.Q_sigma
-        self.reference_process.time_exponential = self.model.time_exponential
-        self.reference_process.time_base = self.model.time_base
+        self.reference.initial_dist = self.model.initial_dist
+        self.reference.rate_sigma = self.model.rate_sigma
+        self.reference.Q_sigma = self.model.Q_sigma
+        self.reference.time_exponential = self.model.time_exponential
+        self.reference.time_base = self.model.time_base
 
     def create_directories(self):
         if not os.path.isdir(self.results_dir):

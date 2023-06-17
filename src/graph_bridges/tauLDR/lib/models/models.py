@@ -442,7 +442,7 @@ class EMA():
 
 
 # make sure EMA inherited first so it can override the state dict functions
-@model_utils.register_model
+@model_utils.register_reference
 class GaussianTargetRateImageX0PredEMA(EMA, ImageX0PredBase, GaussianTargetRate):
     def __init__(self, cfg, device, rank=None):
         EMA.__init__(self, cfg)
@@ -453,7 +453,7 @@ class GaussianTargetRateImageX0PredEMA(EMA, ImageX0PredBase, GaussianTargetRate)
 
 
 # make sure EMA inherited first so it can override the state dict functions
-@model_utils.register_model
+@model_utils.register_reference
 class UniformRateSequenceTransformerEMA(EMA, SequenceTransformer, UniformRate):
     def __init__(self, cfg, device, rank=None):
         EMA.__init__(self, cfg)
@@ -463,7 +463,7 @@ class UniformRateSequenceTransformerEMA(EMA, SequenceTransformer, UniformRate):
         self.init_ema()
 
 # make sure EMA inherited first so it can override the state dict functions
-@model_utils.register_model
+@model_utils.register_reference
 class BirthDeathRateSequenceTransformerEMA(EMA, SequenceTransformer, BirthDeathForwardBase):
     def __init__(self, cfg, device, rank=None):
         EMA.__init__(self, cfg)
@@ -473,7 +473,7 @@ class BirthDeathRateSequenceTransformerEMA(EMA, SequenceTransformer, BirthDeathF
 
 
 
-@model_utils.register_model
+@model_utils.register_reference
 class GaussianRateResidualMLP(ResidualMLP, GaussianTargetRate):
     def __init__(self, cfg, device, rank=None):
         ResidualMLP.__init__(self, cfg, device, rank)

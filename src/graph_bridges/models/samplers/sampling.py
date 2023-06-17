@@ -1,9 +1,13 @@
 from graph_bridges.configs.graphs.lobster.config_base import BridgeConfig
-from graph_bridges.data.dataloaders import BridgeData
 from graph_bridges.models.backward_rates.backward_rate import BackwardRate
 from graph_bridges.models.schedulers.scheduling_sb import SBScheduler
+from graph_bridges.data.dataloaders import BridgeData
+
+from graph_bridges.models.reference_process.ctdd_reference import ReferenceProcess
+
 import numpy as np
 import torch
+
 
 from torch.distributions.poisson import Poisson
 import torch.nn.functional as F
@@ -17,63 +21,6 @@ def copy_models(model_to, model_from):
 
 check_model_devices = lambda x: x.parameters().__next__().device
 
-class ReferenceProcess:
-    """
-    """
-    def __init__(self,model,config:BridgeConfig):
-        self.S = config.data.S
-        self.D = config.data.D
-        self.eps_ratio = config.sampler.eps_ratio
-        self.model = model
-
-    def rates(self,
-              x:TensorType["num_of_paths", "dimensions"],
-              t:TensorType["num_of_paths"]) -> Tuple[torch.Tensor,torch.Tensor,torch.Tensor]:
-        """
-
-        :param x:
-        :param t:
-        :return: forward_rates,qt0_denom,qt0_numer
-        """
-        num_of_paths = x.shape[0]
-        qt0 = model.transition(t * torch.ones((num_of_paths,), device=device))  # (N, S, S)
-        rate = model.rate(t * torch.ones((num_of_paths,), device=device))  # (N, S, S)
-
-        forward_rates = rate[
-            torch.arange(num_of_paths, device=device).repeat_interleave(self.D * self.S),
-            torch.arange(self.S, device=device).repeat(num_of_paths * self.D),
-            x.long().flatten().repeat_interleave(self.S)
-        ].view(num_of_paths, self.D, self.S)
-
-        qt0_denom = qt0[
-                        torch.arange(num_of_paths, device=device).repeat_interleave(self.D * self.S),
-                        torch.arange(self.S, device=device).repeat(num_of_paths * self.D),
-                        x.long().flatten().repeat_interleave(self.S)
-                    ].view(num_of_paths, self.D, self.S) + self.eps_ratio
-
-        # First S is x0 second S is x tilde
-        qt0_numer = qt0  # (N, S, S)
-
-        return forward_rates,qt0_denom,qt0_numer
-
-    def _integral_rate_scalar(self, t: TensorType["B"]
-                              ) -> TensorType["B"]:
-        return None
-
-    def _rate_scalar(self,
-                     t: TensorType["B"]
-                     ) -> TensorType["B"]:
-        return None
-
-    def rate(self,
-             t: TensorType["B"]
-             ) -> TensorType["B", "S", "S"]:
-        return None
-
-    def transition(self,
-                   t: TensorType["B"]
-                   ) -> TensorType["B", "S", "S"]:
-        return None
 
 class NaivePoisson:
 
@@ -229,12 +176,12 @@ if __name__=="__main__":
     config = BridgeConfig()
     device = torch.device(config.device)
 
-    data = create_dataloader(config,device)
+    data_dataloader = create_dataloader(config,device)
     model = GaussianTargetRateImageX0PredEMA(config,device)
-    reference_process = ReferenceProcess(model,config)
+    reference_process = ReferenceProcess(model,config,device)
 
     sampler = TauLeaping(config)
-    path = sampler.sample(model,reference_process,data,10,2)
+    path = sampler.sample(model,reference_process,data_dataloader,10,2)
     print(path)
 
 

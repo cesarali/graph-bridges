@@ -1,20 +1,26 @@
 import torch
 from torch import nn
-from torch import functional as F
+from torch.nn import functional as F
 
 from graph_bridges.models.losses.loss_utils import register_loss
 
 @register_loss
 class GenericAux():
-    def __init__(self, cfg):
+    def __init__(self, cfg,device,rank=None):
         self.cfg = cfg
         self.ratio_eps = cfg.loss.eps_ratio
         self.nll_weight = cfg.loss.nll_weight
         self.min_time = cfg.loss.min_time
         self.one_forward_pass = cfg.loss.one_forward_pass
         self.cross_ent = nn.CrossEntropyLoss()
+        self.device = device
 
-    def calc_loss(self, minibatch, model, n_iter, writer):
+    def to(self,device):
+        self.device = device
+        return self
+
+
+    def calc_loss(self, minibatch, model, n_iter):
         """
 
         :param minibatch:
@@ -32,10 +38,6 @@ class GenericAux():
         loss, sig_mean, reg_mean = self.second_term_of_normalization(minibatch, model,
                                                                      x_tilde,x_tilde_mask,
                                                                      x_logits,qt0,rate,reg_term,outer_sum_sig)
-
-        writer.add_scalar('sig', sig_mean.detach(), n_iter)
-        writer.add_scalar('reg', reg_mean.detach(), n_iter)
-
 
         return loss
 
@@ -143,7 +145,7 @@ class GenericAux():
             (p0t_reg / qt0_denom_reg) * reg_tmp,
             dim=(1, 2)
         )
-        return reg_term
+        return p0t_reg,reg_term,x_logits
 
     def second_term_of_elbo(self,
                             minibatch, model,
@@ -282,4 +284,20 @@ class GenericAux():
 
 
 if __name__=="__main__":
+    from graph_bridges.models.backward_rates.backward_rate import GaussianTargetRateImageX0PredEMA
+
+    from graph_bridges.data.dataloaders_utils import create_dataloader
+    from graph_bridges.models.samplers.sampling import ReferenceProcess
+    from graph_bridges.configs.graphs.lobster.config_base import BridgeConfig
+    from graph_bridges.models.backward_rates.backward_rate_utils import create_model
+    from graph_bridges.models.reference_process.reference_process_utils import create_reference
+    from graph_bridges.data.dataloaders import DoucetTargetData
+
+    config = BridgeConfig()
+    device = torch.device(config.device)
+
+    data_dataloader: DoucetTargetData
+    data_dataloader = create_dataloader(config,device)
+    model = create_model(config,device)
+    reference_process = create_reference(config,device)
 
