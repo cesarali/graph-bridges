@@ -4,11 +4,9 @@ from typing import Tuple,Union,List
 from graph_bridges.configs.graphs.lobster.config_base import BridgeConfig
 
 from graph_bridges.data.dataloaders import BridgeDataLoader
-from graph_bridges.models.backward_rates.backward_rate import BackwardRate
-
-
-from graph_bridges.models.backward_rates.backward_rate_utils import create_model
 from graph_bridges.data.dataloaders_utils import create_dataloader
+from graph_bridges.models.backward_rates.backward_rate import BackwardRate
+from graph_bridges.models.backward_rates.backward_rate_utils import create_model
 
 
 class SchrodingerBridge:

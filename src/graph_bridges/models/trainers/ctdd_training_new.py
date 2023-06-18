@@ -1,6 +1,9 @@
 import torch
 import numpy as np
+import torch.nn.functional as F
 from graph_bridges.models.trainers.training_utils import register_train_step
+
+
 @register_train_step
 class Standard():
     def __init__(self, cfg):
@@ -35,7 +38,7 @@ class Standard():
         return l.detach()
 
 
-if __name__=="__main__":
+if __name__ == "__main__":
     from graph_bridges.models.backward_rates.backward_rate import GaussianTargetRateImageX0PredEMA
 
     from graph_bridges.models.samplers.sampling import ReferenceProcess
@@ -53,32 +56,49 @@ if __name__=="__main__":
     config = BridgeConfig()
     device = torch.device(config.device)
 
-    #=================================================================
+    # =================================================================
     # CREATE OBJECTS FROM CONFIGURATION
 
     data_dataloader: DoucetTargetData
-    model : GaussianTargetRateImageX0PredEMA
+    model: GaussianTargetRateImageX0PredEMA
     reference_process: ReferenceProcess
-    loss : GenericAux
+    loss: GenericAux
 
-    data_dataloader = create_dataloader(config,device)
-    model = create_model(config,device)
-    reference_process = create_reference(config,device)
-    loss = create_loss(config,device)
-    #=================================================================
+    data_dataloader = create_dataloader(config, device)
+    model = create_model(config, device)
+    reference_process = create_reference(config, device)
+    loss = create_loss(config, device)
+
+    # DATA EXAMPLE=====================================================
+
     sample_ = data_dataloader.sample(config.number_of_paths, device)
     minibatch = sample_.unsqueeze(1).unsqueeze(1)
 
+    # TRAINING LOOP EXAMPLE===========================================
 
-    #ts = torch.rand((minibatch.shape[0],), device=device) * (1.0 - config.loss.min_time) + config.loss.min_time
-    loss_ = loss.calc_loss(minibatch, model, 10)
+    ts = torch.rand((minibatch.shape[0],), device=device) * (1.0 - config.loss.min_time) + config.loss.min_time
 
+    # add noise ======================================================
+    x_t, x_tilde, qt0, rate = loss.add_noise(minibatch, model, ts)
+
+    if config.loss.one_forward_pass:
+        reg_x = x_tilde
+        x_logits = model(reg_x, ts)  # (B, D, S)
+        p0t_reg = F.softmax(x_logits, dim=2)  # (B, D, S)
+        p0t_sig = p0t_reg
+    else:
+        reg_x = x_t
+        x_logits = model(reg_x, ts)  # (B, D, S)
+        p0t_reg = F.softmax(x_logits, dim=2)  # (B, D, S)
+        p0t_sig = F.softmax(model(x_tilde, ts), dim=2)  # (B, D, S)
+
+    loss_ = loss.calc_loss(minibatch, model, x_logits, p0t_reg, p0t_sig, reg_x, ts, 10, device)
     print(loss_)
 
     """
     TRAINING EXAMPLE FOR DIFFUSERS LIBRARY
     https://huggingface.co/docs/diffusers/tutorials/basic_training
-    
+
     clean_images = batch["images"]
     # Sample noise to add to the images
     noise = torch.randn(clean_images.shape).to(clean_images.device)
@@ -88,7 +108,7 @@ if __name__=="__main__":
     timesteps = torch.randint(
         0, noise_scheduler.config.num_train_timesteps, (bs,), device=clean_images.device
     ).long()
-    
+
     # CTDD original code ----------------------------------------------------------
     ts = torch.rand((B,), device=device) * (1.0 - self.min_time) + self.min_time
     # CTDD original code ----------------------------------------------------------
@@ -96,16 +116,14 @@ if __name__=="__main__":
     # Add noise to the clean images according to the noise magnitude at each timestep
     # (this is the forward diffusion process)
     noisy_images = noise_scheduler.add_noise(clean_images, noise, timesteps)
-    
+
     with accelerator.accumulate(model):
         # Predict the noise residual
         noise_pred = model(noisy_images, timesteps, return_dict=False)[0]
         loss = F.mse_loss(noise_pred, noise)
         accelerator.backward(loss)
-                
+
     """
-
-
 
     """
     while True:
@@ -188,9 +206,9 @@ lr_scheduler = get_cosine_schedule_with_warmup(
 
 # Sample a random timestep for each image
 # timesteps = torch.randint(
-    #0, noise_scheduler.config.num_train_timesteps, (bs,), device=clean_images.device
-#).long()
+# 0, noise_scheduler.config.num_train_timesteps, (bs,), device=clean_images.device
+# ).long()
 
 # Add noise to the clean images according to the noise magnitude at each timestep
 # (this is the forward diffusion process)
-#noisy_images = noise_scheduler.add_noise(clean_images, noise, timesteps)
+# noisy_images = noise_scheduler.add_noise(clean_images, noise, timesteps)

@@ -13,7 +13,7 @@ class TrainingConfig:
     save_image_epochs = 10
     save_model_epochs = 30
     mixed_precision = "fp16"  # `no` for float32, `fp16` for automatic mixed precision
-    output_dir = "ddpm-butterflies-128"  # the model name locally and on the HF Hub
+    output_dir = "../../data/raw/ddpm-butterflies-128"  # the model name locally and on the HF Hub
 
     push_to_hub = True  # whether to upload the saved model to the HF Hub
     hub_private_repo = False
@@ -26,12 +26,14 @@ config = TrainingConfig()
 #==================================================
 # DATA SET
 #==================================================
-
+import os
 from datasets import load_dataset
-
+from graph_bridges import data_path
+cache_dir = os.path.join(data_path,"raw","ddpm-butterflies-128")
 config.dataset_name = "huggan/smithsonian_butterflies_subset"
-dataset = load_dataset(config.dataset_name, split="train")
+dataset = load_dataset(config.dataset_name, split="train",cache_dir=cache_dir)
 
+#============================================================================
 import matplotlib.pyplot as plt
 
 """
