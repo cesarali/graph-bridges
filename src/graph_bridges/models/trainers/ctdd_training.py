@@ -71,7 +71,10 @@ if __name__=="__main__":
 
 
     #ts = torch.rand((minibatch.shape[0],), device=device) * (1.0 - config.loss.min_time) + config.loss.min_time
-    loss_ = loss.calc_loss(minibatch, model, 10)
+    B = minibatch.shape[0]
+    ts = torch.rand((B,), device=device) * (1.0 - config.loss.min_time) + config.loss.min_time
+
+    loss_ = loss.calc_loss(minibatch, model, ts, 10)
 
     print(loss_)
 

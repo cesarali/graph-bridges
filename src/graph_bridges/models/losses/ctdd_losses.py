@@ -20,7 +20,7 @@ class GenericAux():
         return self
 
 
-    def calc_loss(self, minibatch, model, n_iter):
+    def calc_loss(self, minibatch, model, ts, n_iter):
         """
 
         :param minibatch:
@@ -30,7 +30,7 @@ class GenericAux():
         """
         device = model.device
 
-        x_t, x_tilde,ts,qt0,rate = self.add_noise(minibatch, model,device)
+        x_t, x_tilde,qt0,rate = self.add_noise(minibatch, model,ts,device)
 
         if self.one_forward_pass:
             x_logits = model(x_tilde, ts)  # (B, D, S)
@@ -41,11 +41,14 @@ class GenericAux():
             p0t_reg = F.softmax(x_logits, dim=2)  # (B, D, S)
             reg_x = x_t
 
+        if self.one_forward_pass:
+            p0t_sig = p0t_reg
+        else:
+            p0t_sig = F.softmax(model(x_tilde, ts), dim=2)  # (B, D, S)
 
         reg_term = self.first_term_of_elbo(minibatch,reg_x,p0t_reg,qt0,rate,device)
 
-        outer_sum_sig,x_tilde_mask = self.second_term_of_elbo(minibatch,model,
-                                                              x_tilde,ts,qt0,rate,p0t_reg,device)
+        outer_sum_sig,x_tilde_mask = self.second_term_of_elbo(minibatch,p0t_sig,x_tilde,qt0,rate,device)
 
         loss, sig_mean, reg_mean = self.second_term_of_normalization(minibatch, model,
                                                                      x_tilde,x_tilde_mask,
@@ -53,14 +56,12 @@ class GenericAux():
 
         return loss
 
-    def add_noise(self, minibatch, model,device):
+    def add_noise(self, minibatch, model,ts,device):
         S = self.cfg.data.S
         if len(minibatch.shape) == 4:
             B, C, H, W = minibatch.shape
             minibatch = minibatch.view(B, C * H * W)
         B, D = minibatch.shape
-
-        ts = torch.rand((B,), device=device) * (1.0 - self.min_time) + self.min_time
 
         qt0 = model.transition(ts)  # (B, S, S)
 
@@ -107,7 +108,7 @@ class GenericAux():
             square_dims
         ] = square_newval_samples
         # x_tilde (B, D)
-        return x_t, x_tilde,ts,qt0,rate
+        return x_t, x_tilde,qt0,rate
 
     def first_term_of_elbo(self, minibatch,reg_x,p0t_reg,qt0,rate,device):
         S = self.cfg.data.S
@@ -148,23 +149,14 @@ class GenericAux():
         )
         return reg_term
 
-    def second_term_of_elbo(self,
-                            minibatch, model,
-                            x_tilde,ts,qt0,rate,
-                            p0t_reg,device):
+    def second_term_of_elbo(self,minibatch,p0t_sig,x_tilde,qt0,rate,device):
         S = self.cfg.data.S
         if len(minibatch.shape) == 4:
             B, C, H, W = minibatch.shape
             minibatch = minibatch.view(B, C * H * W)
         B, D = minibatch.shape
-        device = model.device
 
         # ----- second term of continuous ELBO (signal term) ------------
-
-        if self.one_forward_pass:
-            p0t_sig = p0t_reg
-        else:
-            p0t_sig = F.softmax(model(x_tilde, ts), dim=2)  # (B, D, S)
 
         # When we have B,D,S,S first S is x_0, second is x
 
