@@ -25,6 +25,7 @@ from diffusers.configuration_utils import ConfigMixin, register_to_config
 from diffusers.utils import BaseOutput, randn_tensor
 from diffusers.schedulers.scheduling_utils import KarrasDiffusionSchedulers, SchedulerMixin
 
+from graph_bridges.models.reference_process.ctdd_reference import ReferenceProcess
 
 @dataclass
 class CTDDSchedulerOutput(BaseOutput):
@@ -307,24 +308,65 @@ class CTDDScheduler(SchedulerMixin, ConfigMixin):
     def add_noise(
         self,
         original_samples: torch.FloatTensor,
+        reference_process: ReferenceProcess,
         noise: torch.FloatTensor,
         timesteps: torch.IntTensor,
+        device,
     ) -> torch.FloatTensor:
         # Make sure alphas_cumprod and timestep have same device and dtype as original_samples
-        alphas_cumprod = self.alphas_cumprod.to(device=original_samples.device, dtype=original_samples.dtype)
-        timesteps = timesteps.to(original_samples.device)
+        B = original_samples.shape[0]
+        D = original_samples.shape[1]
+        minibatch = original_samples
 
-        sqrt_alpha_prod = alphas_cumprod[timesteps] ** 0.5
-        sqrt_alpha_prod = sqrt_alpha_prod.flatten()
-        while len(sqrt_alpha_prod.shape) < len(original_samples.shape):
-            sqrt_alpha_prod = sqrt_alpha_prod.unsqueeze(-1)
+        ts = torch.rand((B,), device=device) * (1.0 - self.min_time) + self.min_time
 
-        sqrt_one_minus_alpha_prod = (1 - alphas_cumprod[timesteps]) ** 0.5
-        sqrt_one_minus_alpha_prod = sqrt_one_minus_alpha_prod.flatten()
-        while len(sqrt_one_minus_alpha_prod.shape) < len(original_samples.shape):
-            sqrt_one_minus_alpha_prod = sqrt_one_minus_alpha_prod.unsqueeze(-1)
+        qt0 = reference_process.transition(ts)  # (B, S, S)
+        rate = reference_process.rate(ts)  # (B, S, S)
 
-        noisy_samples = sqrt_alpha_prod * original_samples + sqrt_one_minus_alpha_prod * noise
+        # --------------- Sampling x_t, x_tilde --------------------
+
+        qt0_rows_reg = qt0[
+                       torch.arange(B, device=device).repeat_interleave(D),
+                       minibatch.flatten().long(),
+                       :
+                       ]  # (B*D, S)
+
+        x_t_cat = torch.distributions.categorical.Categorical(qt0_rows_reg)
+        x_t = x_t_cat.sample().view(B, D)
+
+        rate_vals_square = rate[
+                           torch.arange(B, device=device).repeat_interleave(D),
+                           x_t.long().flatten(),
+                           :
+                           ]  # (B*D, S)
+        rate_vals_square[
+            torch.arange(B * D, device=device),
+            x_t.long().flatten()
+        ] = 0.0  # 0 the diagonals
+        rate_vals_square = rate_vals_square.view(B, D, S)
+        rate_vals_square_dimsum = torch.sum(rate_vals_square, dim=2).view(B, D)
+        square_dimcat = torch.distributions.categorical.Categorical(
+            rate_vals_square_dimsum
+        )
+        square_dims = square_dimcat.sample()  # (B,) taking values in [0, D)
+        rate_new_val_probs = rate_vals_square[
+                             torch.arange(B, device=device),
+                             square_dims,
+                             :
+                             ]  # (B, S)
+        square_newvalcat = torch.distributions.categorical.Categorical(
+            rate_new_val_probs
+        )
+        square_newval_samples = square_newvalcat.sample()  # (B, ) taking values in [0, S)
+        x_tilde = x_t.clone()
+        x_tilde[
+            torch.arange(B, device=device),
+            square_dims
+        ] = square_newval_samples
+        # x_tilde (B, D)
+
+        noisy_samples = x_tilde
+
         return noisy_samples
 
     def previous_timestep(self, timestep):

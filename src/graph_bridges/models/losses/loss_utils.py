@@ -11,6 +11,6 @@ def get_loss(name):
     return _LOSS[name]
 
 def create_loss(cfg, device, rank=None):
-    estimator = get_loss(cfg.loss.name)(cfg, device, rank)
-    estimator = estimator.to(device)
-    return estimator
+    loss = get_loss(cfg.loss.name)(cfg, device, rank)
+    loss = loss.to(device)
+    return loss

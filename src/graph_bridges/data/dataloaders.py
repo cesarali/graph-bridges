@@ -47,7 +47,7 @@ class BaseDataLoader(ABC):
     def test(self):
         return self._test_iter
 
-class BridgeData:
+class BridgeDataLoader:
 
     config : BridgeConfig
 
@@ -71,10 +71,10 @@ class BridgeData:
         return None
 
 @register_dataloader
-class DoucetTargetData(BridgeData):
+class DoucetTargetData(BridgeDataLoader):
 
     def __init__(self,config:BridgeConfig,device,rank=None):
-        BridgeData.__init__(self,config,device,rank)
+        BridgeDataLoader.__init__(self, config, device, rank)
 
     def sample(self, num_of_paths:int, device=None) -> TensorType["num_of_paths","D"]:
         if device is None:

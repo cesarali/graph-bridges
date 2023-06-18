@@ -1,0 +1,16 @@
+networkx==3.0
+easydict
+geomloss
+numpy
+scipy
+pandas
+tqdm
+click
+ipython
+matplotlib
+scikit-learn
+transformers
+ml_collections
+pyyaml
+torchtyping
+torchvision

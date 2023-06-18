@@ -303,13 +303,13 @@ if __name__=="__main__":
     from graph_bridges.configs.graphs.lobster.config_mlp import BridgeMLPConfig
 
     from graph_bridges.data.dataloaders_utils import create_dataloader
-    from graph_bridges.data.dataloaders import BridgeData
+    from graph_bridges.data.dataloaders import BridgeDataLoader
 
     # test gaussian
     gaussian_config = GaussianBridgeConfig()
     device = torch.device("cpu")
 
-    dataloader:BridgeData
+    dataloader:BridgeDataLoader
     dataloader = create_dataloader(gaussian_config,device)
     sample_ = dataloader.sample(gaussian_config.data.batch_size,device)
 
@@ -326,7 +326,7 @@ if __name__=="__main__":
     mlp_config = BridgeMLPConfig()
     device = torch.device("cpu")
 
-    dataloader:BridgeData
+    dataloader:BridgeDataLoader
     dataloader = create_dataloader(mlp_config,device)
     sample_ = dataloader.sample(mlp_config.data.batch_size,device)
 

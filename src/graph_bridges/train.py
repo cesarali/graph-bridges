@@ -3,7 +3,7 @@ import torch
 from typing import Tuple,Union,List
 from graph_bridges.configs.graphs.lobster.config_base import BridgeConfig
 
-from graph_bridges.data.dataloaders import BridgeData
+from graph_bridges.data.dataloaders import BridgeDataLoader
 from graph_bridges.models.backward_rates.backward_rate import BackwardRate
 
 
@@ -17,8 +17,8 @@ class SchrodingerBridge:
     """
 
     model : BackwardRate
-    data : BridgeData
-    target : BridgeData
+    data : BridgeDataLoader
+    target : BridgeDataLoader
     config : BridgeConfig
 
     def __init__(self,config:BridgeConfig):
