@@ -19,8 +19,7 @@ class GenericAux():
         self.device = device
         return self
 
-
-    def calc_loss(self, minibatch, model, ts, n_iter):
+    def calc_loss(self, minibatch,x_tilde,qt0,rate,x_logits,reg_x,p0t_sig,p0t_reg,device):
         """
 
         :param minibatch:
@@ -28,29 +27,12 @@ class GenericAux():
         :param writer:
         :return:
         """
-        device = model.device
-
-        x_t, x_tilde,qt0,rate = self.add_noise(minibatch, model,ts,device)
-
-        if self.one_forward_pass:
-            x_logits = model(x_tilde, ts)  # (B, D, S)
-            p0t_reg = F.softmax(x_logits, dim=2)  # (B, D, S)
-            reg_x = x_tilde
-        else:
-            x_logits = model(x_t, ts)  # (B, D, S)
-            p0t_reg = F.softmax(x_logits, dim=2)  # (B, D, S)
-            reg_x = x_t
-
-        if self.one_forward_pass:
-            p0t_sig = p0t_reg
-        else:
-            p0t_sig = F.softmax(model(x_tilde, ts), dim=2)  # (B, D, S)
 
         reg_term = self.first_term_of_elbo(minibatch,reg_x,p0t_reg,qt0,rate,device)
 
         outer_sum_sig,x_tilde_mask = self.second_term_of_elbo(minibatch,p0t_sig,x_tilde,qt0,rate,device)
 
-        loss, sig_mean, reg_mean = self.second_term_of_normalization(minibatch, model,
+        loss, sig_mean, reg_mean = self.second_term_of_normalization(minibatch,
                                                                      x_tilde,x_tilde_mask,
                                                                      x_logits,qt0,rate,reg_term,outer_sum_sig,device)
 
@@ -205,7 +187,7 @@ class GenericAux():
         # now getting the 2nd term normalization
         return outer_sum_sig,x_tilde_mask
 
-    def second_term_of_normalization(self,minibatch, model,
+    def second_term_of_normalization(self,minibatch,
                                      x_tilde,x_tilde_mask,
                                      x_logits,qt0,rate,reg_term,outer_sum_sig,device):
         """
@@ -217,7 +199,6 @@ class GenericAux():
             B, C, H, W = minibatch.shape
             minibatch = minibatch.view(B, C * H * W)
         B, D = minibatch.shape
-        device = model.device
 
         rate_row_sums = - rate[
             torch.arange(B, device=device).repeat_interleave(S),

@@ -69,12 +69,31 @@ if __name__=="__main__":
     sample_ = data_dataloader.sample(config.number_of_paths, device)
     minibatch = sample_.unsqueeze(1).unsqueeze(1)
 
-
+    # TIME ===========================================================
     #ts = torch.rand((minibatch.shape[0],), device=device) * (1.0 - config.loss.min_time) + config.loss.min_time
     B = minibatch.shape[0]
     ts = torch.rand((B,), device=device) * (1.0 - config.loss.min_time) + config.loss.min_time
+    #==========
+    x_t, x_tilde, qt0, rate = loss.add_noise(minibatch, model, ts, device)
 
-    loss_ = loss.calc_loss(minibatch, model, ts, 10)
+    device = model.device
+    import torch.nn.functional as F
+    if config.loss.one_forward_pass:
+        x_logits = model(x_tilde, ts)  # (B, D, S)
+        p0t_reg = F.softmax(x_logits, dim=2)  # (B, D, S)
+        reg_x = x_tilde
+    else:
+        x_logits = model(x_t, ts)  # (B, D, S)
+        p0t_reg = F.softmax(x_logits, dim=2)  # (B, D, S)
+        reg_x = x_t
+
+    if config.loss.one_forward_pass:
+        p0t_sig = p0t_reg
+    else:
+        p0t_sig = F.softmax(model(x_tilde, ts), dim=2)  # (B, D, S)
+
+
+    loss_ = loss.calc_loss(minibatch,x_tilde,qt0,rate,x_logits,reg_x,p0t_sig,p0t_reg,device)
 
     print(loss_)
 
