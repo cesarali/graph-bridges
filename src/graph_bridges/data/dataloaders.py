@@ -8,26 +8,43 @@ from pprint import pprint
 from torch import sigmoid
 import torchvision
 
-from typing import Union,Tuple,List
+from typing import Union,Tuple,List,Optional
 from torchtyping import TensorType
 
 from abc import ABC, abstractmethod
 from torch.distributions import Bernoulli
 from graph_bridges.data.datasets import DictDataSet
-from graph_bridges.data.dataloaders_utils import register_dataloader
 from torch.utils.data import TensorDataset,DataLoader,random_split
+from graph_bridges.data.dataloaders_utils import register_dataloader
 from graph_bridges.configs.graphs.lobster.config_base import BridgeConfig
+from graph_bridges.utils.spin_utils import bool_to_spins, spins_to_bool,flip_and_copy_bool
+from graph_bridges.data.graph_generators import gen_graph_list
+from dataclasses import dataclass
 
+from graph_bridges.data.dataloaders_config import GraphSpinsDataLoaderConfig
+
+@register_dataloader
 class BaseDataLoader(ABC):
 
     name_="base_data_loader"
 
-    def __init__(self,config:BridgeConfig):
-        super(BaseDataLoader,self).__init__()
-        self.training_proportion = config.data.training_proportion
-        self.batch_size = config.data.batch_size
+    def __init__(self,cfg:Union[GraphSpinsDataLoaderConfig,BridgeConfig],device:torch.device,rank:int,X:torch.Tensor=None):
+        if isinstance(cfg,BridgeConfig):
+            assert  BridgeConfig.data.name == "GraphSpinsDataLoader"
+            cfg = BridgeConfig.data
+        if isinstance(cfg,GraphSpinsDataLoaderConfig):
+            cfg = cfg
 
-    def define_dataset_and_dataloaders(self,X):
+        super(BaseDataLoader,self).__init__()
+        self.training_proportion = cfg.training_proportion
+        self.batch_size = cfg.batch_size
+
+    def define_dataset_and_dataloaders(self,X,training_proportion=None,batch_size=None):
+        if training_proportion is not None:
+            self.training_proportion=training_proportion
+        if batch_size is not None:
+            self.batch_size = batch_size
+
         if isinstance(X,torch.Tensor):
             dataset = TensorDataset(X)
         elif isinstance(X,dict):
@@ -47,13 +64,290 @@ class BaseDataLoader(ABC):
     def test(self):
         return self._test_iter
 
+@register_dataloader
+class SpinsDataLoader(BaseDataLoader):
+
+    name_ = "spins"
+    def __init__(self,cfg:Union[GraphSpinsDataLoaderConfig,BridgeConfig],device,rank,X=None):
+        """
+        If given a spins tensor sets as data
+        If given a path string read data
+        Otherwise it will sample and store the data in a predifined raw data folder
+
+        :param X: torch.Tensor(number_of_paths,number_of_spins)
+        :param training_proportion: float
+        :param kwargs:
+        """
+        super(SpinsDataLoader,self).__init__(cfg,device,rank,X)
+        if isinstance(cfg,BridgeConfig):
+            assert  BridgeConfig.data.name == "GraphSpinsDataLoader"
+            cfg = BridgeConfig.data
+        if isinstance(cfg,GraphSpinsDataLoaderConfig):
+            cfg = cfg
+
+        self.number_of_spins = cfg.number_of_spins
+        self.number_of_paths = cfg.number_of_paths
+
+        training_proportion = cfg.training_proportion
+        batch_size = cfg.batch_size
+        doucet = cfg.doucet
+
+        # data provided
+        if X is not None:
+            self.check_data(X)
+            self.real_distribution = None
+        else:
+            data_path = cfg.data_path
+            exists, data_path = self.checks_standard_file(data_path,cfg.remove)
+            if exists:
+                # data in file
+                X, self.real_distribution_parameters = self.read_data(data_path)
+                self.check_data(X)
+            else:
+                # data simulated
+                print("Simulating {0} Data".format(self.name_))
+                X, self.real_distribution_parameters = self.sample(cfg)
+                self.check_data(X)
+                self.save_data({"X":X,
+                                "real_distribution":self.real_distribution_parameters},
+                               data_path)
+
+        if doucet:
+            X = self.convert_to_doucet(X)
+
+        self.define_dataset_and_dataloaders(X,
+                                            training_proportion=training_proportion,
+                                            batch_size=batch_size)
+
+        self.define_real_distribution()
+
+    def check_data(self,X):
+        if self.name_ == "marginal_ising":
+            expected_dimension = 3
+        else:
+            expected_dimension = 2
+
+        if isinstance(X,torch.Tensor):
+            data_unique = set(X.reshape(-1).tolist())
+            assert data_unique == set([1.,-1.]) #check only spins
+            assert len(X.shape) == expected_dimension # check batch size and number of spins
+            self.number_of_paths = X.shape[0]
+            self.number_of_spins = X.shape[expected_dimension-1]
+        else:
+            raise Exception("Wrong Data Format")
+
+    def convert_to_doucet(self,X):
+        X[torch.where(X == -1.)] = 0.
+        X = X.to(torch.int8)
+        X = X.unsqueeze(1)
+        X = X.unsqueeze(1)
+        return X
+
+    def checks_standard_file(self,data_path=None,remove=False):
+        """
+        checks if given  path or standard data path as defined by experiments string exists
+        or requieres removal (hence does not exist)
+
+        :param remove:
+        :return: exists, data_path
+        """
+        from graph_bridges import data_path as parent_data_path
+
+        # if data path is not provided, the standard path file is defined according to
+        # the dataloaders name
+
+        if data_path is None:
+            data_folder = os.path.join(parent_data_path, "raw", self.name_)
+            data_path = os.path.join(data_folder, "{0}.cp".format(self.name_))
+        else:
+            data_folder = os.path.join(parent_data_path, "raw", data_path)
+            data_path = os.path.join(data_folder, "{0}.cp".format(self.name_))
+
+        exists = os.path.exists(data_path)
+        if exists and remove:
+            shutil.rmtree(data_folder)
+            exists = False
+
+        if not exists:
+            if not os.path.exists(data_folder):
+                os.makedirs(data_folder)
+
+        return exists, data_path
+
+    def save_data(self,X,data_path):
+        """
+        If data path not given, checks for standard save file and stored there
+
+        :param X:
+        :param data_path:
+        :param remove:
+        :return:
+        """
+        with open(data_path,"wb") as f:
+            pickle.dump(X,f)
+
+    def read_data(self,data_path):
+        if os.path.exists(data_path):
+            self.data_path = data_path
+            with open(self.data_path, "rb") as f:
+                data = pickle.load(f)
+                X = data.get("X")
+                real_distribution = data.get("real_distribution")
+                self.check_data(X)
+                return X, real_distribution
+        else:
+            raise Exception("Spin File Does Not Exist")
+
+    @abstractmethod
+    def sample(self,**kwargs):
+        return None
+
+    def flip_and_copy_spins(self,X_spins):
+        X_bool = spins_to_bool(X_spins)
+        X_copy_bool, X_flipped_bool = flip_and_copy_bool(X_bool)
+        X_copy_spin, X_flipped_spin = bool_to_spins(X_copy_bool), bool_to_spins(X_flipped_bool)
+        return X_copy_spin, X_flipped_spin
+
+    def define_real_distribution(self):
+        return None
+
+    def log_unnormalized(self,X_spins):
+        return None
+
+    def exact_flip_ratio(self, X_spins, dimension=1):
+        """
+        :param X_spins: torch.Tensor(batch_size,number_of_spins) or
+
+        :return:
+        """
+        # EVALUATION
+        batch_size = X_spins.shape[0]
+        number_of_spins = X_spins.shape[1]
+
+        if dimension is not None:
+            assert dimension < number_of_spins
+
+        X_copy_spin, X_flipped_spin = self.flip_and_copy_spins(X_spins)
+        log_unnnormalized_X_copy = self.log_unnormalized(X_copy_spin)
+        log_unnnormalized_X_flipped = self.log_unnormalized(X_copy_spin)
+        log_ratio = log_unnnormalized_X_copy - log_unnnormalized_X_flipped
+        log_ratio = log_ratio.reshape(batch_size,number_of_spins)
+        probability_ratio = torch.exp(log_ratio)
+
+        if dimension is not None:
+            probability_ratio = probability_ratio[:,dimension]
+
+        assert not torch.isnan(probability_ratio).any()
+        assert not torch.isinf(probability_ratio).any()
+
+        return probability_ratio
+
+
+
+@register_dataloader
+class GraphSpinsDataLoader(SpinsDataLoader):
+    """
+    databatch = next(dataloader.train().__iter__())
+    X_spins = databatch[0]
+    """
+    name_ = "graph_spins"
+
+    def __init__(self, cfg:Union[GraphSpinsDataLoaderConfig,BridgeConfig], device, rank):
+        if isinstance(cfg,BridgeConfig):
+            assert cfg.data.name == "GraphSpinsDataLoader"
+            cfg = BridgeConfig.data
+        if isinstance(cfg,GraphSpinsDataLoaderConfig):
+            cfg = cfg
+        self.graph_type = cfg.graph_type
+        self.name_ = self.name_ + "_" + cfg.graph_type
+        self.full_adjacency = cfg.full_adjacency
+        self.number_of_nodes = cfg.number_of_nodes
+        self.number_of_paths = cfg.number_of_paths
+
+        if not self.full_adjacency:
+            self.number_of_spins = np.triu_indices(self.number_of_nodes, k=1)[0].shape[0]
+        else:
+            self.number_of_spins = self.number_of_nodes ** 2
+        cfg.number_of_spins = self.number_of_spins
+
+        self.upper_diagonal_indices = np.triu_indices(self.number_of_nodes, k=1)
+        super(GraphSpinsDataLoader, self).__init__(cfg,device,rank)
+
+    def from_networkx_to_spins(self, graph_):
+        adjacency_ = nx.to_numpy_array(graph_)
+        if self.full_adjacency:
+            spins = (-1.) ** (adjacency_.flatten() + 1)
+        else:
+            just_upper_edges = adjacency_[self.upper_diagonal_indices]
+            spins = (-1.) ** (just_upper_edges.flatten() + 1)
+        return spins
+
+    def from_spins_to_networkx(self, X_spins):
+        if not self.full_adjacency:
+            graph_list = []
+            X_spins[X_spins == -1.] = 0.
+            batch_size = X_spins.shape[0]
+            adjacencies = torch.zeros((batch_size,
+                                       self.number_of_nodes,
+                                       self.number_of_nodes))
+            adjacencies[:,
+            self.upper_diagonal_indices[0],
+            self.upper_diagonal_indices[1]] = X_spins
+            adjacencies = adjacencies + adjacencies.permute(0, 2, 1)
+            adjacencies = adjacencies.numpy()
+            for graph_index in range(batch_size):
+                graph_list.append(nx.from_numpy_array(adjacencies[graph_index]))
+            return graph_list
+        else:
+            graph_list = []
+            batch_size = X_spins.shape[0]
+            X_spins[X_spins == -1.] = 0.
+            adjacencies = X_spins.numpy()
+            for graph_index in range(batch_size):
+                graph_list.append(nx.from_numpy_array(adjacencies[graph_index]))
+            return graph_list
+
+    def sample(self, cfg:Union[BridgeConfig,GraphSpinsDataLoaderConfig]):
+        if isinstance(cfg,BridgeConfig):
+            cfg = cfg.data
+        if isinstance(cfg,GraphSpinsDataLoaderConfig):
+            cfg = cfg
+
+        networkx_graphs = gen_graph_list(cfg.graph_type,
+                                         cfg.possible_params_dict,
+                                         cfg.corrupt_func,
+                                         cfg.length,
+                                         cfg.max_node,
+                                         cfg.min_node)
+        X = []
+        for graph_ in networkx_graphs:
+            print(graph_.number_of_nodes())
+            x = self.from_networkx_to_spins(graph_)
+            X.append(x[None, :])
+        X = np.concatenate(X, axis=0)
+        X = torch.Tensor(X)
+        return X, (None,)
+
+
+    # =======================================
+    # EXACT VALUE OF ESTIMATOR
+    # =======================================
+    def define_real_distribution(self):
+        """
+        :return:
+        """
+        # self.bernoulli_real = Bernoulli(self.real_distribution_parameters[0])
+        # raise Exception("Not Implemented")
+        print("Real Distribution Not Implemented for {0}".format(self.name_))
+        return None
+
 class BridgeDataLoader:
 
     config : BridgeConfig
 
     def __init__(self,config:BridgeConfig,device,rank=None):
         self.config = config
-        self.device = self.config.device
+        self.device = device
 
         C,H,W = self.config.data.shape
         self.D = C*H*W
@@ -102,10 +396,15 @@ class DoucetTargetData(BridgeDataLoader):
 if __name__=="__main__":
     from graph_bridges.configs.graphs.lobster.config_base import BridgeConfig
     from graph_bridges.data.dataloaders_utils import create_dataloader
+    from graph_bridges.data.dataloaders_config import GraphSpinsDataLoaderConfig
 
     config = BridgeConfig()
+    config.data = GraphSpinsDataLoaderConfig()
+
     device = torch.device(config.device)
-    data = create_dataloader(config,device,target=True)
-    x = data.sample(num_of_paths=20,device=device)
+
+    dataloader = create_dataloader(config,device,target=False)
+
+    #x = data.sample(num_of_paths=20,device=device)
 
 
