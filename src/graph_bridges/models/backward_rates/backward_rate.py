@@ -14,7 +14,21 @@ from torchtyping import TensorType
 from graph_bridges.models.networks_arquitectures.network_utils import transformer_timestep_embedding
 from torch.nn.functional import softplus,softmax
 from graph_bridges.models.reference_process.ctdd_reference import GaussianTargetRate
+from typing import Tuple, Union
 
+from dataclasses import dataclass
+from diffusers.utils import BaseOutput
+
+@dataclass
+class BackwardRateOutput(BaseOutput):
+    """
+    :param BaseOutput:
+    :return:
+    """
+    x_logits: torch.Tensor
+    p0t_reg: torch.Tensor
+    p0t_sig: torch.Tensor
+    reg_x: torch.Tensor
 
 class BackwardRate(nn.Module,ABC):
 
@@ -51,15 +65,41 @@ class BackwardRate(nn.Module,ABC):
 
     def forward(self,
                 x: TensorType["batch_size", "dimension"],
-                times:TensorType["batch_size"]
-                )-> TensorType["batch_size", "dimension", "num_states"]:
-
+                times:TensorType["batch_size"],
+                x_tilde: TensorType["batch_size", "dimension"] = None,
+                return_dict: bool = False,
+                )-> Union[BackwardRateOutput, torch.FloatTensor, Tuple]:
         if self.data_type == "doucet":
             h = self._center_data(x)
+            return self.ctdd(h,x_tilde,times,return_dict)
         else:
             h = x
+            x_logits = self._forward(h, times)
+            if not return_dict:
+                return x_logits
+            else:
+                return BackwardRateOutput(x_logits=x_logits, p0t_reg=None, p0t_sig=None)
 
-        return self._forward(h,times)
+    def ctdd(self,x_t,x_tilde,times,return_dict):
+        if x_tilde is not None:
+            if self.config.loss.one_forward_pass:
+                reg_x = x_tilde
+                x_logits = self._forward(reg_x, times)  # (B, D, S)
+                p0t_reg = F.softmax(x_logits, dim=2)  # (B, D, S)
+                p0t_sig = p0t_reg
+            else:
+                reg_x = x_t
+                x_logits = self._forward(reg_x, times)  # (B, D, S)
+                p0t_reg = F.softmax(x_logits, dim=2)  # (B, D, S)
+                p0t_sig = F.softmax(self._forward(x_tilde, times), dim=2)  # (B, D, S)
+
+            if not return_dict:
+                return (x_logits,p0t_reg,p0t_sig,reg_x)
+            return BackwardRateOutput(x_logits=x_logits,p0t_reg=p0t_reg,p0t_sig=p0t_sig,reg_x=reg_x)
+        else:
+            return self._forward(x_t, times)  # (B, D, S)
+
+
 
     def stein_binary_forward(self,
                 x: TensorType["batch_size", "dimension"],
@@ -295,6 +335,7 @@ class GaussianTargetRateImageX0PredEMA(EMA,ImageX0PredBase,GaussianTargetRate):
         EMA.__init__(self, cfg)
         ImageX0PredBase.__init__(self, cfg, device, rank)
         GaussianTargetRate.__init__(self,cfg, device)
+        self.config = cfg
         self.init_ema()
 
 
@@ -319,7 +360,7 @@ if __name__=="__main__":
     time = torch.full((gaussian_config.data.batch_size,),
                       gaussian_config.sampler.min_t)
     forward = gaussian_model(sample_,time)
-    print(sample_.shape)
+    print(sample_)
     print(forward.mean())
 
     #test mlp

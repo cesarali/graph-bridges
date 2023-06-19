@@ -80,30 +80,13 @@ if __name__=="__main__":
     ts = torch.rand((B,), device=device) * (1.0 - config.loss.min_time) + config.loss.min_time
     #==========
 
-    #scheduler_noise_output = scheduler.add_noise(minibatch,reference_process,ts,device)
     x_t, x_tilde, qt0, rate = scheduler.add_noise(minibatch,reference_process,ts,device,return_dict=False)
-    #x_t, x_tilde, qt0, rate = loss.add_noise(minibatch, model, ts, device)
 
-    import torch.nn.functional as F
-    if config.loss.one_forward_pass:
-        reg_x = x_tilde
-        x_logits = model(x_tilde, ts)  # (B, D, S)
-        p0t_reg = F.softmax(x_logits, dim=2)  # (B, D, S)
-    else:
-        reg_x = x_t
-        x_logits = model(x_t, ts)  # (B, D, S)
-        p0t_reg = F.softmax(x_logits, dim=2)  # (B, D, S)
-
-    if config.loss.one_forward_pass:
-        p0t_sig = p0t_reg
-    else:
-        p0t_sig = F.softmax(model(x_tilde, ts), dim=2)  # (B, D, S)
-
+    x_logits,p0t_reg,p0t_sig,reg_x = model.forward(minibatch,ts,x_tilde)
 
     loss_ = loss.calc_loss(minibatch,x_tilde,qt0,rate,x_logits,reg_x,p0t_sig,p0t_reg,device)
 
     print(loss_)
-
 
     """
     TRAINING EXAMPLE FOR DIFFUSERS LIBRARY
@@ -134,8 +117,6 @@ if __name__=="__main__":
         accelerator.backward(loss)
                 
     """
-
-
 
     """
     while True:
