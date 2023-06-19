@@ -18,7 +18,7 @@ from diffusers.utils import randn_tensor
 from diffusers.pipelines.pipeline_utils import DiffusionPipeline, ImagePipelineOutput
 
 
-class CTDDPipeline(DiffusionPipeline):
+class DDPMPipeline(DiffusionPipeline):
     r"""
     This model inherits from [`DiffusionPipeline`]. Check the superclass documentation for the generic methods the
     library implements for all the pipelines (such as downloading or saving, running on a particular device, etc.)
@@ -102,6 +102,9 @@ class CTDDPipeline(DiffusionPipeline):
 
         return ImagePipelineOutput(images=image)
 
+from graph_bridges.models.pipelines.pipelines_utils import register_pipeline
+
+@register_pipeline
 class CTDDPipeline(DiffusionPipeline):
     r"""
     This model inherits from [`DiffusionPipeline`]. Check the superclass documentation for the generic methods the

@@ -37,18 +37,20 @@ class Standard():
 
 if __name__=="__main__":
     from graph_bridges.models.backward_rates.backward_rate import GaussianTargetRateImageX0PredEMA
-
-    from graph_bridges.models.samplers.sampling import ReferenceProcess
-    from graph_bridges.data.dataloaders_utils import create_dataloader
     from graph_bridges.data.dataloaders import DoucetTargetData
-
+    from graph_bridges.models.samplers.sampling import ReferenceProcess
     from graph_bridges.models.reference_process.ctdd_reference import ReferenceProcess
     from graph_bridges.models.losses.ctdd_losses import GenericAux
+    from graph_bridges.models.schedulers.scheduling_ctdd import CTDDScheduler
+
+    from graph_bridges.models.pipelines.pipelines_utils import create_pipelines
+    from graph_bridges.models.schedulers.scheduling_utils import create_scheduler
+    from graph_bridges.models.backward_rates.backward_rate_utils import create_model
+    from graph_bridges.models.reference_process.reference_process_utils import create_reference
+    from graph_bridges.data.dataloaders_utils import create_dataloader
     from graph_bridges.models.losses.loss_utils import create_loss
 
     from graph_bridges.configs.graphs.lobster.config_base import BridgeConfig
-    from graph_bridges.models.backward_rates.backward_rate_utils import create_model
-    from graph_bridges.models.reference_process.reference_process_utils import create_reference
 
     config = BridgeConfig()
     device = torch.device(config.device)
@@ -60,11 +62,14 @@ if __name__=="__main__":
     model : GaussianTargetRateImageX0PredEMA
     reference_process: ReferenceProcess
     loss : GenericAux
+    scheduler:CTDDScheduler
 
     data_dataloader = create_dataloader(config,device)
     model = create_model(config,device)
     reference_process = create_reference(config,device)
     loss = create_loss(config,device)
+    scheduler = create_scheduler(config,device)
+
     #=================================================================
     sample_ = data_dataloader.sample(config.number_of_paths, device)
     minibatch = sample_.unsqueeze(1).unsqueeze(1)
@@ -74,18 +79,20 @@ if __name__=="__main__":
     B = minibatch.shape[0]
     ts = torch.rand((B,), device=device) * (1.0 - config.loss.min_time) + config.loss.min_time
     #==========
-    x_t, x_tilde, qt0, rate = loss.add_noise(minibatch, model, ts, device)
 
-    device = model.device
+    #scheduler_noise_output = scheduler.add_noise(minibatch,reference_process,ts,device)
+    x_t, x_tilde, qt0, rate = scheduler.add_noise(minibatch,reference_process,ts,device,return_dict=False)
+    #x_t, x_tilde, qt0, rate = loss.add_noise(minibatch, model, ts, device)
+
     import torch.nn.functional as F
     if config.loss.one_forward_pass:
+        reg_x = x_tilde
         x_logits = model(x_tilde, ts)  # (B, D, S)
         p0t_reg = F.softmax(x_logits, dim=2)  # (B, D, S)
-        reg_x = x_tilde
     else:
+        reg_x = x_t
         x_logits = model(x_t, ts)  # (B, D, S)
         p0t_reg = F.softmax(x_logits, dim=2)  # (B, D, S)
-        reg_x = x_t
 
     if config.loss.one_forward_pass:
         p0t_sig = p0t_reg
@@ -96,6 +103,7 @@ if __name__=="__main__":
     loss_ = loss.calc_loss(minibatch,x_tilde,qt0,rate,x_logits,reg_x,p0t_sig,p0t_reg,device)
 
     print(loss_)
+
 
     """
     TRAINING EXAMPLE FOR DIFFUSERS LIBRARY

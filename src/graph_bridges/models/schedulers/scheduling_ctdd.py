@@ -17,15 +17,18 @@
 import math
 from dataclasses import dataclass
 from typing import List, Optional, Tuple, Union
-
 import numpy as np
 import torch
 
-from diffusers.configuration_utils import ConfigMixin, register_to_config
+
+
 from diffusers.utils import BaseOutput, randn_tensor
+from diffusers.configuration_utils import ConfigMixin, register_to_config
 from diffusers.schedulers.scheduling_utils import KarrasDiffusionSchedulers, SchedulerMixin
 
 from graph_bridges.models.reference_process.ctdd_reference import ReferenceProcess
+from graph_bridges.models.schedulers.scheduling_utils import register_scheduler
+from graph_bridges.configs.graphs.lobster.config_base import BridgeConfig
 
 @dataclass
 class CTDDSchedulerOutput(BaseOutput):
@@ -43,6 +46,18 @@ class CTDDSchedulerOutput(BaseOutput):
 
     prev_sample: torch.FloatTensor
     pred_original_sample: Optional[torch.FloatTensor] = None
+
+@dataclass
+class CTDDSchedulerNoiseOutput(BaseOutput):
+    """
+    Output class for the scheduler's add noise output.
+
+    """
+    #loss.add_noise(minibatch, model, ts, device)
+    x_t : torch.FloatTensor
+    x_tilde : torch.FloatTensor
+    qt0 : torch.FloatTensor
+    rate : torch.FloatTensor
 
 
 def betas_for_alpha_bar(num_diffusion_timesteps, max_beta=0.999):
@@ -74,6 +89,7 @@ def betas_for_alpha_bar(num_diffusion_timesteps, max_beta=0.999):
     return torch.tensor(betas, dtype=torch.float32)
 
 
+@register_scheduler
 class CTDDScheduler(SchedulerMixin, ConfigMixin):
     """
     Denoising diffusion probabilistic models (DDPMs) explores the connections between denoising score matching and
@@ -123,6 +139,8 @@ class CTDDScheduler(SchedulerMixin, ConfigMixin):
     @register_to_config
     def __init__(
         self,
+        config:BridgeConfig,
+        device:torch.device,
         num_train_timesteps: int = 1000,
         beta_start: float = 0.0001,
         beta_end: float = 0.02,
@@ -136,9 +154,15 @@ class CTDDScheduler(SchedulerMixin, ConfigMixin):
         clip_sample_range: float = 1.0,
         sample_max_value: float = 1.0,
     ):
-        return None
+        self.cfg = config
+        self.device = device
+        print("Scheduler")
 
-    def scale_model_input(self, sample: torch.FloatTensor, timestep: Optional[int] = None) -> torch.FloatTensor:
+    def scale_model_input(
+            self,
+            sample: torch.FloatTensor,
+            timestep: Optional[int] = None
+    ) -> torch.FloatTensor:
         """
         Ensures interchangeability with schedulers that need to scale the denoising model input depending on the
         current timestep.
@@ -208,6 +232,9 @@ class CTDDScheduler(SchedulerMixin, ConfigMixin):
     def __len__(self):
         return self.config.num_train_timesteps
 
+    def to(self,device):
+        self.device = device
+        return self
     def step(
         self,
         model_output: torch.FloatTensor,
@@ -309,19 +336,31 @@ class CTDDScheduler(SchedulerMixin, ConfigMixin):
         self,
         original_samples: torch.FloatTensor,
         reference_process: ReferenceProcess,
-        noise: torch.FloatTensor,
         timesteps: torch.IntTensor,
-        device,
-    ) -> torch.FloatTensor:
-        # Make sure alphas_cumprod and timestep have same device and dtype as original_samples
-        B = original_samples.shape[0]
-        D = original_samples.shape[1]
-        minibatch = original_samples
+        device:torch.device,
+        return_dict: bool = True,
 
-        ts = torch.rand((B,), device=device) * (1.0 - self.min_time) + self.min_time
+    ) -> Union[CTDDSchedulerNoiseOutput, Tuple]:
+        """
+            :param original_samples:
+            :param reference_process:
+            :param timesteps:
+            :param device:
+            :return:
 
-        qt0 = reference_process.transition(ts)  # (B, S, S)
-        rate = reference_process.rate(ts)  # (B, S, S)
+            Returns:
+            [`~schedulers.scheduling_utils.DDPMSchedulerOutput`] or `tuple`:
+            [`~schedulers.scheduling_utils.DDPMSchedulerOutput`] if `return_dict` is True, otherwise a `tuple`. When
+            returning a tuple, the first element is the sample tensor.
+        """
+        S = self.cfg.data.S
+        if len(original_samples.shape) == 4:
+            B, C, H, W = original_samples.shape
+            minibatch = original_samples.view(B, C * H * W)
+        B, D = minibatch.shape
+
+        qt0 = reference_process.transition(timesteps)  # (B, S, S)
+        rate = reference_process.rate(timesteps)  # (B, S, S)
 
         # --------------- Sampling x_t, x_tilde --------------------
 
@@ -363,11 +402,14 @@ class CTDDScheduler(SchedulerMixin, ConfigMixin):
             torch.arange(B, device=device),
             square_dims
         ] = square_newval_samples
-        # x_tilde (B, D)
 
-        noisy_samples = x_tilde
+        if not return_dict:
+            return (x_t,x_tilde,qt0,rate)
 
-        return noisy_samples
+        return CTDDSchedulerNoiseOutput(x_t=x_t,
+                                        x_tilde=x_tilde,
+                                        qt0=qt0,
+                                        rate=rate)
 
     def previous_timestep(self, timestep):
         if self.custom_timesteps:

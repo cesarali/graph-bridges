@@ -140,6 +140,14 @@ class CTDDLossConfig:
     min_time = 0.01
     one_forward_pass = True
 
+@dataclass
+class CTDDSchedulerConfig:
+    name = 'CTDDScheduler'
+
+@dataclass
+class CTDDPipelineConfig:
+    name = 'CTDDPipeline'
+
 class OptimizerConfig:
     name = 'Adam'
     lr = 2e-4
@@ -155,9 +163,11 @@ class BridgeConfig:
     target = DataConfig() # corresponds to the distribution at final time
     reference = ReferenceProcessConfig()
     sampler = ParametrizedSamplerConfig()
-    stein = SteinSpinEstimatorConfig()
-    backward_estimator = BackwardEstimatorConfig()
+    #stein = SteinSpinEstimatorConfig()
+    #backward_estimator = BackwardEstimatorConfig()
     loss = CTDDLossConfig()
+    scheduler = CTDDSchedulerConfig()
+    pipeline = CTDDPipelineConfig()
     optimizer = OptimizerConfig()
 
     number_of_paths = 10
