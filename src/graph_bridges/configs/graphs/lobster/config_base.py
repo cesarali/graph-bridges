@@ -148,10 +148,19 @@ class CTDDSchedulerConfig:
 class CTDDPipelineConfig:
     name = 'CTDDPipeline'
 
-class OptimizerConfig:
-    name = 'Adam'
-    lr = 2e-4
-    number_of_epochs = 200
+@dataclass
+class TrainerConfig:
+    number_of_paths = 10
+    number_of_sinkhorn = 1
+
+    optimizer_name = 'AdamW'
+    num_epochs = 50
+    gradient_accumulation_steps = 1
+    learning_rate = 1e-4
+    lr_warmup_steps = 500
+    save_image_epochs = 10
+    save_model_epochs = 30
+
 
 @dataclass
 class BridgeConfig:
@@ -168,7 +177,7 @@ class BridgeConfig:
     loss = CTDDLossConfig()
     scheduler = CTDDSchedulerConfig()
     pipeline = CTDDPipelineConfig()
-    optimizer = OptimizerConfig()
+    optimizer = TrainerConfig()
 
     number_of_paths = 10
     number_of_sinkhorn = 1
@@ -237,6 +246,7 @@ class BridgeConfig:
         self.tensorboard_path = os.path.join(self.results_dir, "tensorboard")
         if os.path.isdir(self.tensorboard_path):
             shutil.rmtree(self.tensorboard_path)
+        os.makedirs(self.tensorboard_path)
 
         self.best_model_path = os.path.join(self.results_dir, "sinkhorn_{0}.tr")
         self.sinkhorn_plot_path = os.path.join(self.results_dir, "marginal_at_site_sinkhorn_{0}.png")
@@ -247,4 +257,4 @@ if __name__=="__main__":
     data_config = DataConfig()
     bridge_config = BridgeConfig()
 
-    bridge_config.align_configurations()
+    bridge_config.initialize()

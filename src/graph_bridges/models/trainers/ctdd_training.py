@@ -35,6 +35,8 @@ class Standard():
         return l.detach()
 
 
+
+
 if __name__=="__main__":
     from graph_bridges.models.backward_rates.backward_rate import GaussianTargetRateImageX0PredEMA
     from graph_bridges.data.dataloaders import DoucetTargetData
@@ -55,7 +57,7 @@ if __name__=="__main__":
     config = BridgeConfig()
     device = torch.device(config.device)
 
-    #=================================================================
+    #==================================================================
     # CREATE OBJECTS FROM CONFIGURATION
 
     data_dataloader: DoucetTargetData
@@ -81,9 +83,7 @@ if __name__=="__main__":
     #==========
 
     x_t, x_tilde, qt0, rate = scheduler.add_noise(minibatch,reference_process,ts,device,return_dict=False)
-
     x_logits,p0t_reg,p0t_sig,reg_x = model.forward(minibatch,ts,x_tilde)
-
     loss_ = loss.calc_loss(minibatch,x_tilde,qt0,rate,x_logits,reg_x,p0t_sig,p0t_reg,device)
 
     print(loss_)
