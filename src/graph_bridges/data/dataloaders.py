@@ -106,7 +106,7 @@ class SpinsDataLoader(BaseDataLoader):
             else:
                 # data simulated
                 print("Simulating {0} Data".format(self.name_))
-                X, self.real_distribution_parameters = self.sample(cfg)
+                X, self.real_distribution_parameters = self.simulate_data(cfg)
                 self.check_data(X)
                 self.save_data({"X":X,
                                 "real_distribution":self.real_distribution_parameters},
@@ -199,7 +199,7 @@ class SpinsDataLoader(BaseDataLoader):
             raise Exception("Spin File Does Not Exist")
 
     @abstractmethod
-    def sample(self,**kwargs):
+    def simulate_data(self, **kwargs):
         return None
 
     def flip_and_copy_spins(self,X_spins):
@@ -241,8 +241,6 @@ class SpinsDataLoader(BaseDataLoader):
         assert not torch.isinf(probability_ratio).any()
 
         return probability_ratio
-
-
 
 @register_dataloader
 class GraphSpinsDataLoader(SpinsDataLoader):
@@ -307,7 +305,7 @@ class GraphSpinsDataLoader(SpinsDataLoader):
                 graph_list.append(nx.from_numpy_array(adjacencies[graph_index]))
             return graph_list
 
-    def sample(self, cfg:Union[BridgeConfig,GraphSpinsDataLoaderConfig]):
+    def simulate_data(self, cfg:Union[BridgeConfig,GraphSpinsDataLoaderConfig]):
         if isinstance(cfg,BridgeConfig):
             cfg = cfg.data
         if isinstance(cfg,GraphSpinsDataLoaderConfig):

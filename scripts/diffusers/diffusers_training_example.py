@@ -98,7 +98,7 @@ model = UNet2DModel(
 sample_image = dataset[0]["images"].unsqueeze(0)
 
 print("Input shape:", sample_image.shape)
-print("Output shape:", model(sample_image, timestep=0).sample.shape)
+print("Output shape:", model(sample_image, timestep=0).simulate_data.shape)
 
 #==================================================
 # DATA SET
@@ -121,7 +121,7 @@ Image.fromarray(((noisy_image.permute(0, 2, 3, 1) + 1.0) * 127.5).type(torch.uin
 
 import torch.nn.functional as F
 
-noise_pred = model(noisy_image, timesteps).sample
+noise_pred = model(noisy_image, timesteps).simulate_data
 loss = F.mse_loss(noise_pred, noise)
 
 print(loss)

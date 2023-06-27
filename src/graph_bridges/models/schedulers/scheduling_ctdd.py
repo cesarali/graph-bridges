@@ -19,7 +19,7 @@ from dataclasses import dataclass
 from typing import List, Optional, Tuple, Union
 import numpy as np
 import torch
-
+import torch.functional as F
 
 
 from diffusers.utils import BaseOutput, randn_tensor
@@ -29,6 +29,14 @@ from diffusers.schedulers.scheduling_utils import KarrasDiffusionSchedulers, Sch
 from graph_bridges.models.reference_process.ctdd_reference import ReferenceProcess
 from graph_bridges.models.schedulers.scheduling_utils import register_scheduler
 from graph_bridges.configs.graphs.lobster.config_base import BridgeConfig
+from graph_bridges.models.backward_rates.backward_rate import GaussianTargetRateImageX0PredEMA
+from graph_bridges.data.dataloaders import DoucetTargetData, GraphSpinsDataLoader
+from graph_bridges.models.samplers.sampling import ReferenceProcess
+from graph_bridges.models.reference_process.ctdd_reference import ReferenceProcess
+from graph_bridges.models.losses.ctdd_losses import GenericAux
+from graph_bridges.data.dataloaders_config import GraphSpinsDataLoaderConfig
+
+
 
 @dataclass
 class CTDDSchedulerOutput(BaseOutput):
@@ -239,9 +247,9 @@ class CTDDScheduler(SchedulerMixin, ConfigMixin):
         self,
         model_output: torch.FloatTensor,
         timestep: int,
-        sample: torch.FloatTensor,
-        generator=None,
+        x: torch.FloatTensor,
         return_dict: bool = True,
+        device:torch.device = None,
     ) -> Union[CTDDSchedulerOutput, Tuple]:
         """
         Predict the sample at the previous timestep by reversing the SDE. Core function to propagate the diffusion
@@ -262,75 +270,33 @@ class CTDDScheduler(SchedulerMixin, ConfigMixin):
 
         """
         t = timestep
+        #prev_t = self.previous_timestep(t)
 
-        prev_t = self.previous_timestep(t)
+        num_of_paths = x.shape[0]
 
-        if model_output.shape[1] == sample.shape[1] * 2 and self.variance_type in ["learned", "learned_range"]:
-            model_output, predicted_variance = torch.split(model_output, sample.shape[1], dim=1)
-        else:
-            predicted_variance = None
+        forward_rates, qt0_denom, qt0_numer = self.reference_process.rates(x, t)
+        t * torch.ones((num_of_paths,), device=device)
+        p0t = F.softmax(model_output, dim=2)  # (N, D, S)
 
-        # 1. compute alphas, betas
-        alpha_prod_t = self.alphas_cumprod[t]
-        alpha_prod_t_prev = self.alphas_cumprod[prev_t] if prev_t >= 0 else self.one
-        beta_prod_t = 1 - alpha_prod_t
-        beta_prod_t_prev = 1 - alpha_prod_t_prev
-        current_alpha_t = alpha_prod_t / alpha_prod_t_prev
-        current_beta_t = 1 - current_alpha_t
+        inner_sum = (p0t / qt0_denom) @ qt0_numer  # (N, D, S)
+        reverse_rates = forward_rates * inner_sum  # (N, D, S)
 
-        # 2. compute predicted original sample from predicted noise also called
-        # "predicted x_0" of formula (15) from https://arxiv.org/pdf/2006.11239.pdf
-        if self.config.prediction_type == "epsilon":
-            pred_original_sample = (sample - beta_prod_t ** (0.5) * model_output) / alpha_prod_t ** (0.5)
-        elif self.config.prediction_type == "sample":
-            pred_original_sample = model_output
-        elif self.config.prediction_type == "v_prediction":
-            pred_original_sample = (alpha_prod_t**0.5) * sample - (beta_prod_t**0.5) * model_output
-        else:
-            raise ValueError(
-                f"prediction_type given as {self.config.prediction_type} must be one of `epsilon`, `sample` or"
-                " `v_prediction`  for the DDPMScheduler."
-            )
+        reverse_rates[
+            torch.arange(num_of_paths, device=device).repeat_interleave(self.D),
+            torch.arange(self.D, device=device).repeat(num_of_paths),
+            x.long().flatten()
+        ] = 0.0
 
-        # 3. Clip or threshold "predicted x_0"
-        if self.config.thresholding:
-            pred_original_sample = self._threshold_sample(pred_original_sample)
-        elif self.config.clip_sample:
-            pred_original_sample = pred_original_sample.clamp(
-                -self.config.clip_sample_range, self.config.clip_sample_range
-            )
+        diffs = torch.arange(self.S, device=device).view(1, 1, self.S) - x.view(num_of_paths, self.D, 1)
+        poisson_dist = torch.distributions.poisson.Poisson(reverse_rates * h)
+        jump_nums = poisson_dist.sample()
+        adj_diffs = jump_nums * diffs
+        overall_jump = torch.sum(adj_diffs, dim=2)
+        xp = x + overall_jump
+        x_new = torch.clamp(xp, min=0, max=self.S - 1)
 
-        # 4. Compute coefficients for pred_original_sample x_0 and current sample x_t
-        # See formula (7) from https://arxiv.org/pdf/2006.11239.pdf
-        pred_original_sample_coeff = (alpha_prod_t_prev ** (0.5) * current_beta_t) / beta_prod_t
-        current_sample_coeff = current_alpha_t ** (0.5) * beta_prod_t_prev / beta_prod_t
-
-        # 5. Compute predicted previous sample µ_t
-        # See formula (7) from https://arxiv.org/pdf/2006.11239.pdf
-        pred_prev_sample = pred_original_sample_coeff * pred_original_sample + current_sample_coeff * sample
-
-        # 6. Add noise
-        variance = 0
-        if t > 0:
-            device = model_output.device
-            variance_noise = randn_tensor(
-                model_output.shape, generator=generator, device=device, dtype=model_output.dtype
-            )
-            if self.variance_type == "fixed_small_log":
-                variance = self._get_variance(t, predicted_variance=predicted_variance) * variance_noise
-            elif self.variance_type == "learned_range":
-                variance = self._get_variance(t, predicted_variance=predicted_variance)
-                variance = torch.exp(0.5 * variance) * variance_noise
-            else:
-                variance = (self._get_variance(t, predicted_variance=predicted_variance) ** 0.5) * variance_noise
-
-        pred_prev_sample = pred_prev_sample + variance
-
-        if not return_dict:
-            return (pred_prev_sample,)
-
-        return CTDDSchedulerOutput(prev_sample=pred_prev_sample,
-                                   pred_original_sample=pred_original_sample)
+        return CTDDSchedulerOutput(prev_sample=x_new,
+                                   pred_original_sample=x)
 
     def add_noise(
         self,
@@ -425,3 +391,34 @@ class CTDDScheduler(SchedulerMixin, ConfigMixin):
             prev_t = timestep - self.config.num_train_timesteps // num_inference_steps
 
         return prev_t
+
+
+if __name__ == "__main__":
+    from graph_bridges.models.schedulers.scheduling_utils import create_scheduler
+    from graph_bridges.models.backward_rates.backward_rate_utils import create_model
+    from graph_bridges.models.reference_process.reference_process_utils import create_reference
+    from graph_bridges.data.dataloaders_utils import create_dataloader
+    from graph_bridges.models.losses.loss_utils import create_loss
+    from pprint import pprint
+
+    from graph_bridges.configs.graphs.lobster.config_base import BridgeConfig, get_config_from_file
+
+    config = get_config_from_file("graph","lobster","1687884918")
+    pprint(config)
+
+    device = torch.device(config.device)
+    # =================================================================
+    # CREATE OBJECTS FROM CONFIGURATION
+
+    data_dataloader: GraphSpinsDataLoader
+    model: GaussianTargetRateImageX0PredEMA
+    reference_process: ReferenceProcess
+    loss: GenericAux
+    scheduler: CTDDScheduler
+
+    data_dataloader = create_dataloader(config, device)
+    model = create_model(config, device)
+    reference_process = create_reference(config, device)
+    loss = create_loss(config, device)
+    scheduler = create_scheduler(config, device)
+

@@ -14,8 +14,11 @@
 from typing import List, Optional, Tuple, Union
 import torch
 
-from diffusers.utils import randn_tensor
 from diffusers.pipelines.pipeline_utils import DiffusionPipeline, ImagePipelineOutput
+from graph_bridges.configs.graphs.lobster.config_base import BridgeConfig
+from diffusers.utils import randn_tensor
+import torch.nn.functional as F
+from tqdm import tqdm
 
 
 class DDPMPipeline(DiffusionPipeline):
@@ -87,7 +90,7 @@ class DDPMPipeline(DiffusionPipeline):
 
         for t in self.progress_bar(self.scheduler.timesteps):
             # 1. predict noise model_output
-            model_output = self.unet(image, t).sample
+            model_output = self.unet(image, t).simulate_data
 
             # 2. compute previous image: x_t -> x_t-1
             image = self.scheduler.step(model_output, t, image, generator=generator).prev_sample
@@ -103,6 +106,10 @@ class DDPMPipeline(DiffusionPipeline):
         return ImagePipelineOutput(images=image)
 
 from graph_bridges.models.pipelines.pipelines_utils import register_pipeline
+from graph_bridges.models.schedulers.scheduling_ctdd import CTDDScheduler
+from graph_bridges.data.dataloaders import BridgeDataLoader
+from graph_bridges.models.reference_process.ctdd_reference import ReferenceProcess
+from graph_bridges.models.backward_rates.backward_rate import BackwardRate
 
 @register_pipeline
 class CTDDPipeline(DiffusionPipeline):
@@ -116,11 +123,25 @@ class CTDDPipeline(DiffusionPipeline):
             A scheduler to be used in combination with `unet` to denoise the encoded image. Can be one of
             [`DDPMScheduler`], or [`DDIMScheduler`].
     """
+    config : BridgeConfig
+    model: BackwardRate
+    reference_process: ReferenceProcess
+    target_data: BridgeDataLoader
+    scheduler: CTDDScheduler
 
-    def __init__(self, unet, scheduler):
+    def __init__(self,
+                 config:BridgeConfig,
+                 model:BackwardRate,
+                 reference_process:ReferenceProcess,
+                 target_data:BridgeDataLoader,
+                 scheduler:CTDDScheduler):
         super().__init__()
-        self.register_modules(unet=unet,
+        self.register_modules(model=model,
+                              reference_process=reference_process,
+                              target_data=target_data,
                               scheduler=scheduler)
+        self.config = config
+
 
     @torch.no_grad()
     def __call__(
@@ -130,6 +151,7 @@ class CTDDPipeline(DiffusionPipeline):
         num_inference_steps: int = 1000,
         output_type: Optional[str] = "pil",
         return_dict: bool = True,
+        device :torch.device = None,
     ) -> Union[ImagePipelineOutput, Tuple]:
         r"""
         Args:
@@ -152,39 +174,18 @@ class CTDDPipeline(DiffusionPipeline):
             True, otherwise a `tuple. When returning a tuple, the first element is a list with the generated images.
         """
         # Sample gaussian noise to begin loop
-        if isinstance(self.unet.config.sample_size, int):
-            image_shape = (
-                batch_size,
-                self.unet.config.in_channels,
-                self.unet.config.sample_size,
-                self.unet.config.sample_size,
-            )
-        else:
-            image_shape = (batch_size, self.unet.config.in_channels, *self.unet.config.sample_size)
-
-        if self.device.type == "mps":
-            # randn does not work reproducibly on mps
-            image = randn_tensor(image_shape, generator=generator)
-            image = image.to(self.device)
-        else:
-            image = randn_tensor(image_shape, generator=generator, device=self.device)
+        num_of_paths = self.config.number_of_paths
+        x = self.target_data.sample(self.config.number_of_paths , device)
 
         # set step values
-        self.scheduler.set_timesteps(num_inference_steps)
+        self.scheduler.set_timesteps()
+        timesteps = self.scheduler.timesteps
 
-        for t in self.progress_bar(self.scheduler.timesteps):
-            # 1. predict noise model_output
-            model_output = self.unet(image, t).sample
 
-            # 2. compute previous image: x_t -> x_t-1
-            image = self.scheduler.step(model_output, t, image, generator=generator).prev_sample
+        for idx, t in tqdm(enumerate(timesteps[0:-1])):
+            h = timesteps[idx] - timesteps[idx + 1]
+            model_output = self.model(x, t)
+            x_new = self.scheduler.step(model_output,t,x)
+            x = x_new
 
-        image = (image / 2 + 0.5).clamp(0, 1)
-        image = image.cpu().permute(0, 2, 3, 1).numpy()
-        if output_type == "pil":
-            image = self.numpy_to_pil(image)
 
-        if not return_dict:
-            return (image,)
-
-        return ImagePipelineOutput(images=image)

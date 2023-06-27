@@ -17,8 +17,8 @@ from typing import List, Optional, Tuple, Union
 
 import torch
 
-from ...utils import randn_tensor
-from ..pipeline_utils import DiffusionPipeline, ImagePipelineOutput
+from diffusers.utils import randn_tensor
+from diffusers.pipeline_utils import DiffusionPipeline, ImagePipelineOutput
 
 
 class DDPMPipeline(DiffusionPipeline):
@@ -89,7 +89,7 @@ class DDPMPipeline(DiffusionPipeline):
 
         for t in self.progress_bar(self.scheduler.timesteps):
             # 1. predict noise model_output
-            model_output = self.unet(image, t).sample
+            model_output = self.unet(image, t).simulate_data
 
             # 2. compute previous image: x_t -> x_t-1
             image = self.scheduler.step(model_output, t, image, generator=generator).prev_sample

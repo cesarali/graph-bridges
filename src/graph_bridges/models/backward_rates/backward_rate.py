@@ -39,6 +39,8 @@ class BackwardRate(nn.Module,ABC):
                  **kwargs):
         super().__init__()
 
+        self.config = config
+
         # DATA
         self.dimension = config.data.D
         self.num_states = config.data.S
@@ -70,8 +72,7 @@ class BackwardRate(nn.Module,ABC):
                 return_dict: bool = False,
                 )-> Union[BackwardRateOutput, torch.FloatTensor, Tuple]:
         if self.data_type == "doucet":
-            h = self._center_data(x)
-            return self.ctdd(h,x_tilde,times,return_dict)
+            return self.ctdd(x,x_tilde,times,return_dict)
         else:
             h = x
             x_logits = self._forward(h, times)
@@ -313,6 +314,9 @@ class BackRateMLP(EMA,BackwardRate,GaussianTargetRate):
                 x: TensorType["batch_size", "dimension"],
                 times: TensorType["batch_size"]
                 ) -> TensorType["batch_size", "dimension", "num_states"]:
+
+        if self.config.data.type == "doucet":
+            x = self._center_data(x)
 
         batch_size = x.shape[0]
         time_embbedings = transformer_timestep_embedding(times,
