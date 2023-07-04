@@ -13,7 +13,6 @@
 # limitations under the License.
 
 # DISCLAIMER: This file is strongly influenced by https://github.com/ermongroup/ddim
-
 import math
 from dataclasses import dataclass
 from typing import List, Optional, Tuple, Union
@@ -31,11 +30,9 @@ from graph_bridges.models.schedulers.scheduling_utils import register_scheduler
 from graph_bridges.configs.graphs.lobster.config_base import BridgeConfig
 from graph_bridges.models.backward_rates.backward_rate import GaussianTargetRateImageX0PredEMA
 from graph_bridges.data.dataloaders import DoucetTargetData, GraphSpinsDataLoader
-from graph_bridges.models.samplers.sampling import ReferenceProcess
 from graph_bridges.models.reference_process.ctdd_reference import ReferenceProcess
 from graph_bridges.models.losses.ctdd_losses import GenericAux
 from graph_bridges.data.dataloaders_config import GraphSpinsDataLoaderConfig
-
 
 
 @dataclass
@@ -67,7 +64,6 @@ class CTDDSchedulerNoiseOutput(BaseOutput):
     qt0 : torch.FloatTensor
     rate : torch.FloatTensor
 
-
 def betas_for_alpha_bar(num_diffusion_timesteps, max_beta=0.999):
     """
     Create a beta schedule that discretizes the given alpha_t_bar function, which defines the cumulative product of
@@ -95,7 +91,6 @@ def betas_for_alpha_bar(num_diffusion_timesteps, max_beta=0.999):
         t2 = (i + 1) / num_diffusion_timesteps
         betas.append(min(1 - alpha_bar(t2) / alpha_bar(t1), max_beta))
     return torch.tensor(betas, dtype=torch.float32)
-
 
 @register_scheduler
 class CTDDScheduler(SchedulerMixin, ConfigMixin):
@@ -262,21 +257,6 @@ class CTDDScheduler(SchedulerMixin, ConfigMixin):
                                         x_tilde=x_tilde,
                                         qt0=qt0,
                                         rate=rate)
-
-    def previous_timestep(self, timestep):
-        if self.custom_timesteps:
-            index = (self.timesteps == timestep).nonzero(as_tuple=True)[0][0]
-            if index == self.timesteps.shape[0] - 1:
-                prev_t = torch.tensor(-1)
-            else:
-                prev_t = self.timesteps[index + 1]
-        else:
-            num_inference_steps = (
-                self.num_inference_steps if self.num_inference_steps else self.config.num_train_timesteps
-            )
-            prev_t = timestep - self.config.num_train_timesteps // num_inference_steps
-
-        return prev_t
 
 
 if __name__ == "__main__":

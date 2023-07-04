@@ -15,6 +15,7 @@
 # DISCLAIMER: This file is strongly influenced by https://github.com/ermongroup/ddim
 
 # DIFFUSERS IMPORT ---------------------------------------------------------------------------------
+import copy
 
 import math
 from dataclasses import dataclass
@@ -38,9 +39,13 @@ import numpy as np
 
 from diffusers.utils import BaseOutput, randn_tensor
 from diffusers.configuration_utils import ConfigMixin, register_to_config
-from graph_bridges.models.backward_rates.backward_rate import BackwardRate
 from diffusers.schedulers.scheduling_utils import KarrasDiffusionSchedulers, SchedulerMixin
 
+from graph_bridges.models.schedulers.scheduling_utils import register_scheduler
+from graph_bridges.configs.graphs.lobster.config_base import BridgeConfig
+from graph_bridges.models.backward_rates.backward_rate import BackwardRate
+from graph_bridges.models.reference_process.ctdd_reference import ReferenceProcess
+from torch.distributions.poisson import Poisson
 
 @dataclass
 class SBSchedulerOutput(BaseOutput):
@@ -59,135 +64,136 @@ class SBSchedulerOutput(BaseOutput):
     prev_sample: torch.FloatTensor
     pred_original_sample: Optional[torch.FloatTensor] = None
 
-
+@register_scheduler
 class SBScheduler(SchedulerMixin, ConfigMixin):
     """
-    Denoising diffusion probabilistic models (DDPMs) explores the connections between denoising score matching and
-    Langevin dynamics sampling.
 
-    [`~ConfigMixin`] takes care of storing all config attributes that are passed in the scheduler's `__init__`
-    function, such as `num_train_timesteps`. They can be accessed via `scheduler.config.num_train_timesteps`.
-    [`SchedulerMixin`] provides general loading and saving functionality via the [`SchedulerMixin.save_pretrained`] and
-    [`~SchedulerMixin.from_pretrained`] functions.
-
-    For more details, see the original paper: https://arxiv.org/abs/2006.11239
-
-    Args:
-        num_train_timesteps (`int`): number of diffusion steps used to train the model.
-        beta_start (`float`): the starting `beta` value of inference.
-        beta_end (`float`): the final `beta` value.
-        beta_schedule (`str`):
-            the beta schedule, a mapping from a beta range to a sequence of betas for stepping the model. Choose from
-            `linear`, `scaled_linear`, `squaredcos_cap_v2` or `sigmoid`.
-        trained_betas (`np.ndarray`, optional):
-            option to pass an array of betas directly to the constructor to bypass `beta_start`, `beta_end` etc.
-        variance_type (`str`):
-            options to clip the variance used when adding noise to the denoised sample. Choose from `fixed_small`,
-            `fixed_small_log`, `fixed_large`, `fixed_large_log`, `learned` or `learned_range`.
-        clip_sample (`bool`, default `True`):
-            option to clip predicted sample for numerical stability.
-        clip_sample_range (`float`, default `1.0`):
-            the maximum magnitude for sample clipping. Valid only when `clip_sample=True`.
-        prediction_type (`str`, default `epsilon`, optional):
-            prediction type of the scheduler function, one of `epsilon` (predicting the noise of the diffusion
-            process), `sample` (directly predicting the noisy sample`) or `v_prediction` (see section 2.4
-            https://imagen.research.google/video/paper.pdf)
-        thresholding (`bool`, default `False`):
-            whether to use the "dynamic thresholding" method (introduced by Imagen, https://arxiv.org/abs/2205.11487).
-            Note that the thresholding method is unsuitable for latent-space diffusion models (such as
-            stable-diffusion).
-        dynamic_thresholding_ratio (`float`, default `0.995`):
-            the ratio for the dynamic thresholding method. Default is `0.995`, the same as Imagen
-            (https://arxiv.org/abs/2205.11487). Valid only when `thresholding=True`.
-        sample_max_value (`float`, default `1.0`):
-            the threshold value for dynamic thresholding. Valid only when `thresholding=True`.
     """
-
     _compatibles = [e.name for e in KarrasDiffusionSchedulers]
     order = 1
 
     @register_to_config
     def __init__(
         self,
+        config:BridgeConfig,
+        device:torch.device,
         num_train_timesteps: int = 1000,
-        beta_start: float = 0.0001,
-        beta_end: float = 0.02,
-        beta_schedule: str = "linear",
-        trained_betas: Optional[Union[np.ndarray, List[float]]] = None,
-        variance_type: str = "fixed_small",
-        clip_sample: bool = True,
-        prediction_type: str = "epsilon",
-        thresholding: bool = False,
-        dynamic_thresholding_ratio: float = 0.995,
-        clip_sample_range: float = 1.0,
-        sample_max_value: float = 1.0,
     ):
-        return None
+        self.cfg = config
+        self.S = self.cfg.data.S
+        self.D = self.cfg.data.D
+        self.device = device
+
+    def set_timesteps(
+            self,
+            num_steps: Optional[int] = None,
+            min_t: Optional[float] = None,
+            sinkhorn_iteration: int = 0,
+            timesteps: Optional[List[float]] = None,
+            device: Union[str, torch.device] = None,
+    ):
+        """
+        """
+        if num_steps is not None and timesteps is not None:
+            raise ValueError("Can only pass one of `num_inference_steps` or `custom_timesteps`.")
+
+        self.min_t = min_t
+        self.num_steps = num_steps
+        self.timesteps = np.concatenate((np.linspace(1.0, self.min_t, self.num_steps), np.array([0])))
+        if sinkhorn_iteration % 2 == 0:
+            self.timesteps = self.timesteps[::-1]
+        self.timesteps = torch.from_numpy(self.timesteps.copy()).to(device)
+
+        return self.timesteps
 
     def __len__(self):
         return self.config.num_train_timesteps
 
-    def set_timesteps(
+    def to(self, device):
+        self.device = device
+        return self
+
+    def step_poisson(
             self,
-            num_inference_steps: Optional[int] = None,
-            device: Union[str, torch.device] = None,
-            timesteps: Optional[List[int]] = None,
-    ):
+            rates_ : torch.FloatTensor,
+            x: torch.FloatTensor,
+            h: float,
+            device: torch.device = None,
+            return_dict: bool = True,
+    ) -> Union[SBSchedulerOutput, Tuple]:
         """
-        Sets the discrete timesteps used for the diffusion chain. Supporting function to be run before inference.
-
-        Args:
-            num_inference_steps (`Optional[int]`):
-                the number of diffusion steps used when generating samples with a pre-trained model. If passed, then
-                `timesteps` must be `None`.
-            device (`str` or `torch.device`, optional):
-                the device to which the timesteps are moved to.
-            custom_timesteps (`List[int]`, optional):
-                custom timesteps used to support arbitrary spacing between timesteps. If `None`, then the default
-                timestep spacing strategy of equal spacing between timesteps is used. If passed, `num_inference_steps`
-                must be `None`.
-
         """
-        if num_inference_steps is not None and timesteps is not None:
-            raise ValueError("Can only pass one of `num_inference_steps` or `custom_timesteps`.")
+        x_new = copy.deepcopy(x)
+        poisson_probabilities = rates_ * h
+        assert (rates_ > 0).all()
+        events = Poisson(poisson_probabilities).sample()
+        where_to_flip = torch.where(events > 0)
 
-        if timesteps is not None:
-            for i in range(1, len(timesteps)):
-                if timesteps[i] >= timesteps[i - 1]:
-                    raise ValueError("`custom_timesteps` must be in descending order.")
+        # Flip accordingly
+        x_new[where_to_flip] = x_new[where_to_flip] * (-1.)
 
-            if timesteps[0] >= self.config.num_train_timesteps:
-                raise ValueError(
-                    f"`timesteps` must start before `self.config.train_timesteps`:"
-                    f" {self.config.num_train_timesteps}."
-                )
-
-            timesteps = np.array(timesteps, dtype=np.int64)
-            self.custom_timesteps = True
+        if return_dict:
+            return SBSchedulerOutput(prev_sample=x_new,
+                                    pred_original_sample=x)
         else:
-            if num_inference_steps > self.config.num_train_timesteps:
-                raise ValueError(
-                    f"`num_inference_steps`: {num_inference_steps} cannot be larger than `self.config.train_timesteps`:"
-                    f" {self.config.num_train_timesteps} as the unet model trained with this scheduler can only handle"
-                    f" maximal {self.config.num_train_timesteps} timesteps."
-                )
+            return (x_new, x)
 
-            self.num_inference_steps = num_inference_steps
+    def step_tau(
+        self,
+        rates_: torch.FloatTensor,
+        x: torch.FloatTensor,
+        h:float,
+        device:torch.device = None,
+        return_dict: bool = True,
+    ) -> Union[SBSchedulerOutput, Tuple]:
+        """
+        """
+        num_of_paths = x.shape[0]
+        diffs = torch.arange(self.S, device=device).view(1, 1, self.S) - x.view(num_of_paths, self.D, 1)
+        poisson_dist = torch.distributions.poisson.Poisson(rates_ * h)
+        jump_nums = poisson_dist.sample()
+        adj_diffs = jump_nums * diffs
+        overall_jump = torch.sum(adj_diffs, dim=2)
+        xp = x + overall_jump
+        x_new = torch.clamp(xp, min=0, max=self.S - 1)
 
-            step_ratio = self.config.num_train_timesteps // self.num_inference_steps
-            timesteps = (np.arange(0, num_inference_steps) * step_ratio).round()[::-1].copy().astype(np.int64)
-            self.custom_timesteps = False
+        if return_dict:
+            return SBSchedulerOutput(prev_sample=x_new,
+                                       pred_original_sample=x)
+        else:
+            return (x_new,x)
 
-        self.timesteps = torch.from_numpy(timesteps).to(device)
+    def step(self,rates_,x,timestep,h,device,return_dict=True,step_type=None):
+        if step_type is None:
+            step_type = self.cfg.sampler.name
+        if step_type == "TauLeaping":
+            return self.step_tau(rates_,x,h,device,return_dict)
+        else:
+            return self.step_poisson(rates_,x,h,device,return_dict)
+
+    def add_noise(
+            self,
+            original_samples: torch.FloatTensor,
+            reference_process: ReferenceProcess,
+            timesteps: torch.IntTensor,
+            device: torch.device,
+            return_dict: bool = True,
+
+    ) -> Tuple:
+        """
+        :param original_samples:
+        :param reference_process:
+        :param timesteps:
+        :param device:
+        :return:
+        """
+        return None
 
     #=====================================
     # MY FUNCTIONS
     #=====================================
     def time_direction(self, forward=True):
         """
-
-        :param forward:
-        :return:
         """
         if forward:
             current_time_index = 0
@@ -207,21 +213,6 @@ class SBScheduler(SchedulerMixin, ConfigMixin):
                                   swap_models=False,
                                   restart_current=True):
         """
-        Here we pick the path generating model depending on the sinkhorn iteration. Setting the
-        reference process for sinkhorn = 0.
-
-        is_past_forward IS THE DIRECTION OF THE PAST MODEL
-
-        The current model is trained on the "not forward" direction, i.e. the opposite direction
-        of whatever the past model is currently doing.
-
-        :param current_model:
-        :param past_to_train_model:
-        :param sinkhorn_iteration:
-        :param swap_models: bool if set to True, the past model parameter
-                            values are interchanged
-
-        :return: generating_path_model,forward,reference
         """
         if sinkhorn_iteration % 2 == 0:
             if sinkhorn_iteration == 0:

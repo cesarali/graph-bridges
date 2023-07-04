@@ -221,8 +221,9 @@ class BridgeConfig:
     target : DataConfig =  DataConfig() # corresponds to the distribution at final time
     reference : ReferenceProcessConfig =  ReferenceProcessConfig()
     sampler : ParametrizedSamplerConfig =  ParametrizedSamplerConfig()
-    #stein = SteinSpinEstimatorConfig()
-    #backward_estimator = BackwardEstimatorConfig()
+    stein = SteinSpinEstimatorConfig()
+    backward_estimator = BackwardEstimatorConfig()
+
     loss : CTDDLossConfig =  CTDDLossConfig()
     scheduler : CTDDSchedulerConfig =  CTDDSchedulerConfig()
     pipeline : CTDDPipelineConfig =  CTDDPipelineConfig()

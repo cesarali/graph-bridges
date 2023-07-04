@@ -14,11 +14,13 @@
 from typing import List, Optional, Tuple, Union
 import torch
 
-from diffusers.utils import randn_tensor
 from diffusers.pipelines.pipeline_utils import DiffusionPipeline, ImagePipelineOutput
+from graph_bridges.configs.graphs.lobster.config_base import BridgeConfig
+from diffusers.utils import randn_tensor
+import torch.nn.functional as F
+from tqdm import tqdm
 
-
-class SBGBPipeline(DiffusionPipeline):
+class DDPMPipeline(DiffusionPipeline):
     r"""
     This model inherits from [`DiffusionPipeline`]. Check the superclass documentation for the generic methods the
     library implements for all the pipelines (such as downloading or saving, running on a particular device, etc.)
@@ -102,7 +104,15 @@ class SBGBPipeline(DiffusionPipeline):
 
         return ImagePipelineOutput(images=image)
 
-class CTDDPipeline(DiffusionPipeline):
+from graph_bridges.models.pipelines.pipelines_utils import register_pipeline
+from graph_bridges.models.schedulers.scheduling_sb import SBScheduler
+from graph_bridges.data.dataloaders import BridgeDataLoader, SpinsDataLoader
+from graph_bridges.models.reference_process.ctdd_reference import ReferenceProcess
+from graph_bridges.models.backward_rates.backward_rate import BackwardRate
+
+
+@register_pipeline
+class SBPipeline(DiffusionPipeline):
     r"""
     This model inherits from [`DiffusionPipeline`]. Check the superclass documentation for the generic methods the
     library implements for all the pipelines (such as downloading or saving, running on a particular device, etc.)
@@ -113,75 +123,75 @@ class CTDDPipeline(DiffusionPipeline):
             A scheduler to be used in combination with `unet` to denoise the encoded image. Can be one of
             [`DDPMScheduler`], or [`DDIMScheduler`].
     """
+    config : BridgeConfig
+    model: BackwardRate
+    reference_process: ReferenceProcess
+    data: SpinsDataLoader
+    target: BridgeDataLoader
+    scheduler: SBScheduler
 
-    def __init__(self, unet, scheduler):
+    def __init__(self,
+                 config:BridgeConfig,
+                 reference_process:ReferenceProcess,
+                 data:SpinsDataLoader,
+                 target:BridgeDataLoader,
+                 scheduler:SBScheduler):
+
         super().__init__()
-        self.register_modules(unet=unet,
+        self.register_modules(reference_process=reference_process,
+                              data=data,
+                              target=target,
                               scheduler=scheduler)
+        self.bridge_config = config
+        self.D = self.bridge_config.data.D
+
 
     @torch.no_grad()
     def __call__(
         self,
-        batch_size: int = 1,
-        generator: Optional[Union[torch.Generator, List[torch.Generator]]] = None,
-        num_inference_steps: int = 1000,
-        output_type: Optional[str] = "pil",
+        past_model: Optional[BackwardRate] = None,
+        sinkhorn_iteration = 0,
+        device :torch.device = None,
         return_dict: bool = True,
     ) -> Union[ImagePipelineOutput, Tuple]:
-        r"""
-        Args:
-            batch_size (`int`, *optional*, defaults to 1):
-                The number of images to generate.
-            generator (`torch.Generator`, *optional*):
-                One or a list of [torch generator(s)](https://pytorch.org/docs/stable/generated/torch.Generator.html)
-                to make generation deterministic.
-            num_inference_steps (`int`, *optional*, defaults to 1000):
-                The number of denoising steps. More denoising steps usually lead to a higher quality image at the
-                expense of slower inference.
-            output_type (`str`, *optional*, defaults to `"pil"`):
-                The output format of the generate image. Choose between
-                [PIL](https://pillow.readthedocs.io/en/stable/): `PIL.Image.Image` or `np.array`.
-            return_dict (`bool`, *optional*, defaults to `True`):
-                Whether or not to return a [`~pipelines.ImagePipelineOutput`] instead of a plain tuple.
-
-        Returns:
-            [`~pipelines.ImagePipelineOutput`] or `tuple`: [`~pipelines.utils.ImagePipelineOutput`] if `return_dict` is
-            True, otherwise a `tuple. When returning a tuple, the first element is a list with the generated images.
         """
-        # Sample gaussian noise to begin loop
-        if isinstance(self.unet.config.sample_size, int):
-            image_shape = (
-                batch_size,
-                self.unet.config.in_channels,
-                self.unet.config.sample_size,
-                self.unet.config.sample_size,
-            )
-        else:
-            image_shape = (batch_size, self.unet.config.in_channels, *self.unet.config.sample_size)
 
-        if self.device.type == "mps":
-            # randn does not work reproducibly on mps
-            image = randn_tensor(image_shape, generator=generator)
-            image = image.to(self.device)
+        :param past_model: it is the model trained in the previous iteration, if None, the reference process will be
+        :param sinkhorn_iteration: it indicates the iteration we are currently training,
+        :param return_dict:
+        :param device:
+        :return:
+        """
+        if past_model is None:
+            assert sinkhorn_iteration == 0
         else:
-            image = randn_tensor(image_shape, generator=generator, device=self.device)
+            assert sinkhorn_iteration >= 1
+
+        # Sample gaussian noise to begin loop
+        if sinkhorn_iteration % 2 == 0:
+            x = next(self.data.train().__iter__())
+            num_of_paths = x.shape[0]
+        else:
+            num_of_paths = self.bridge_config.number_of_paths
+            x = self.target.sample(num_of_paths, device)
 
         # set step values
-        self.scheduler.set_timesteps(num_inference_steps)
+        self.scheduler.set_timesteps(self.bridge_config.sampler.num_steps,
+                                     self.bridge_config.sampler.min_t,
+                                     sinkhorn_iteration=sinkhorn_iteration)
+        timesteps = self.scheduler.timesteps
+        spins = (-1.)**(x.squeeze().float()+1)
 
-        for t in self.progress_bar(self.scheduler.timesteps):
-            # 1. predict noise model_output
-            model_output = self.unet(image, t).simulate_data
+        for idx, t in tqdm(enumerate(timesteps[0:-1])):
+            if sinkhorn_iteration % 2 == 0:
+                h = timesteps[idx + 1] - timesteps[idx]
+            else:
+                h = timesteps[idx] - timesteps[idx + 1]
 
-            # 2. compute previous image: x_t -> x_t-1
-            image = self.scheduler.step(model_output, t, image, generator=generator).prev_sample
+            times = t * torch.ones(num_of_paths)
+            logits = past_model.stein_binary_forward(spins,times)
+            rates_ = F.softplus(logits)
+            spins_new = self.scheduler.step(rates_,spins,t,h,device,return_dict=True,step_type="Poisson").prev_sample
+            spins = spins_new
 
-        image = (image / 2 + 0.5).clamp(0, 1)
-        image = image.cpu().permute(0, 2, 3, 1).numpy()
-        if output_type == "pil":
-            image = self.numpy_to_pil(image)
-
-        if not return_dict:
-            return (image,)
-
-        return ImagePipelineOutput(images=image)
+        return spins_new

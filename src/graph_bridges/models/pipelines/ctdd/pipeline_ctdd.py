@@ -109,7 +109,6 @@ from graph_bridges.models.schedulers.scheduling_ctdd import CTDDScheduler
 from graph_bridges.data.dataloaders import BridgeDataLoader, SpinsDataLoader
 from graph_bridges.models.reference_process.ctdd_reference import ReferenceProcess
 from graph_bridges.models.backward_rates.backward_rate import BackwardRate
-from graph_bridges.models.losses.ctdd_losses import GenericAux
 
 
 @register_pipeline
@@ -139,8 +138,7 @@ class CTDDPipeline(DiffusionPipeline):
                  scheduler:CTDDScheduler):
 
         super().__init__()
-        self.register_modules(model=model,
-                              reference_process=reference_process,
+        self.register_modules(reference_process=reference_process,
                               data=data,
                               target=target,
                               scheduler=scheduler)
@@ -182,50 +180,3 @@ class CTDDPipeline(DiffusionPipeline):
             x = x_new
 
         return x
-
-if __name__=="__main__":
-    from graph_bridges.models.backward_rates.backward_rate import GaussianTargetRateImageX0PredEMA
-    from graph_bridges.models.schedulers.scheduling_utils import create_scheduler
-    from graph_bridges.models.backward_rates.backward_rate_utils import create_model
-    from graph_bridges.models.reference_process.reference_process_utils import create_reference
-    from graph_bridges.data.dataloaders_utils import create_dataloader
-
-    from graph_bridges.data.dataloaders import GraphSpinsDataLoader
-    from graph_bridges.models.losses.loss_utils import create_loss
-    from pprint import pprint
-
-    from graph_bridges.configs.graphs.lobster.config_base import BridgeConfig, get_config_from_file
-
-    config = get_config_from_file("graph","lobster","1687884918")
-    device = torch.device(config.device)
-
-    # =================================================================
-    # CREATE OBJECTS FROM CONFIGURATION
-
-    data_dataloader: GraphSpinsDataLoader
-    model: GaussianTargetRateImageX0PredEMA
-    reference_process: ReferenceProcess
-    loss: GenericAux
-    scheduler: CTDDScheduler
-
-    data_dataloader = create_dataloader(config, device)
-    target_dataloader = create_dataloader(config, device,target=True)
-
-
-    model = create_model(config, device)
-    reference_process = create_reference(config, device)
-    loss = create_loss(config, device)
-    scheduler = create_scheduler(config, device)
-    databatch = next(data_dataloader.train().__iter__())[0]
-
-    pprint(reference_process)
-    #==================================================================
-    # PIPELINES TEST
-
-    pipeline = CTDDPipeline(config,
-                            reference_process,
-                            data_dataloader,
-                            target_dataloader,
-                            scheduler)
-
-    x = pipeline(model)
