@@ -10,11 +10,10 @@ import numpy as np
 class ReferenceProcess:
     """
     """
-    def __init__(self,model,config:BridgeConfig,device):
+    def __init__(self,config:BridgeConfig,device):
         self.S = config.data.S
         self.D = config.data.D
         self.eps_ratio = config.sampler.eps_ratio
-        self.model = model
         self.device = device
 
     def rates(self,
@@ -31,8 +30,8 @@ class ReferenceProcess:
             device = self.device
 
         num_of_paths = x.shape[0]
-        qt0 = self.model.transition(t * torch.ones((num_of_paths,), device=device))  # (N, S, S)
-        rate = self.model.rate(t * torch.ones((num_of_paths,), device=device))  # (N, S, S)
+        qt0 = self.transition(t * torch.ones((num_of_paths,), device=device))  # (N, S, S)
+        rate = self.rate(t * torch.ones((num_of_paths,), device=device))  # (N, S, S)
 
         forward_rates = rate[
             torch.arange(num_of_paths, device=device).repeat_interleave(self.D * self.S),
@@ -50,6 +49,18 @@ class ReferenceProcess:
         qt0_numer = qt0  # (N, S, S)
 
         return forward_rates,qt0_denom,qt0_numer
+
+    def backward_rates(self,p0t,x,t,device):
+        num_of_paths = x.shape[0]
+        forward_rates,qt0_denom,qt0_numer = self.rates(x,t,device)
+        inner_sum = (p0t / qt0_denom) @ qt0_numer  # (N, D, S)
+        backward_rates = forward_rates * inner_sum  # (N, D, S)
+        backward_rates[
+            torch.arange(num_of_paths, device=device).repeat_interleave(self.D),
+            torch.arange(self.D, device=device).repeat(num_of_paths),
+            x.long().flatten()
+        ] = 0.0
+        return backward_rates
 
     def _integral_rate_scalar(self, t: TensorType["B"]
                               ) -> TensorType["B"]:
@@ -71,8 +82,9 @@ class ReferenceProcess:
         return None
 
 @register_reference
-class GaussianTargetRate():
+class GaussianTargetRate(ReferenceProcess):
     def __init__(self, cfg, device,rank=None):
+        ReferenceProcess.__init__(self,cfg,device)
         self.S = S = cfg.data.S
         self.rate_sigma = cfg.model.rate_sigma
         self.Q_sigma = cfg.model.Q_sigma

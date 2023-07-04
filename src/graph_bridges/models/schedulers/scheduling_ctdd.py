@@ -100,47 +100,8 @@ def betas_for_alpha_bar(num_diffusion_timesteps, max_beta=0.999):
 @register_scheduler
 class CTDDScheduler(SchedulerMixin, ConfigMixin):
     """
-    Denoising diffusion probabilistic models (DDPMs) explores the connections between denoising score matching and
-    Langevin dynamics sampling.
 
-    [`~ConfigMixin`] takes care of storing all config attributes that are passed in the scheduler's `__init__`
-    function, such as `num_train_timesteps`. They can be accessed via `scheduler.config.num_train_timesteps`.
-    [`SchedulerMixin`] provides general loading and saving functionality via the [`SchedulerMixin.save_pretrained`] and
-    [`~SchedulerMixin.from_pretrained`] functions.
-
-    For more details, see the original paper: https://arxiv.org/abs/2006.11239
-
-    Args:
-        num_train_timesteps (`int`): number of diffusion steps used to train the model.
-        beta_start (`float`): the starting `beta` value of inference.
-        beta_end (`float`): the final `beta` value.
-        beta_schedule (`str`):
-            the beta schedule, a mapping from a beta range to a sequence of betas for stepping the model. Choose from
-            `linear`, `scaled_linear`, `squaredcos_cap_v2` or `sigmoid`.
-        trained_betas (`np.ndarray`, optional):
-            option to pass an array of betas directly to the constructor to bypass `beta_start`, `beta_end` etc.
-        variance_type (`str`):
-            options to clip the variance used when adding noise to the denoised sample. Choose from `fixed_small`,
-            `fixed_small_log`, `fixed_large`, `fixed_large_log`, `learned` or `learned_range`.
-        clip_sample (`bool`, default `True`):
-            option to clip predicted sample for numerical stability.
-        clip_sample_range (`float`, default `1.0`):
-            the maximum magnitude for sample clipping. Valid only when `clip_sample=True`.
-        prediction_type (`str`, default `epsilon`, optional):
-            prediction type of the scheduler function, one of `epsilon` (predicting the noise of the diffusion
-            process), `sample` (directly predicting the noisy sample`) or `v_prediction` (see section 2.4
-            https://imagen.research.google/video/paper.pdf)
-        thresholding (`bool`, default `False`):
-            whether to use the "dynamic thresholding" method (introduced by Imagen, https://arxiv.org/abs/2205.11487).
-            Note that the thresholding method is unsuitable for latent-space diffusion models (such as
-            stable-diffusion).
-        dynamic_thresholding_ratio (`float`, default `0.995`):
-            the ratio for the dynamic thresholding method. Default is `0.995`, the same as Imagen
-            (https://arxiv.org/abs/2205.11487). Valid only when `thresholding=True`.
-        sample_max_value (`float`, default `1.0`):
-            the threshold value for dynamic thresholding. Valid only when `thresholding=True`.
     """
-
     _compatibles = [e.name for e in KarrasDiffusionSchedulers]
     order = 1
 
@@ -150,92 +111,29 @@ class CTDDScheduler(SchedulerMixin, ConfigMixin):
         config:BridgeConfig,
         device:torch.device,
         num_train_timesteps: int = 1000,
-        beta_start: float = 0.0001,
-        beta_end: float = 0.02,
-        beta_schedule: str = "linear",
-        trained_betas: Optional[Union[np.ndarray, List[float]]] = None,
-        variance_type: str = "fixed_small",
-        clip_sample: bool = True,
-        prediction_type: str = "epsilon",
-        thresholding: bool = False,
-        dynamic_thresholding_ratio: float = 0.995,
-        clip_sample_range: float = 1.0,
-        sample_max_value: float = 1.0,
     ):
         self.cfg = config
+        self.S = self.cfg.data.S
+        self.D = self.cfg.data.D
         self.device = device
         print("Scheduler")
 
-    def scale_model_input(
-            self,
-            sample: torch.FloatTensor,
-            timestep: Optional[int] = None
-    ) -> torch.FloatTensor:
-        """
-        Ensures interchangeability with schedulers that need to scale the denoising model input depending on the
-        current timestep.
-
-        Args:
-            sample (`torch.FloatTensor`): input sample
-            timestep (`int`, optional): current timestep
-
-        Returns:
-            `torch.FloatTensor`: scaled input sample
-        """
-        return sample
-
     def set_timesteps(
         self,
-        num_inference_steps: Optional[int] = None,
+        num_steps: Optional[int] = None,
+        min_t: Optional[float] = None,
+        timesteps:Optional[List[float]] = None,
         device: Union[str, torch.device] = None,
-        timesteps: Optional[List[int]] = None,
     ):
         """
-        Sets the discrete timesteps used for the diffusion chain. Supporting function to be run before inference.
-
-        Args:
-            num_inference_steps (`Optional[int]`):
-                the number of diffusion steps used when generating samples with a pre-trained model. If passed, then
-                `timesteps` must be `None`.
-            device (`str` or `torch.device`, optional):
-                the device to which the timesteps are moved to.
-            custom_timesteps (`List[int]`, optional):
-                custom timesteps used to support arbitrary spacing between timesteps. If `None`, then the default
-                timestep spacing strategy of equal spacing between timesteps is used. If passed, `num_inference_steps`
-                must be `None`.
-
         """
-        if num_inference_steps is not None and timesteps is not None:
+        if num_steps is not None and timesteps is not None:
             raise ValueError("Can only pass one of `num_inference_steps` or `custom_timesteps`.")
 
-        if timesteps is not None:
-            for i in range(1, len(timesteps)):
-                if timesteps[i] >= timesteps[i - 1]:
-                    raise ValueError("`custom_timesteps` must be in descending order.")
-
-            if timesteps[0] >= self.config.num_train_timesteps:
-                raise ValueError(
-                    f"`timesteps` must start before `self.config.train_timesteps`:"
-                    f" {self.config.num_train_timesteps}."
-                )
-
-            timesteps = np.array(timesteps, dtype=np.int64)
-            self.custom_timesteps = True
-        else:
-            if num_inference_steps > self.config.num_train_timesteps:
-                raise ValueError(
-                    f"`num_inference_steps`: {num_inference_steps} cannot be larger than `self.config.train_timesteps`:"
-                    f" {self.config.num_train_timesteps} as the unet model trained with this scheduler can only handle"
-                    f" maximal {self.config.num_train_timesteps} timesteps."
-                )
-
-            self.num_inference_steps = num_inference_steps
-
-            step_ratio = self.config.num_train_timesteps // self.num_inference_steps
-            timesteps = (np.arange(0, num_inference_steps) * step_ratio).round()[::-1].copy().astype(np.int64)
-            self.custom_timesteps = False
-
-        self.timesteps = torch.from_numpy(timesteps).to(device)
+        self.min_t = min_t
+        self.num_steps = num_steps
+        self.timesteps = np.concatenate((np.linspace(1.0, self.min_t, self.num_steps), np.array([0])))
+        self.timesteps = torch.from_numpy(self.timesteps).to(device)
 
     def __len__(self):
         return self.config.num_train_timesteps
@@ -243,13 +141,15 @@ class CTDDScheduler(SchedulerMixin, ConfigMixin):
     def to(self,device):
         self.device = device
         return self
+
     def step(
         self,
-        model_output: torch.FloatTensor,
-        timestep: int,
+        rates_: torch.FloatTensor,
         x: torch.FloatTensor,
-        return_dict: bool = True,
+        timestep: int,
+        h:float,
         device:torch.device = None,
+        return_dict: bool = True,
     ) -> Union[CTDDSchedulerOutput, Tuple]:
         """
         Predict the sample at the previous timestep by reversing the SDE. Core function to propagate the diffusion
@@ -269,34 +169,20 @@ class CTDDScheduler(SchedulerMixin, ConfigMixin):
             returning a tuple, the first element is the sample tensor.
 
         """
-        t = timestep
-        #prev_t = self.previous_timestep(t)
-
         num_of_paths = x.shape[0]
-
-        forward_rates, qt0_denom, qt0_numer = self.reference_process.rates(x, t)
-        t * torch.ones((num_of_paths,), device=device)
-        p0t = F.softmax(model_output, dim=2)  # (N, D, S)
-
-        inner_sum = (p0t / qt0_denom) @ qt0_numer  # (N, D, S)
-        reverse_rates = forward_rates * inner_sum  # (N, D, S)
-
-        reverse_rates[
-            torch.arange(num_of_paths, device=device).repeat_interleave(self.D),
-            torch.arange(self.D, device=device).repeat(num_of_paths),
-            x.long().flatten()
-        ] = 0.0
-
         diffs = torch.arange(self.S, device=device).view(1, 1, self.S) - x.view(num_of_paths, self.D, 1)
-        poisson_dist = torch.distributions.poisson.Poisson(reverse_rates * h)
+        poisson_dist = torch.distributions.poisson.Poisson(rates_ * h)
         jump_nums = poisson_dist.sample()
         adj_diffs = jump_nums * diffs
         overall_jump = torch.sum(adj_diffs, dim=2)
         xp = x + overall_jump
         x_new = torch.clamp(xp, min=0, max=self.S - 1)
 
-        return CTDDSchedulerOutput(prev_sample=x_new,
-                                   pred_original_sample=x)
+        if return_dict:
+            return CTDDSchedulerOutput(prev_sample=x_new,
+                                       pred_original_sample=x)
+        else:
+            return (x_new,x)
 
     def add_noise(
         self,
@@ -404,7 +290,7 @@ if __name__ == "__main__":
     from graph_bridges.configs.graphs.lobster.config_base import BridgeConfig, get_config_from_file
 
     config = get_config_from_file("graph","lobster","1687884918")
-    pprint(config)
+    #pprint(config)
 
     device = torch.device(config.device)
     # =================================================================
@@ -422,3 +308,12 @@ if __name__ == "__main__":
     loss = create_loss(config, device)
     scheduler = create_scheduler(config, device)
 
+    databatch = next(data_dataloader.train().__iter__())[0]
+    print(databatch.shape)
+    """
+    scheduler.step(model_output: torch.FloatTensor,
+        timestep: int,
+        x: torch.FloatTensor,
+        return_dict: bool = True,
+        device:torch.device = None,)
+    """

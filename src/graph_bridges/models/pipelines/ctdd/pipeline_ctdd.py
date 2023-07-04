@@ -20,7 +20,6 @@ from diffusers.utils import randn_tensor
 import torch.nn.functional as F
 from tqdm import tqdm
 
-
 class DDPMPipeline(DiffusionPipeline):
     r"""
     This model inherits from [`DiffusionPipeline`]. Check the superclass documentation for the generic methods the
@@ -107,9 +106,11 @@ class DDPMPipeline(DiffusionPipeline):
 
 from graph_bridges.models.pipelines.pipelines_utils import register_pipeline
 from graph_bridges.models.schedulers.scheduling_ctdd import CTDDScheduler
-from graph_bridges.data.dataloaders import BridgeDataLoader
+from graph_bridges.data.dataloaders import BridgeDataLoader, SpinsDataLoader
 from graph_bridges.models.reference_process.ctdd_reference import ReferenceProcess
 from graph_bridges.models.backward_rates.backward_rate import BackwardRate
+from graph_bridges.models.losses.ctdd_losses import GenericAux
+
 
 @register_pipeline
 class CTDDPipeline(DiffusionPipeline):
@@ -126,66 +127,105 @@ class CTDDPipeline(DiffusionPipeline):
     config : BridgeConfig
     model: BackwardRate
     reference_process: ReferenceProcess
-    target_data: BridgeDataLoader
+    data: SpinsDataLoader
+    target: BridgeDataLoader
     scheduler: CTDDScheduler
 
     def __init__(self,
                  config:BridgeConfig,
-                 model:BackwardRate,
                  reference_process:ReferenceProcess,
-                 target_data:BridgeDataLoader,
+                 data:SpinsDataLoader,
+                 target:BridgeDataLoader,
                  scheduler:CTDDScheduler):
+
         super().__init__()
         self.register_modules(model=model,
                               reference_process=reference_process,
-                              target_data=target_data,
+                              data=data,
+                              target=target,
                               scheduler=scheduler)
-        self.config = config
+        self.bridge_config = config
+        self.D = self.bridge_config.data.D
 
 
     @torch.no_grad()
     def __call__(
         self,
-        batch_size: int = 1,
-        generator: Optional[Union[torch.Generator, List[torch.Generator]]] = None,
-        num_inference_steps: int = 1000,
-        output_type: Optional[str] = "pil",
+        model: Optional[BackwardRate] = None,
+        sinkhorn_iteration = 0,
         return_dict: bool = True,
         device :torch.device = None,
     ) -> Union[ImagePipelineOutput, Tuple]:
-        r"""
-        Args:
-            batch_size (`int`, *optional*, defaults to 1):
-                The number of images to generate.
-            generator (`torch.Generator`, *optional*):
-                One or a list of [torch generator(s)](https://pytorch.org/docs/stable/generated/torch.Generator.html)
-                to make generation deterministic.
-            num_inference_steps (`int`, *optional*, defaults to 1000):
-                The number of denoising steps. More denoising steps usually lead to a higher quality image at the
-                expense of slower inference.
-            output_type (`str`, *optional*, defaults to `"pil"`):
-                The output format of the generate image. Choose between
-                [PIL](https://pillow.readthedocs.io/en/stable/): `PIL.Image.Image` or `np.array`.
-            return_dict (`bool`, *optional*, defaults to `True`):
-                Whether or not to return a [`~pipelines.ImagePipelineOutput`] instead of a plain tuple.
+        """
 
-        Returns:
-            [`~pipelines.ImagePipelineOutput`] or `tuple`: [`~pipelines.utils.ImagePipelineOutput`] if `return_dict` is
-            True, otherwise a `tuple. When returning a tuple, the first element is a list with the generated images.
+        :param model:
+        :param sinkhorn_iteration:
+        :param return_dict:
+        :param device:
+        :return:
         """
         # Sample gaussian noise to begin loop
-        num_of_paths = self.config.number_of_paths
-        x = self.target_data.sample(self.config.number_of_paths , device)
+        num_of_paths = self.bridge_config.number_of_paths
+        x = self.target.sample(num_of_paths, device)
 
         # set step values
-        self.scheduler.set_timesteps()
+        self.scheduler.set_timesteps(self.bridge_config.sampler.num_steps,self.bridge_config.sampler.min_t)
         timesteps = self.scheduler.timesteps
-
 
         for idx, t in tqdm(enumerate(timesteps[0:-1])):
             h = timesteps[idx] - timesteps[idx + 1]
-            model_output = self.model(x, t)
-            x_new = self.scheduler.step(model_output,t,x)
+
+            p0t = F.softmax(model(x, t * torch.ones((num_of_paths,), device=device)), dim=2)  # (N, D, S)
+            rates_ = self.reference_process.backward_rates(p0t,x,t,device)
+
+            x_new = self.scheduler.step(rates_,x,t,h).prev_sample
             x = x_new
 
+        return x
 
+if __name__=="__main__":
+    from graph_bridges.models.backward_rates.backward_rate import GaussianTargetRateImageX0PredEMA
+    from graph_bridges.models.schedulers.scheduling_utils import create_scheduler
+    from graph_bridges.models.backward_rates.backward_rate_utils import create_model
+    from graph_bridges.models.reference_process.reference_process_utils import create_reference
+    from graph_bridges.data.dataloaders_utils import create_dataloader
+
+    from graph_bridges.data.dataloaders import GraphSpinsDataLoader
+    from graph_bridges.models.losses.loss_utils import create_loss
+    from pprint import pprint
+
+    from graph_bridges.configs.graphs.lobster.config_base import BridgeConfig, get_config_from_file
+
+    config = get_config_from_file("graph","lobster","1687884918")
+    device = torch.device(config.device)
+
+    # =================================================================
+    # CREATE OBJECTS FROM CONFIGURATION
+
+    data_dataloader: GraphSpinsDataLoader
+    model: GaussianTargetRateImageX0PredEMA
+    reference_process: ReferenceProcess
+    loss: GenericAux
+    scheduler: CTDDScheduler
+
+    data_dataloader = create_dataloader(config, device)
+    target_dataloader = create_dataloader(config, device,target=True)
+
+
+    model = create_model(config, device)
+    reference_process = create_reference(config, device)
+    loss = create_loss(config, device)
+    scheduler = create_scheduler(config, device)
+    databatch = next(data_dataloader.train().__iter__())[0]
+
+    pprint(reference_process)
+    #==================================================================
+    # PIPELINES TEST
+
+    pipeline = CTDDPipeline(config,
+                            reference_process,
+                            data_dataloader,
+                            target_dataloader,
+                            scheduler)
+
+    x = pipeline(model)

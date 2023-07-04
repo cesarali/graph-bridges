@@ -2,8 +2,8 @@ from graph_bridges.configs.graphs.lobster.config_base import BridgeConfig
 from graph_bridges.models.backward_rates.backward_rate import BackwardRate
 from graph_bridges.models.schedulers.scheduling_sb import SBScheduler
 from graph_bridges.data.dataloaders import BridgeDataLoader
-
-from graph_bridges.models.reference_process.ctdd_reference import ReferenceProcess
+from pprint import pprint
+from graph_bridges.models.reference_process.ctdd_reference import ReferenceProcess, GaussianTargetRate
 
 import numpy as np
 import torch
@@ -62,7 +62,6 @@ class NaivePoisson:
         while end_condition(current_time_index):
             # evaluates times where you are heading
             current_time = time_grid[current_time_index + time_sign]
-
             current_ratios = backward_model(paths[:, -1, :], current_time)
 
             try:
@@ -99,8 +98,8 @@ class TauLeaping:
         self.D = self.config.data.D
         self.S = self.config.data.S
         self.sample_config = self.config.sampler
-        self.num_steps = self.sample_config .num_steps
-        self.min_t = self.sample_config .min_t
+        self.num_steps = self.sample_config.num_steps
+        self.min_t = self.sample_config.min_t
 
     def sample(self,
                model,
@@ -123,7 +122,6 @@ class TauLeaping:
             counter = 0
             for idx, t in tqdm(enumerate(ts[0:-1])):
                 h = ts[idx] - ts[idx+1]
-
                 forward_rates,qt0_denom,qt0_numer = reference_process.rates(x,t)
                 p0t = F.softmax(model(x, t * torch.ones((num_of_paths,), device=device)), dim=2) # (N, D, S)
 
@@ -178,7 +176,7 @@ if __name__=="__main__":
 
     data_dataloader = create_dataloader(config,device)
     model = GaussianTargetRateImageX0PredEMA(config,device)
-    reference_process = ReferenceProcess(model,config,device)
+    reference_process = GaussianTargetRate(config,device)
 
     sampler = TauLeaping(config)
     path = sampler.sample(model,reference_process,data_dataloader,10,2)

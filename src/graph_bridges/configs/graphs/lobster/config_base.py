@@ -5,6 +5,9 @@ import time
 import os
 import subprocess
 import json
+from graph_bridges.data.dataloaders_config import GraphSpinsDataLoaderConfig
+
+
 
 def get_git_revisions_hash():
     hashes = []
@@ -29,11 +32,10 @@ class DataConfig:
     # shapes and dimensions
     S :int = 2
     shape: List[int] = field(default_factory=lambda: [1, 1, 45])
-    C: int = field(init=False)
-    H: int = field(init=False)
-    W: int = field(init=False)
-
-    D :int = field(init=False)
+    C: int = None
+    H: int = None
+    W: int = None
+    D :int = None
     random_flips = True
     data_min_max : List[int]= field(default_factory=lambda:[0, 1]) # CHECK THIS for CIFAR 255
 
@@ -102,7 +104,7 @@ class ModelConfig:
     data_min_max :List[int] = field(default_factory=lambda:[0, 1]) # CHECK THIS for CIFAR 255
     dropout :float= 0.1
     skip_rescale :bool = True
-    time_embed_dim : int = field(init=False)
+    time_embed_dim : int = 28
     time_scale_factor :int = 1000
     fix_logistic :bool = False
 
@@ -244,11 +246,41 @@ class BridgeConfig:
     distributed = False
     num_gpus = 0
 
-    #def __init__(self,**kwargs):
-    #    super(BridgeConfig,self).__init__(**kwargs)
-    #    ModelConfig(kwargs["model"])
+
+        #data: DataConfig = DataConfig()  # corresponds to the distributions at start time
+        #target: DataConfig = DataConfig()  # corresponds to the distribution at final time
+        #reference: ReferenceProcessConfig = ReferenceProcessConfig()
+        #sampler: ParametrizedSamplerConfig = ParametrizedSamplerConfig()
+        # stein = SteinSpinEstimatorConfig()
+        # backward_estimator = BackwardEstimatorConfig()
+        #loss: CTDDLossConfig = CTDDLossConfig()
+        #scheduler: CTDDSchedulerConfig = CTDDSchedulerConfig()
+        #pipeline: CTDDPipelineConfig = CTDDPipelineConfig()
+        #optimizer: TrainerConfig = TrainerConfig()
+        #ModelConfig(kwargs["model"])
 
     def __post_init__(self):
+        if isinstance(self.model,dict):
+            self.model = ModelConfig(**self.model)
+        if isinstance(self.data,dict):
+            if self.data["name"] == "GraphSpinsDataLoader":
+                self.data = GraphSpinsDataLoaderConfig(**self.data)
+        if isinstance(self.target,dict):
+            self.target = DataConfig(**self.target)  # corresponds to the distribution at final time
+        if isinstance(self.reference,dict):
+            self.reference = ReferenceProcessConfig(**self.reference)
+        if isinstance(self.sampler,dict):
+            self.sampler = ParametrizedSamplerConfig(**self.sampler)
+        if isinstance(self.loss,dict):
+            self.loss = CTDDLossConfig(**self.loss)
+        if isinstance(self.scheduler,dict):
+            self.scheduler = CTDDSchedulerConfig(**self.scheduler)
+        if isinstance(self.pipeline,dict):
+            self.pipeline = CTDDPipelineConfig(**self.pipeline)
+        if isinstance(self.optimizer,dict):
+            self.optimizer = TrainerConfig(**self.optimizer)
+
+
         self.current_git_commit = str(get_git_revisions_hash()[0])
         if self.experiment_indentifier is None:
             self.experiment_indentifier = str(int(time.time()))
@@ -306,7 +338,7 @@ def get_config_from_file(experiment_name,experiment_type,experiment_indentifier)
     config_path_json = json.load(open(config_path,"r"))
     config_path_json["delete"] = False
 
-    config = BridgeConfig(config_path_json)
+    config = BridgeConfig(**config_path_json)
 
     return config
 
@@ -317,8 +349,13 @@ if __name__=="__main__":
     model_config = ModelConfig()
     data_config = DataConfig()
     bridge_config = BridgeConfig(delete=False)
-
     bridge_config2 = BridgeConfig(experiment_indentifier=None)
 
-    config_  = get_config_from_file("graph", "lobster", "1687879193")
-    pprint(config_)
+    config = get_config_from_file("graph", "lobster", "1688375653")
+    print(config.model)
+    print(config.data)
+    print(config.target)
+    print(config.pipeline)
+    print(config.scheduler)
+    print(config.reference)
+    print(config.optimizer)

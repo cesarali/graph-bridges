@@ -101,7 +101,6 @@ class BackwardRate(nn.Module,ABC):
             return self._forward(x_t, times)  # (B, D, S)
 
 
-
     def stein_binary_forward(self,
                 x: TensorType["batch_size", "dimension"],
                 times: TensorType["batch_size"]
