@@ -1,14 +1,12 @@
 from matplotlib import pyplot as plt
 
 def sinkhorn_plot(sinkhorn_iteration,
-                  is_past_forward,
-                  time_,
                   states_histogram_at_0,
                   states_histogram_at_1,
-                  past_current_states,
-                  histogram_from_rate,
+                  backward_histogram,
+                  forward_histogram,
+                  time_,
                   states_legends,
-                  check_backward_learning=False,
                   max_number_of_states_displayed=8,
                   save_path=None):
     """
@@ -18,25 +16,10 @@ def sinkhorn_plot(sinkhorn_iteration,
     :param time_:
     :param states_histogram_at_0:
     :param states_histogram_at_1:
-    :param past_current_states:
     :param histogram_from_rate:
     :param states_legends:
     :return:
     """
-    if is_past_forward:
-        forward_histogram = past_current_states[0]
-        if check_backward_learning:
-            backward_histogram = past_current_states[1]
-        else:
-            backward_histogram = histogram_from_rate
-
-    else:
-        backward_histogram = past_current_states[0]
-        if check_backward_learning:
-            forward_histogram = past_current_states[1]
-        else:
-            forward_histogram = histogram_from_rate
-
     start_target = backward_histogram[0,:]
     end_target = forward_histogram[-1,:]
     number_of_total_states = states_histogram_at_0.shape[0]

@@ -154,7 +154,7 @@ class ParametrizedSamplerConfig:
     """
     name:str = 'TauLeaping' # TauLeaping or PCTauLeaping
     type:str = 'doucet'
-    num_steps:int = 1000
+    num_steps:int = 20
     min_t:float = 0.01
     eps_ratio:float = 1e-9
     initial_dist:str = 'gaussian'
@@ -173,7 +173,7 @@ class SteinSpinEstimatorConfig:
 class BackwardEstimatorConfig:
 
     name : str = "BackwardRatioSteinEstimator"
-    dimension_to_check : int = Optional
+    dimension_to_check : int = None
 
 @dataclass
 class CTDDLossConfig:
@@ -300,7 +300,6 @@ class BridgeConfig:
     def align_configurations(self):
         # data distributions matches at the end
         self.data.batch_size = self.target.batch_size
-
         #model matches data
 
         # model matches reference process
@@ -309,6 +308,7 @@ class BridgeConfig:
         self.reference.Q_sigma = self.model.Q_sigma
         self.reference.time_exponential = self.model.time_exponential
         self.reference.time_base = self.model.time_base
+
 
     def create_directories(self):
         if not os.path.isdir(self.results_dir):

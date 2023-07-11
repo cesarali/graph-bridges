@@ -125,7 +125,9 @@ class SBScheduler(SchedulerMixin, ConfigMixin):
         """
         x_new = copy.deepcopy(x)
         poisson_probabilities = rates_ * h
-        assert (rates_ > 0).all()
+
+        assert (poisson_probabilities > 0.).all()
+
         events = Poisson(poisson_probabilities).sample()
         where_to_flip = torch.where(events > 0)
 
@@ -134,7 +136,7 @@ class SBScheduler(SchedulerMixin, ConfigMixin):
 
         if return_dict:
             return SBSchedulerOutput(prev_sample=x_new,
-                                    pred_original_sample=x)
+                                     pred_original_sample=x)
         else:
             return (x_new, x)
 

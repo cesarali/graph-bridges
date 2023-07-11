@@ -390,6 +390,23 @@ class DoucetTargetData(BridgeDataLoader):
 
         return x
 
+    def train(self):
+        training_size = int(self.config.data.number_of_paths*self.config.data.training_proportion)
+        batch_size =  self.config.data.batch_size
+        number_of_batches = int(training_size / batch_size)
+        for a in range(number_of_batches):
+            x = [self.sample(batch_size)]
+            yield x
+
+    def test(self):
+        test_size = self.config.data.number_of_paths - int(self.config.data.number_of_paths*self.config.data.training_proportion)
+        batch_size =  self.config.data.batch_size
+        number_of_batches = int(test_size / batch_size)
+        for a in range(number_of_batches):
+            x = [self.sample(batch_size)]
+            yield x
+
+
 
 if __name__=="__main__":
     from graph_bridges.configs.graphs.lobster.config_base import BridgeConfig

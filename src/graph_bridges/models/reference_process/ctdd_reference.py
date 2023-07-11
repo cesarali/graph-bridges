@@ -6,6 +6,7 @@ import math
 from typing import Tuple,Union
 from torchtyping import TensorType
 import numpy as np
+from torch.distributions import Exponential, Bernoulli
 
 class ReferenceProcess:
     """
@@ -80,6 +81,36 @@ class ReferenceProcess:
                    t: TensorType["B"]
                    ) -> TensorType["B", "S", "S"]:
         return None
+
+    def spins_on_times(self,start_spins,times):
+        assert len(start_spins.shape) == 2
+        batch_size, number_of_spins = start_spins.shape
+
+        # From Doucet Original Code
+        qt0 = self.transition(times) # (B, S, S)
+
+        # Flips
+        flip_probabilities = qt0[:, 0, 1]
+        flip_probabilities = flip_probabilities[:, None].repeat((1, number_of_spins))
+        flips = Bernoulli(flip_probabilities).sample()
+        flips = (-1.) ** flips
+        flipped_spin = start_spins * flips
+
+        return flipped_spin, times
+
+    def rates_states_and_times(self,states,times):
+        """
+
+        :param states:
+        :param times:
+        :return:
+        """
+        assert len(states.shape) == 2
+        number_of_spins = states.shape[-1]
+        rate = self.rate(times)  # (B, S, S)
+        flip_rate = rate[:, 0, 1]
+        flip_rate = flip_rate[:, None].repeat((1, number_of_spins))
+        return flip_rate
 
 @register_reference
 class GaussianTargetRate(ReferenceProcess):

@@ -19,13 +19,15 @@ class SB:
     from a CTDD model
 
     """
-    data_dataloader: GraphSpinsDataLoader = None
-    training_model: GaussianTargetRateImageX0PredEMA = None
-    past_model: GaussianTargetRateImageX0PredEMA = None
+    pipeline: SBPipeline=None
+    data_dataloader: GraphSpinsDataLoader=None
+    training_model: GaussianTargetRateImageX0PredEMA=None
+    past_model: GaussianTargetRateImageX0PredEMA=None
 
-    reference_process: ReferenceProcess = None
-    loss: GenericAux = None
-    scheduler: SBScheduler = None
+    reference_process: ReferenceProcess=None
+    loss: GenericAux=None
+    scheduler: SBScheduler=None
+    pipeline: SBPipeline=None
 
     def create_from_config(self,config,device):
         self.data_dataloader = create_dataloader(config, device)
