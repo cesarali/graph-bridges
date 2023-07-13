@@ -122,7 +122,7 @@ class TauLeaping:
             counter = 0
             for idx, t in tqdm(enumerate(ts[0:-1])):
                 h = ts[idx] - ts[idx+1]
-                forward_rates,qt0_denom,qt0_numer = reference_process.rates(x,t)
+                forward_rates,qt0_denom,qt0_numer = reference_process.foward_rates_and_probabilities(x, t)
                 p0t = F.softmax(model(x, t * torch.ones((num_of_paths,), device=device)), dim=2) # (N, D, S)
 
                 x_0max = torch.max(p0t, dim=2)[1]

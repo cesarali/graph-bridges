@@ -6,8 +6,10 @@ import os
 import subprocess
 import json
 from graph_bridges.data.dataloaders_config import GraphSpinsDataLoaderConfig
+from graph_bridges.models.reference_process.reference_process_config import GaussianTargetRateConfig, reference_process_configs
 from pathlib import Path
 
+from graph_bridges.models.backward_rates.backward_rate_config import BackRateMLPConfig,GaussianTargetRateImageX0PredEMAConfig,backward_rates_configs
 
 def get_git_revisions_hash():
     hashes = []
@@ -88,64 +90,6 @@ class TargetConfig:
         self.C, self.H, self.W = self.shape[0], self.shape[1], self.shape[2]
         self.D = self.C * self.H * self.W
 
-@dataclass
-class ModelConfig:
-    name :str  = 'GaussianTargetRateImageX0PredEMA'
-
-    # arquitecture variables
-    ema_decay : float = 0.9999  # 0.9999
-    do_ema :bool = True
-    ch :int = 28
-    num_res_blocks : int = 2
-    num_scales :int = 4
-    ch_mult : List[int]= field(default_factory=lambda:[1, 1, 1, 1])
-    input_channels :int = 1
-    scale_count_to_put_attn : int = 1
-    data_min_max :List[int] = field(default_factory=lambda:[0, 1]) # CHECK THIS for CIFAR 255
-    dropout :float= 0.1
-    skip_rescale :bool = True
-    time_embed_dim : int = 28
-    time_scale_factor :int = 1000
-    fix_logistic :bool = False
-
-    # reference process variables
-    initial_dist :str = 'gaussian'
-    rate_sigma :float = 6.0
-    Q_sigma :float = 512.0
-    time_exponential :float = 3.
-    time_base :float = 1.0
-
-    def __post_init__(self):
-        self.time_embed_dim = self.ch
-
-@dataclass
-class ReferenceProcessConfig:
-    """
-    Reference configuration for schrodinger bridge reference process
-    """
-    # reference process variables
-    name:str = "GaussianTargetRate"
-    initial_dist:str = 'gaussian'
-    rate_sigma:float = 6.0
-    Q_sigma:float = 512.0
-    time_exponential:float = 3.
-    time_base:float = 1.0
-
-    def __init__(self,
-                 name="GaussianTargetRate",
-                 initial_dist='gaussian',
-                 rate_sigma=6.0,
-                 Q_sigma=512.0,
-                 time_exponential=3.0,
-                 time_base=1.0,
-                 **kwargs):
-
-        self.name = name
-        self.initial_dist = initial_dist
-        self.rate_sigma = rate_sigma
-        self.Q_sigma = Q_sigma
-        self.time_exponential = time_exponential
-        self.time_base = time_base
 
 @dataclass
 class ParametrizedSamplerConfig:
@@ -184,17 +128,18 @@ class CTDDLossConfig:
     one_forward_pass :bool = True
 
 @dataclass
-class CTDDSchedulerConfig:
-    name :str = 'CTDDScheduler'
+class SBSchedulerConfig:
+    name :str = 'SBScheduler'
 
 @dataclass
-class CTDDPipelineConfig:
-    name : str = 'CTDDPipeline'
+class SBPipelineConfig:
+    name : str = 'SBPipeline'
 
 @dataclass
 class TrainerConfig:
     number_of_paths : int = 10
     number_of_sinkhorn : int = 1
+    starting_sinkhorn: int = 0
 
     optimizer_name :str = 'AdamW'
     max_n_iters :int = 10000
@@ -216,17 +161,17 @@ class BridgeConfig:
 
     config_path : str = ""
     # different elements configurations------------------------------------------
-    model : ModelConfig =  ModelConfig()
+    model : GaussianTargetRateImageX0PredEMAConfig =  GaussianTargetRateImageX0PredEMAConfig()
     data : DataConfig =  DataConfig() # corresponds to the distributions at start time
     target : DataConfig =  DataConfig() # corresponds to the distribution at final time
-    reference : ReferenceProcessConfig =  ReferenceProcessConfig()
+    reference : GaussianTargetRateConfig =  GaussianTargetRateConfig()
     sampler : ParametrizedSamplerConfig =  ParametrizedSamplerConfig()
-    stein = SteinSpinEstimatorConfig()
-    backward_estimator = BackwardEstimatorConfig()
+    loss : CTDDLossConfig = CTDDLossConfig()
+    stein : SteinSpinEstimatorConfig= SteinSpinEstimatorConfig()
+    backward_estimator : BackwardEstimatorConfig = BackwardEstimatorConfig()
 
-    loss : CTDDLossConfig =  CTDDLossConfig()
-    scheduler : CTDDSchedulerConfig =  CTDDSchedulerConfig()
-    pipeline : CTDDPipelineConfig =  CTDDPipelineConfig()
+    scheduler : SBSchedulerConfig =  SBSchedulerConfig()
+    pipeline : SBPipelineConfig =  SBPipelineConfig()
     optimizer : TrainerConfig =  TrainerConfig()
 
     number_of_paths : int = 10
@@ -238,7 +183,6 @@ class BridgeConfig:
     experiment_name :str = 'graph'
     experiment_type :str = 'lobster'
     experiment_indentifier :str  = 'testing'
-
     init_model_path = None
 
     # devices and parallelization ----------------------------------------------
@@ -247,40 +191,28 @@ class BridgeConfig:
     distributed = False
     num_gpus = 0
 
-
-        #data: DataConfig = DataConfig()  # corresponds to the distributions at start time
-        #target: DataConfig = DataConfig()  # corresponds to the distribution at final time
-        #reference: ReferenceProcessConfig = ReferenceProcessConfig()
-        #sampler: ParametrizedSamplerConfig = ParametrizedSamplerConfig()
-        # stein = SteinSpinEstimatorConfig()
-        # backward_estimator = BackwardEstimatorConfig()
-        #loss: CTDDLossConfig = CTDDLossConfig()
-        #scheduler: CTDDSchedulerConfig = CTDDSchedulerConfig()
-        #pipeline: CTDDPipelineConfig = CTDDPipelineConfig()
-        #optimizer: TrainerConfig = TrainerConfig()
-        #ModelConfig(kwargs["model"])
-
     def __post_init__(self):
         if isinstance(self.model,dict):
-            self.model = ModelConfig(**self.model)
+            model_name = self.model["name"]
+            self.model = backward_rates_configs[model_name](**self.model)
         if isinstance(self.data,dict):
             if self.data["name"] == "GraphSpinsDataLoader":
                 self.data = GraphSpinsDataLoaderConfig(**self.data)
         if isinstance(self.target,dict):
             self.target = DataConfig(**self.target)  # corresponds to the distribution at final time
         if isinstance(self.reference,dict):
-            self.reference = ReferenceProcessConfig(**self.reference)
+            reference_name = self.reference["name"]
+            self.reference = reference_process_configs[reference_name](**self.reference)
         if isinstance(self.sampler,dict):
             self.sampler = ParametrizedSamplerConfig(**self.sampler)
         if isinstance(self.loss,dict):
             self.loss = CTDDLossConfig(**self.loss)
         if isinstance(self.scheduler,dict):
-            self.scheduler = CTDDSchedulerConfig(**self.scheduler)
+            self.scheduler = SBSchedulerConfig(**self.scheduler)
         if isinstance(self.pipeline,dict):
-            self.pipeline = CTDDPipelineConfig(**self.pipeline)
+            self.pipeline = SBPipelineConfig(**self.pipeline)
         if isinstance(self.optimizer,dict):
             self.optimizer = TrainerConfig(**self.optimizer)
-
 
         self.current_git_commit = str(get_git_revisions_hash()[0])
         if self.experiment_indentifier is None:
@@ -309,7 +241,6 @@ class BridgeConfig:
         self.reference.time_exponential = self.model.time_exponential
         self.reference.time_base = self.model.time_base
 
-
     def create_directories(self):
         if not os.path.isdir(self.results_dir):
             os.makedirs(self.results_dir)
@@ -326,7 +257,7 @@ class BridgeConfig:
 
         self.config_path = os.path.join(self.results_dir, "config.json")
 
-        self.data_stats = os.path.join(self.data.preprocess_datapath, "data_stats.json")
+        self.data_stats = os.path.join(self.data.data_path, "data_stats.json")
         self.best_model_path_checkpoint = os.path.join(self.results_dir, "sinkhorn_{0}_checkpoint_{1}.tr")
         self.best_model_path = os.path.join(self.results_dir, "sinkhorn_{0}.tr")
 

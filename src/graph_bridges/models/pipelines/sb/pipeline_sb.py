@@ -250,10 +250,14 @@ class SBPipeline(DiffusionPipeline):
     ) -> Union[ImagePipelineOutput, Tuple]:
         """
 
-        :param past_model: it is the model trained in the previous iteration, if None, the reference process will be
-        :param sinkhorn_iteration: it indicates the iteration we are currently training,
-        :param return_dict:
+        :param past_model:
+        :param sinkhorn_iteration:
         :param device:
+        :param x:
+        :param train:
+        :param return_dict:
+        :param return_path: bool  gives you the whole path, otherwise is set to zero
+        :param return_path_shape: returns paths as [batchsize,num_timesteps,dimension]
         :return:
         """
         if past_model is None:
@@ -269,7 +273,7 @@ class SBPipeline(DiffusionPipeline):
 
         if x is None:
             data_iterator = self.select_data_iterator(sinkhorn_iteration,train)
-            x = next(data_iterator)
+            x = next(data_iterator)[0]
 
         num_of_paths = x.shape[0]
         spins = (-1.)**(x.squeeze().float()+1)

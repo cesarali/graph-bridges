@@ -4,6 +4,7 @@ import numpy as np
 from torch import nn
 import torch.nn.functional as F
 from torch.nn.parallel import DistributedDataParallel as DDP
+from dataclasses import dataclass,asdict,field
 
 from abc import ABC,abstractmethod
 from graph_bridges.models.backward_rates import backward_rate_utils
@@ -15,6 +16,8 @@ from graph_bridges.models.networks_arquitectures.network_utils import transforme
 from torch.nn.functional import softplus,softmax
 from graph_bridges.models.reference_process.ctdd_reference import GaussianTargetRate
 from typing import Tuple, Union
+from typing import List, Union, Optional, Tuple
+
 
 from dataclasses import dataclass
 from diffusers.utils import BaseOutput
@@ -29,6 +32,7 @@ class BackwardRateOutput(BaseOutput):
     p0t_reg: torch.Tensor
     p0t_sig: torch.Tensor
     reg_x: torch.Tensor
+
 
 class BackwardRate(nn.Module,ABC):
 
@@ -280,12 +284,11 @@ class EMA():
             self.move_model_params_to_collected_params()
             self.move_shadow_params_to_model_params()
 
-from graph_bridges.configs.graphs.lobster.config_mlp import BridgeMLPConfig
 
 @backward_rate_utils.register_model
 class BackRateMLP(EMA,BackwardRate,GaussianTargetRate):
 
-    def __init__(self,config:BridgeMLPConfig,device,rank=None):
+    def __init__(self,config,device,rank=None):
         EMA.__init__(self,config)
         BackwardRate.__init__(self,config,device,rank)
 
@@ -332,6 +335,8 @@ class BackRateMLP(EMA,BackwardRate,GaussianTargetRate):
         nn.init.xavier_uniform_(self.f2.weight)
 
 # make sure EMA inherited first, so it can override the state dict functions
+
+
 @backward_rate_utils.register_model
 class GaussianTargetRateImageX0PredEMA(EMA,ImageX0PredBase,GaussianTargetRate):
     def __init__(self, cfg, device, rank=None):

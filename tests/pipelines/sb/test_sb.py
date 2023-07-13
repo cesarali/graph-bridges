@@ -1,8 +1,6 @@
-import os
 import torch
-import unittest
 from graph_bridges.models.generative_models.sb import SB
-from graph_bridges.configs.graphs.lobster.config_base import get_config_from_file
+from graph_bridges.configs.graphs.config_sb import get_config_from_file
 from graph_bridges.models.backward_rates.backward_rate import GaussianTargetRateImageX0PredEMA
 
 
@@ -11,8 +9,8 @@ if __name__=="__main__":
     #read the model
     config = get_config_from_file("graph", "lobster", "1687884918")
     device = torch.device(config.device)
-    sb = SB()
-    sb.create_from_config(config, device)
+    sb = SB(config,device)
+    #sb.create_from_config(config, device)
 
     #test dataloaders
     databatch = next(sb.data_dataloader.train().__iter__())
@@ -32,12 +30,10 @@ if __name__=="__main__":
     forward_stein = generating_model.stein_binary_forward(x_spins_data.squeeze(),times)
 
     # test losses
-    from graph_bridges.models.losses.estimators import BackwardRatioSteinEstimator
-    backward_ration_stein_estimator = BackwardRatioSteinEstimator(config,device)
-    estimator_ = backward_ration_stein_estimator.estimator(sb.training_model,
-                                                           sb.past_model,
-                                                           x_spins_data.squeeze(),
-                                                           times)
+    estimator_ = sb.backward_ration_stein_estimator.estimator(sb.training_model,
+                                                              sb.past_model,
+                                                              x_spins_data.squeeze(),
+                                                              times)
 
     #print(forward_.shape)
     #print(forward_stein.shape)
@@ -48,12 +44,21 @@ if __name__=="__main__":
     x_spins_w_noise = sb.reference_process.spins_on_times(x_spins_data.squeeze(), times)
 
     # test pipeline
-    print("Hey!")
+    print("From Dataloader image shape")
+    x_end = sb.pipeline(None, 0, device, return_path=False)
+    print(x_end.shape)
+
+    print("From Dataloader full path in image shape with times")
+    x_end, times = sb.pipeline(None, 0, device, return_path=True)
+    print(x_end.shape)
+    print(times.shape)
+
+    print("From given start")
     x_end,times = sb.pipeline(None,0,device,x_spins_data,return_path=True)
     print(x_end.shape)
     print(times.shape)
 
-    print("Hey 2!")
+    print("From given start in path shape")
     x_end,times = sb.pipeline(None,0,device,x_spins_data,return_path=True,return_path_shape=True)
     print(x_end.shape)
     print(times.shape)
@@ -83,10 +88,10 @@ if __name__=="__main__":
         break
 
     for spins_path, times in sb.pipeline.paths_iterator(past_model, sinkhorn_iteration=sinkhorn_iteration):
-        loss = backward_ration_stein_estimator.estimator(sb.training_model,
-                                                         sb.past_model,
-                                                         spins_path,
-                                                         times)
+        loss = sb.backward_ration_stein_estimator.estimator(sb.training_model,
+                                                            sb.past_model,
+                                                            spins_path,
+                                                            times)
         print(loss)
         break
 
@@ -98,7 +103,6 @@ if __name__=="__main__":
         times_batch_1.append(times)
     """
     # test plots
-    from graph_bridges.utils.plots.sb_plots import sinkhorn_plot
 
     """
     sinkhorn_plot(sinkhorn_iteration=0,

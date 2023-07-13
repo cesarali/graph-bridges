@@ -67,21 +67,6 @@ class TargetConfig:
     max_node = 10
     min_node = 10
 
-@dataclass
-class BackRateMLPConfig:
-    name = 'BackRateMLP'
-
-    # arquitecture variables
-    ema_decay = 0.9999  # 0.9999
-    time_embed_dim = 9
-    hidden_layer = 200
-
-    # reference process variables
-    initial_dist = 'gaussian'
-    rate_sigma = 6.0
-    Q_sigma = 512.0
-    time_exponential = 3.
-    time_base = 1.0
 
 @dataclass
 class ReferenceProcessConfig:

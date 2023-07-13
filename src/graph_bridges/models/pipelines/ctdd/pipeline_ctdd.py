@@ -174,7 +174,7 @@ class CTDDPipeline(DiffusionPipeline):
             h = timesteps[idx] - timesteps[idx + 1]
 
             p0t = F.softmax(model(x, t * torch.ones((num_of_paths,), device=device)), dim=2)  # (N, D, S)
-            rates_ = self.reference_process.backward_rates(p0t,x,t,device)
+            rates_ = self.reference_process.backward_rates_from_probability(p0t, x, t, device)
 
             x_new = self.scheduler.step(rates_,x,t,h).prev_sample
             x = x_new

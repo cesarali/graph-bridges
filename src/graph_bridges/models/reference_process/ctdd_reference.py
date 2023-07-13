@@ -17,10 +17,22 @@ class ReferenceProcess:
         self.eps_ratio = config.sampler.eps_ratio
         self.device = device
 
-    def rates(self,
-              x:TensorType["num_of_paths", "dimensions"],
-              t:TensorType["num_of_paths"],
-              device=None) -> Tuple[torch.Tensor,torch.Tensor,torch.Tensor]:
+    def foward_rates(self,x,t,device):
+        num_of_paths = x.shape[0]
+        rate = self.rate(t * torch.ones((num_of_paths,), device=device))  # (N, S, S)
+
+        forward_rates = rate[
+            torch.arange(num_of_paths, device=device).repeat_interleave(self.D * self.S),
+            torch.arange(self.S, device=device).repeat(num_of_paths * self.D),
+            x.long().flatten().repeat_interleave(self.S)
+        ].view(num_of_paths, self.D, self.S)
+
+        return forward_rates
+
+    def foward_rates_and_probabilities(self,
+                                       x:TensorType["num_of_paths", "dimensions"],
+                                       t:TensorType["num_of_paths"],
+                                       device=None) -> Tuple[torch.Tensor,torch.Tensor,torch.Tensor]:
         """
 
         :param x:
@@ -29,16 +41,10 @@ class ReferenceProcess:
         """
         if device is None:
             device = self.device
-
         num_of_paths = x.shape[0]
-        qt0 = self.transition(t * torch.ones((num_of_paths,), device=device))  # (N, S, S)
-        rate = self.rate(t * torch.ones((num_of_paths,), device=device))  # (N, S, S)
 
-        forward_rates = rate[
-            torch.arange(num_of_paths, device=device).repeat_interleave(self.D * self.S),
-            torch.arange(self.S, device=device).repeat(num_of_paths * self.D),
-            x.long().flatten().repeat_interleave(self.S)
-        ].view(num_of_paths, self.D, self.S)
+        forward_rates = self.foward_rates(x, t, device)
+        qt0 = self.transition(t * torch.ones((num_of_paths,), device=device))  # (N, S, S)
 
         qt0_denom = qt0[
                         torch.arange(num_of_paths, device=device).repeat_interleave(self.D * self.S),
@@ -51,9 +57,9 @@ class ReferenceProcess:
 
         return forward_rates,qt0_denom,qt0_numer
 
-    def backward_rates(self,p0t,x,t,device):
+    def backward_rates_from_probability(self, p0t, x, t, device):
         num_of_paths = x.shape[0]
-        forward_rates,qt0_denom,qt0_numer = self.rates(x,t,device)
+        forward_rates,qt0_denom,qt0_numer = self.foward_rates_and_probabilities(x, t, device)
         inner_sum = (p0t / qt0_denom) @ qt0_numer  # (N, D, S)
         backward_rates = forward_rates * inner_sum  # (N, D, S)
         backward_rates[
@@ -111,6 +117,10 @@ class ReferenceProcess:
         flip_rate = rate[:, 0, 1]
         flip_rate = flip_rate[:, None].repeat((1, number_of_spins))
         return flip_rate
+
+    def stein_binary_forward(self,states,times):
+        return self.rates_states_and_times(states,times)
+
 
 @register_reference
 class GaussianTargetRate(ReferenceProcess):

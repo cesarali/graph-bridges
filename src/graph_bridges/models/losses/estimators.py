@@ -6,9 +6,9 @@ from typing import Tuple,List,Union
 
 from torch.distributions import Bernoulli
 from graph_bridges.utils.spin_utils import bool_to_spins
+from graph_bridges.models.losses.loss_utils import register_loss
 from graph_bridges.configs.graphs.lobster.config_base import BridgeConfig
 from graph_bridges.models.backward_rates.backward_rate import BackwardRate
-from graph_bridges.models.losses.loss_utils import register_loss
 
 class SteinSpinEstimator:
     """
