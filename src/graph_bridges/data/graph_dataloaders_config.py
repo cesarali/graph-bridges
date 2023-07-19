@@ -8,16 +8,85 @@ import time
 import os
 import subprocess
 import json
-from graph_bridges.data.dataloaders_config import GraphSpinsDataLoaderConfig
-from pathlib import Path
 import numpy as np
-
+from pathlib import Path
+from graph_bridges.data.dataloaders_config import GraphSpinsDataLoaderConfig
+from pprint import pprint
 
 data_path = Path(data_path)
 graph_data_path = data_path / "raw" / "graph"
 
 @dataclass
-class EgoConfig:
+class GraphDataConfig:
+    data: str =None
+    dir: Path=None
+    batch_size: int=None
+    test_split: float=None
+    max_node_num: int=None
+    max_feat_num: int=None
+    init: str=None
+    full_adjacency: bool = True
+    flatten_adjacency: bool = True
+    as_spins: bool= True
+    as_image: bool= True
+    C: int = None
+    H: int = None
+    W: int = None
+    D: int = None
+    S: int = None
+    number_of_spins: int = None
+    number_of_states: int = None
+
+    shape : List[int] = None
+    upper_diagonal_indices: np.array = None
+
+    def __post_init__(self):
+        self.number_of_upper_entries = int(self.max_node_num*(self.max_node_num-1)*.5)
+
+        if self.flatten_adjacency:
+            if self.full_adjacency:
+                if self.as_image:
+                    self.shape = [1, 1, self.max_node_num*self.max_node_num]
+                    self.C, self.H, self.W = self.shape[0], self.shape[1], self.shape[2]
+                    self.D = self.C * self.H * self.W
+                else:
+                    self.shape = [self.max_node_num * self.max_node_num]
+                    self.C, self.H, self.W = None, None, None
+                    self.D = self.max_node_num * self.max_node_num
+            else:
+                if self.as_image:
+                    self.shape = [1, 1,self.number_of_upper_entries]
+                    self.C, self.H, self.W = self.shape[0], self.shape[1], self.shape[2]
+                    self.D = self.C * self.H * self.W
+                else:
+                    self.shape = [self.number_of_upper_entries]
+                    self.C, self.H, self.W = None, None, None
+                    self.D = self.max_node_num * self.max_node_num
+        else:
+            if self.full_adjacency:
+                if self.as_image:
+                    self.shape = [1,self.max_node_num,self.max_node_num]
+                    self.C, self.H, self.W = self.shape[0], self.shape[1], self.shape[2]
+                    self.D = self.C * self.H * self.W
+                else:
+                    self.shape = [self.max_node_num, self.max_node_num]
+                    self.H, self.W =  self.shape[0], self.shape[1]
+                    self.C = None
+                    self.D = self.H * self.W
+            else: # no flatten no full adjacency
+                raise Exception("No Flatten and No Full Adjacency incompatible for data")
+
+        self.S = 2
+        self.number_of_nodes = self.max_node_num
+        self.number_of_spins = self.D
+        self.number_of_states = self.S
+        self.get_upper_diagonal()
+
+    def get_upper_diagonal(self):
+        self.upper_diagonal_indices = np.triu_indices(self.number_of_nodes, k=1)
+
+@dataclass
+class EgoConfig(GraphDataConfig):
     data: str =  "ego_small"
     dir: Path = graph_data_path
     batch_size: int = 128
@@ -27,7 +96,7 @@ class EgoConfig:
     init: str = "deg"
 
 @dataclass
-class CommunityConfig:
+class CommunityConfig(GraphDataConfig):
     data: str = 'community_small'
     dir: Path = graph_data_path
     batch_size: int = 128
@@ -37,7 +106,7 @@ class CommunityConfig:
     init: str = 'deg'
 
 @dataclass
-class GridConfig:
+class GridConfig(GraphDataConfig):
     data: str = 'grid'
     dir: Path = graph_data_path
     batch_size: int = 8
@@ -46,9 +115,8 @@ class GridConfig:
     max_feat_num: int = 5
     init: str = 'deg'
 
-
 @dataclass
-class EnzymesConfig:
+class EnzymesConfig(GraphDataConfig):
     data: str = 'ENZYMES'
     dir: Path = graph_data_path
     batch_size: int = 64
@@ -57,9 +125,8 @@ class EnzymesConfig:
     max_feat_num: int = 10
     init: str = 'deg'
 
-
 @dataclass
-class QM9Config:
+class QM9Config(GraphDataConfig):
     data: str = 'QM9'
     dir: Path = graph_data_path
     batch_size: int = 1024
@@ -68,7 +135,7 @@ class QM9Config:
     init: str = 'atom'
 
 @dataclass
-class ZincConfig:
+class ZincConfig(GraphDataConfig):
     data: str = 'ZINC250k'
     dir: Path = graph_data_path
     batch_size: int = 1024
@@ -92,7 +159,6 @@ class TargetConfig:
     C: int = field(init=False)
     H: int = field(init=False)
     W: int = field(init=False)
-
     D :int = field(init=False)
 
     random_flips : int = True
@@ -155,3 +221,38 @@ class GraphSpinsDataLoaderConfig:
         self.possible_params_dict = {'n': np.arange(5, 16).tolist(),
                                      'p1': [0.7],
                                      'p2': [0.5]}
+
+
+if __name__=="__main__":
+
+    #================================
+    # full matrix
+    #================================
+
+    graph_config = EgoConfig(full_adjacency=False,flatten_adjacency=True,as_image=True)
+    print(graph_config.shape)
+
+    graph_config = EgoConfig(full_adjacency=False,flatten_adjacency=True,as_image=False)
+    print(graph_config.shape)
+
+    #graph_config = EgoConfig(full_adjacency=False,flatten_adjacency=False,as_image=True)
+    #print(graph_config.shape)
+
+    #graph_config = EgoConfig(full_adjacency=False,flatten_adjacency=False,as_image=False)
+    #print(graph_config.shape)
+
+    # ================================
+    # full matrix
+    # ================================
+
+    graph_config = EgoConfig(full_adjacency=True,flatten_adjacency=True, as_image=True)
+    print(graph_config.shape)
+
+    graph_config = EgoConfig(full_adjacency=True,flatten_adjacency=True, as_image=False)
+    print(graph_config.shape)
+
+    graph_config = EgoConfig(full_adjacency=True,flatten_adjacency=False, as_image=True)
+    print(graph_config.shape)
+
+    graph_config = EgoConfig(full_adjacency=True,flatten_adjacency=False, as_image=False)
+    print(graph_config.shape)

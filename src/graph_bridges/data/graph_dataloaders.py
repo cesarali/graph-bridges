@@ -1,20 +1,89 @@
 import os
 import torch
 import pickle
+import numpy as np
 import networkx as nx
 from typing import List,Dict,Tuple,Union
 from torch.utils.data import TensorDataset, DataLoader
 from graph_bridges.configs.graphs.config_sb import BridgeConfig
 from graph_bridges.utils.graph_utils import init_features, graphs_to_tensor
 from torchtyping import TensorType
-from graph_bridges.data.graph_dataloaders_config import CommunityConfig
+from graph_bridges.data.graph_dataloaders_config import CommunityConfig, GraphDataConfig
+import torchvision.transforms as transforms
+
+def from_networkx_to_spins(graph_,upper_diagonal_indices,full_adjacency=False):
+    adjacency_ = nx.to_numpy_array(graph_)
+    if full_adjacency:
+        spins = (-1.) ** (adjacency_.flatten() + 1)
+    else:
+        just_upper_edges = adjacency_[upper_diagonal_indices]
+        spins = (-1.) ** (just_upper_edges.flatten() + 1)
+    return spins
+
+
+# Create a custom transformation class
+class UpperDiagonalIndicesTransform:
+
+    def __call__(self, tensor):
+        if  len(tensor.shape) == 3:
+            batch_size = tensor.shape[0]
+            # Get the upper diagonal entries without zero-padding with the batch as the first dimension
+            upper_diagonal_entries = tensor.masked_select(torch.triu(torch.ones_like(tensor), diagonal=1).bool())
+            upper_diagonal_entries = upper_diagonal_entries.reshape(batch_size, -1)
+            return upper_diagonal_entries
+        else:
+            raise Exception("Wrong Tensor Shape in Transform")
+
+class UnsqueezeTensorTransform:
+
+    def __init__(self,axis=0):
+        self.axis = axis
+    def __call__(self, tensor:torch.Tensor):
+        return tensor.unsqueeze(self.axis)
+
+class BinaryTensorToSpinsTransform:
+
+    def __call__(self, binary_tensor):
+        spins = (-1.) ** (binary_tensor + 1)
+        return spins
+
+class SpinsToBinaryTensor:
+
+    def __call__(self, spins):
+        binary_tensor = int( (1. + spins)*.5)
+        return binary_tensor
+
+def get_transforms(config:GraphDataConfig):
+    flatten_transform = transforms.Lambda(lambda x: x.reshape(x.shape[0], -1))
+    if config.flatten_adjacency:
+        if config.full_adjacency:
+            if config.as_image:
+                transform_list = [flatten_transform,UnsqueezeTensorTransform(1),UnsqueezeTensorTransform(1)]
+            else:
+                transform_list = [flatten_transform]
+        else:
+            if config.as_image:
+                transform_list = [UpperDiagonalIndicesTransform(),UnsqueezeTensorTransform(1),UnsqueezeTensorTransform(1)]
+            else:
+                transform_list = [UpperDiagonalIndicesTransform()]
+    else:
+        if config.full_adjacency:
+            if config.as_image:
+                transform_list = [UnsqueezeTensorTransform(1)]
+            else:
+                transform_list = []
+        else:  # no flatten no full adjacency
+            raise Exception("No Flatten and No Full Adjacency incompatible for data")
+
+    return transform_list
 
 
 class BridgeGraphDataLoaders:
     """
 
     """
-    graph_data_config : CommunityConfig
+    graph_data_config : GraphDataConfig
+
     def __init__(self,config:BridgeConfig,device):
         """
 
@@ -46,6 +115,15 @@ class BridgeGraphDataLoaders:
     def test(self):
         return self.test_dataloader_
 
+    def upper_indices(self,cfg):
+        if not self.full_adjacency:
+            self.number_of_spins = np.triu_indices(self.number_of_nodes, k=1)[0].shape[0]
+        else:
+            self.number_of_spins = self.number_of_nodes ** 2
+        cfg.number_of_spins = self.number_of_spins
+
+        self.upper_diagonal_indices = np.triu_indices(self.number_of_nodes, k=1)
+
     def create_dataloaders(self,x_tensor, adjs_tensor):
         train_ds = TensorDataset(x_tensor, adjs_tensor)
         train_dl = DataLoader(train_ds,
@@ -68,7 +146,6 @@ class BridgeGraphDataLoaders:
         adjs_tensor = graphs_to_tensor(graph_list,max_node_num)
         x_tensor = init_features(init,adjs_tensor,max_feat_num)
         return adjs_tensor,x_tensor
-
 
     def read_graph_lists(self)->Tuple[List[nx.Graph]]:
         """
@@ -122,23 +199,28 @@ if __name__=="__main__":
     from dataclasses import asdict
 
     data_config = CommunityConfig()
-    print(asdict(data_config))
     train_loader, test_loader = load_data(data_config)
     databatch = next(train_loader.__iter__())
-
     device = torch.device("cpu")
 
     """
     """
-    
+
     bridge_config = BridgeConfig(experiment_indentifier="debug")
-    bridge_config.data = CommunityConfig()
+    data_config = CommunityConfig()
+    bridge_config.data = data_config
     bridge_graph_dataloader = BridgeGraphDataLoaders(bridge_config,device)
 
     databatch = next(bridge_graph_dataloader.train().__iter__())
     adj = databatch[0]
     features = databatch[1]
 
-    print(adj.shape)
-    print(features.shape)
+
+    transform_list = get_transforms(data_config)
+    composed_transform = transforms.Compose(transform_list)
+    transformed_tensor_list = composed_transform(adj)
+
+    print(transformed_tensor_list.shape)
+    print(data_config.shape)
+
 

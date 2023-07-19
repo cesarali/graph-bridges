@@ -33,25 +33,35 @@ if __name__=="__main__":
     config.model = GaussianTargetRateImageX0PredEMAConfig()
     model = all_backward_rates[config.model.name](config,device)
 
-    forward_ = model(x_spins.squeeze(),times)
+    x_spins_ = x_spins.squeeze()
+    forward_ = model(x_spins_,times)
+    print("Adjacency")
+    print(x_spins_.shape)
+    print("Times")
+    print(times.shape)
+    print("Forward")
     print(forward_.shape)
 
     #config.model = BackRateMLPConfig()
     #model = all_backward_rates[config.model.name](config,device)
 
+    #===================================================
+    # DATALOADERS
+    #===================================================
+
     from graph_bridges.data.graph_dataloaders_config import CommunityConfig
-    from dataclasses import asdict
+    from graph_bridges.data.graph_dataloaders import BridgeGraphDataLoaders
 
-    data_config = CommunityConfig()
-    print(asdict(data_config))
-    train_loader, test_loader = load_data(data_config)
+    bridge_config = BridgeConfig(experiment_indentifier="debug")
+    bridge_config.data = CommunityConfig()
+    bridge_config.model = GaussianTargetRateImageX0PredEMAConfig()
 
-    databatch = next(train_loader.__iter__())
-    features_ = databatch[0]
-    adjacencies_ = databatch[1]
+    bridge_graph_dataloader = BridgeGraphDataLoaders(bridge_config,device)
 
-    print(features_.shape)
-    print(adjacencies_.shape)
+    databatch = next(bridge_graph_dataloader.train().__iter__())
+    adj = databatch[0]
+    features = databatch[1]
+
 
     """
 

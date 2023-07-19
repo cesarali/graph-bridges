@@ -21,7 +21,6 @@ if __name__=="__main__":
     sb = SB(config,device)
     #sb.create_from_config(config, device)
 
-    """
     #test dataloaders
     databatch = next(sb.data_dataloader.train().__iter__())
     x_spins_data = databatch[0]
@@ -72,7 +71,7 @@ if __name__=="__main__":
     x_end,times = sb.pipeline(None,0,device,x_spins_data,return_path=True,return_path_shape=True)
     print(x_end.shape)
     print(times.shape)
-    """
+
     from graph_bridges.models.backward_rates.backward_rate import BackRateConstant
     from pathlib import Path
     from graph_bridges import results_path
@@ -88,7 +87,7 @@ if __name__=="__main__":
                                                             times)
         print(loss)
         break
-    """
+
     contant_error = {}
     for constant_ in [0.1,1.,10.,100.]:
         past_constant = BackRateConstant(config,device,None,constant_)
@@ -112,6 +111,7 @@ if __name__=="__main__":
 
     json.dump(contant_error,open(loss_study_path,"w"))
     print(contant_error)
+    """
     """
     times_batch_1 = []
     paths_batch_1 = []

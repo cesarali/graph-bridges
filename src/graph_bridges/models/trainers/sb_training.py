@@ -114,7 +114,6 @@ class SBTrainer:
         self.optimizer = Adam(current_model.parameters(), lr=self.config.optimizer.learning_rate)
 
         #CHECK DATA METRICS
-        """
         data_stats_path = Path(self.sb.config.data_stats)
         if data_stats_path.exists():
             data_stats = json.load(open(data_stats_path,"rb"))
@@ -132,12 +131,12 @@ class SBTrainer:
             for spins_path_1, times_1 in self.sb.pipeline.paths_iterator(past_to_train_model, sinkhorn_iteration=sinkhorn_iteration,return_path_shape=True):
                 #end_of_path = spins_path_1[:, -1, :].unsqueeze(1).unsqueeze(1)
                 end_of_path = spins_path_1[:, -1, :]
-                spins_path_2, times_2 = sb.pipeline(current_model,
-                                                    sinkhorn_iteration + 1,
-                                                    device,
-                                                    end_of_path,
-                                                    return_path=True,
-                                                    return_path_shape=True)
+                spins_path_2, times_2 = self.sb.pipeline(current_model,
+                                                         sinkhorn_iteration + 1,
+                                                         device,
+                                                         end_of_path,
+                                                         return_path=True,
+                                                         return_path_shape=True)
                 binary_0 = (spins_path_1 + 1.)*.5
                 binary_1 = (spins_path_2 + 1.)*.5
 
@@ -161,9 +160,10 @@ class SBTrainer:
                           forward_histogram=histogram_path_0,
                           time_=times_1,
                           states_legends=state_legends)
+
         # INFO
         #self.parameters_info(sinkhorn_iteration)
-        """
+
         return 0
 
     def train_step(self, current_model, past_model, databatch, number_of_training_step, sinkhorn_iteration=0):
