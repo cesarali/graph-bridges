@@ -27,7 +27,7 @@ class GraphDataConfig:
     init: str=None
     full_adjacency: bool = True
     flatten_adjacency: bool = True
-    as_spins: bool= True
+    as_spins: bool= False
     as_image: bool= True
     C: int = None
     H: int = None

@@ -21,12 +21,8 @@ if __name__=="__main__":
     databatch = next(bridge_graph_dataloader.train().__iter__())
     adj,features = databatch[0],databatch[1]
 
-    transform_list = get_transforms(graph_config)
-    composed_transform = transforms.Compose(transform_list)
-    transformed_tensor_list = composed_transform(adj)
-
     print(graph_config.shape)
-    print(transformed_tensor_list.shape)
+    print(adj.shape)
 
     graph_config = EgoConfig(full_adjacency=False,flatten_adjacency=True,as_image=False)
     bridge_config.data = graph_config
@@ -34,12 +30,8 @@ if __name__=="__main__":
     databatch = next(bridge_graph_dataloader.train().__iter__())
     adj,features = databatch[0],databatch[1]
 
-    transform_list = get_transforms(graph_config)
-    composed_transform = transforms.Compose(transform_list)
-    transformed_tensor_list = composed_transform(adj)
-
     print(graph_config.shape)
-    print(transformed_tensor_list.shape)
+    print(adj.shape)
 
     graph_config = EgoConfig(full_adjacency=True,flatten_adjacency=True, as_image=True)
     bridge_config.data = graph_config
@@ -47,12 +39,8 @@ if __name__=="__main__":
     databatch = next(bridge_graph_dataloader.train().__iter__())
     adj,features = databatch[0],databatch[1]
 
-    transform_list = get_transforms(graph_config)
-    composed_transform = transforms.Compose(transform_list)
-    transformed_tensor_list = composed_transform(adj)
-
     print(graph_config.shape)
-    print(transformed_tensor_list.shape)
+    print(adj.shape)
 
     graph_config = EgoConfig(full_adjacency=True,flatten_adjacency=True, as_image=False)
     bridge_config.data = graph_config
@@ -60,12 +48,8 @@ if __name__=="__main__":
     databatch = next(bridge_graph_dataloader.train().__iter__())
     adj,features = databatch[0],databatch[1]
 
-    transform_list = get_transforms(graph_config)
-    composed_transform = transforms.Compose(transform_list)
-    transformed_tensor_list = composed_transform(adj)
-
     print(graph_config.shape)
-    print(transformed_tensor_list.shape)
+    print(adj.shape)
 
     graph_config = EgoConfig(full_adjacency=True,flatten_adjacency=False, as_image=True)
     bridge_config.data = graph_config
@@ -73,22 +57,15 @@ if __name__=="__main__":
     databatch = next(bridge_graph_dataloader.train().__iter__())
     adj,features = databatch[0],databatch[1]
 
-    transform_list = get_transforms(graph_config)
-    composed_transform = transforms.Compose(transform_list)
-    transformed_tensor_list = composed_transform(adj)
-
     print(graph_config.shape)
-    print(transformed_tensor_list.shape)
+    print(adj.shape)
 
-    graph_config = EgoConfig(full_adjacency=True,flatten_adjacency=False, as_image=False)
+    graph_config = EgoConfig(full_adjacency=True,flatten_adjacency=False, as_image=False,as_spins=False)
     bridge_config.data = graph_config
     bridge_graph_dataloader = BridgeGraphDataLoaders(bridge_config,device)
     databatch = next(bridge_graph_dataloader.train().__iter__())
     adj,features = databatch[0],databatch[1]
 
-    transform_list = get_transforms(graph_config)
-    composed_transform = transforms.Compose(transform_list)
-    transformed_tensor_list = composed_transform(adj)
-
     print(graph_config.shape)
-    print(transformed_tensor_list.shape)
+    print(adj.shape)
+    print(adj[0])

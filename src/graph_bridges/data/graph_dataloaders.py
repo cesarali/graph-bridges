@@ -43,7 +43,7 @@ class UnsqueezeTensorTransform:
 
 class BinaryTensorToSpinsTransform:
 
-    def __call__(self, binary_tensor):
+    def __call__(self,binary_tensor):
         spins = (-1.) ** (binary_tensor + 1)
         return spins
 
@@ -75,6 +75,9 @@ def get_transforms(config:GraphDataConfig):
         else:  # no flatten no full adjacency
             raise Exception("No Flatten and No Full Adjacency incompatible for data")
 
+    if config.as_spins:
+        transform_list.append(BinaryTensorToSpinsTransform())
+
     return transform_list
 
 
@@ -93,6 +96,8 @@ class BridgeGraphDataLoaders:
         #config.max_node_num
         self.graph_data_config = config.data
         self.device = device
+        transform_list = get_transforms(self.graph_data_config)
+        composed_transform = transforms.Compose(transform_list)
 
         train_graph_list, test_graph_list = self.read_graph_lists()
 
@@ -100,12 +105,18 @@ class BridgeGraphDataLoaders:
                                                                              self.graph_data_config.init,
                                                                              self.graph_data_config.max_node_num,
                                                                              self.graph_data_config.max_feat_num)
+
+        train_adjs_tensor = composed_transform(train_adjs_tensor)
+
         self.train_dataloader_ = self.create_dataloaders(train_adjs_tensor,train_x_tensor)
 
         test_adjs_tensor,test_x_tensor = self.graph_to_tensor_and_features(test_graph_list,
                                                                            self.graph_data_config.init,
                                                                            self.graph_data_config.max_node_num,
                                                                            self.graph_data_config.max_feat_num)
+
+
+        test_adjs_tensor = composed_transform(test_adjs_tensor)
 
         self.test_dataloader_ = self.create_dataloaders(test_adjs_tensor,test_x_tensor)
 
@@ -115,14 +126,6 @@ class BridgeGraphDataLoaders:
     def test(self):
         return self.test_dataloader_
 
-    def upper_indices(self,cfg):
-        if not self.full_adjacency:
-            self.number_of_spins = np.triu_indices(self.number_of_nodes, k=1)[0].shape[0]
-        else:
-            self.number_of_spins = self.number_of_nodes ** 2
-        cfg.number_of_spins = self.number_of_spins
-
-        self.upper_diagonal_indices = np.triu_indices(self.number_of_nodes, k=1)
 
     def create_dataloaders(self,x_tensor, adjs_tensor):
         train_ds = TensorDataset(x_tensor, adjs_tensor)
