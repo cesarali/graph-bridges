@@ -126,6 +126,7 @@ class SpinDataloaderMetric(ABC):
                  spin_dataloader:BridgeDataLoader=None,
                  **kwargs):
         self.spin_dataloader = spin_dataloader
+        self.doucet = spin_dataloader.doucet
 
     @abstractmethod
     def metric_on_pathbatch(self,batch,aggregation):
@@ -181,8 +182,11 @@ class SpinBernoulliMarginal(SpinDataloaderMetric):
         batch = batch[0]
         histogram_of_spins = aggregation[0]
         number_of_paths = aggregation[1]
+        if not self.doucet:
+            batch[torch.where(batch == -1.)] = 0.
+        else:
+            batch = batch.squeeze()
 
-        batch[torch.where(batch == -1.)] = 0.
         number_of_paths += batch.shape[0]
         histogram_of_spins += batch.sum(axis=0)
 
@@ -205,4 +209,30 @@ class SpinBernoulliMarginal(SpinDataloaderMetric):
 
 
 if __name__=="__main__":
-    print("Hello World!")
+    from graph_bridges.configs.graphs.config_sb import BridgeConfig
+    from graph_bridges.data.dataloaders_config import GraphSpinsDataLoaderConfig
+    from graph_bridges.data.dataloaders import GraphSpinsDataLoader
+
+    device = torch.device("cpu")
+
+    data_config = GraphSpinsDataLoaderConfig()
+    data_config.doucet = False
+    data_loader = GraphSpinsDataLoader(data_config, device, 0)
+    x_spins = next(data_loader.train().__iter__())[0]
+    print(x_spins.shape)
+    print(x_spins[0])
+
+
+    bernoulli_marginal = SpinBernoulliMarginal(spin_dataloader=data_loader)
+    marginal_0 = bernoulli_marginal()
+
+    print(marginal_0)
+
+    """
+    data_config = GraphSpinsDataLoaderConfig()
+    data_config.doucet = True
+    data_loader = GraphSpinsDataLoader(data_config, device, 0)
+    x_spins = next(data_loader.train().__iter__())[0]
+    print(x_spins.shape)
+    print(x_spins[0])
+    """

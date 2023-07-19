@@ -8,6 +8,9 @@ from tqdm import tqdm
 import numpy as np
 from graph_bridges.models.generative_models.sb import SB
 from graph_bridges.configs.graphs.config_sb import BridgeConfig
+from graph_bridges.utils.plots.sb_plots import sinkhorn_plot
+
+from pathlib import Path
 
 from torch.optim import Adam
 
@@ -79,7 +82,7 @@ class SBTrainer:
         print("# Number of Epochs {0}".format(self.number_of_epochs))
         print("# ==================================================")
 
-    def initialize(self, current_model, past_to_train_model, sinkhorn_iteration=0):
+    def initialize(self, current_model, past_to_train_model, device, sinkhorn_iteration=0):
         """
         Obtains initial loss to know when to save, restart the optimizer
 
@@ -95,10 +98,10 @@ class SBTrainer:
         self.writer = SummaryWriter(self.config.tensorboard_path)
 
         # CHECK DATA
-        spins_path, times = self.sb.pipeline(None, 0, device, return_path=True)
-        print(spins_path.shape)
-        print(times.shape)
+        spins_path, times = self.sb.pipeline(None, 0, device,return_path=True,return_path_shape=True)
+        batch_size, total_number_of_steps, number_of_spins = spins_path.shape[0],spins_path.shape[1],spins_path.shape[2]
 
+        spins_path, times = self.sb.pipeline(None, 0, device, return_path=True)
         #CHECK LOSS
         initial_loss = self.sb.backward_ration_stein_estimator.estimator(current_model,
                                                                   past_to_train_model,
@@ -110,12 +113,57 @@ class SBTrainer:
         #DEFINE OPTIMIZERS
         self.optimizer = Adam(current_model.parameters(), lr=self.config.optimizer.learning_rate)
 
-        #CHECK METRICS
+        #CHECK DATA METRICS
+        """
+        data_stats_path = Path(self.sb.config.data_stats)
+        if data_stats_path.exists():
+            data_stats = json.load(open(data_stats_path,"rb"))
+        else:
+            from graph_bridges.models.metrics.data_metrics import SpinBernoulliMarginal
 
+            bernoulli_marginal = SpinBernoulliMarginal(spin_dataloader=self.sb.data_dataloader)
+            marginal_0 = bernoulli_marginal()
+            bernoulli_marginal = SpinBernoulliMarginal(spin_dataloader=self.sb.target_dataloader)
+            marginal_1 = bernoulli_marginal()
 
+            histogram_path_0 = torch.zeros(total_number_of_steps,number_of_spins)
+            histogram_path_1 = torch.zeros(total_number_of_steps,number_of_spins)
+
+            for spins_path_1, times_1 in self.sb.pipeline.paths_iterator(past_to_train_model, sinkhorn_iteration=sinkhorn_iteration,return_path_shape=True):
+                #end_of_path = spins_path_1[:, -1, :].unsqueeze(1).unsqueeze(1)
+                end_of_path = spins_path_1[:, -1, :]
+                spins_path_2, times_2 = sb.pipeline(current_model,
+                                                    sinkhorn_iteration + 1,
+                                                    device,
+                                                    end_of_path,
+                                                    return_path=True,
+                                                    return_path_shape=True)
+                binary_0 = (spins_path_1 + 1.)*.5
+                binary_1 = (spins_path_2 + 1.)*.5
+
+                current_sum_0 = binary_0.sum(axis=0)
+                current_sum_1 = binary_1.sum(axis=0)
+
+                histogram_path_0 += current_sum_0
+                histogram_path_1 += current_sum_1
+
+            print(histogram_path_0[0])
+            print(histogram_path_0[-1])
+
+            print(histogram_path_1[0])
+            print(histogram_path_1[-1])
+
+            state_legends = [str(i) for i in range(histogram_path_0.shape[-1])]
+            sinkhorn_plot(sinkhorn_iteration,
+                          marginal_0,
+                          marginal_1,
+                          backward_histogram=histogram_path_1,
+                          forward_histogram=histogram_path_0,
+                          time_=times_1,
+                          states_legends=state_legends)
         # INFO
-        self.parameters_info(sinkhorn_iteration)
-
+        #self.parameters_info(sinkhorn_iteration)
+        """
         return 0
 
     def train_step(self, current_model, past_model, databatch, number_of_training_step, sinkhorn_iteration=0):
@@ -293,7 +341,7 @@ if __name__=="__main__":
     #config = get_config_from_file("graph", "lobster", "1687884918")
     device = torch.device("cpu")
     sb = SB(config, device)
-    pprint(config.__dict__)
+    #pprint(sb.config.__dict__)
     #print(config.config_path)
     #json.dump(asdict(config),config.config_path)
 

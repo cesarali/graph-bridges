@@ -117,7 +117,8 @@ class BackwardRatioSteinEstimator:
 
         phi_new_d = current_model.stein_binary_forward(X_spins, current_time).squeeze()
         with torch.no_grad():
-            phi_old_d = past_model.stein_binary_forward(X_spins, current_time).squeeze()
+            phi_old_d = past_model.stein_binary_forward(X_spins, current_time)
+            phi_old_d = phi_old_d.squeeze()
 
         # stein estimate
         stein_estimate = self.stein_estimator.estimator(current_model, X_spins, current_time)

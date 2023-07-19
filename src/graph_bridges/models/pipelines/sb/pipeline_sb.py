@@ -15,7 +15,7 @@ from typing import List, Optional, Tuple, Union
 import torch
 
 from diffusers.pipelines.pipeline_utils import DiffusionPipeline, ImagePipelineOutput
-from graph_bridges.configs.graphs.lobster.config_base import BridgeConfig
+from graph_bridges.configs.graphs.config_sb import BridgeConfig
 from diffusers.utils import randn_tensor
 import torch.nn.functional as F
 from tqdm import tqdm
@@ -173,7 +173,7 @@ class SBPipeline(DiffusionPipeline):
         return data_iterator
 
     def paths_iterator(self,
-                       past_model: Optional[BackwardRate] = None,
+                       past_model: Union[BackwardRate,ReferenceProcess] = None,
                        sinkhorn_iteration = 0,
                        device :torch.device = None,
                        train: bool = True,
@@ -184,13 +184,16 @@ class SBPipeline(DiffusionPipeline):
         if past_model is None:
             assert sinkhorn_iteration == 0
         else:
-            assert sinkhorn_iteration >= 1
+            if isinstance(past_model,ReferenceProcess):
+                assert sinkhorn_iteration == 0
+            else:
+                assert sinkhorn_iteration >= 1
 
         # set step values
         self.scheduler.set_timesteps(self.bridge_config.sampler.num_steps,
                                      self.bridge_config.sampler.min_t,
                                      sinkhorn_iteration=sinkhorn_iteration)
-        timesteps = self.scheduler.timesteps
+        timesteps_ = self.scheduler.timesteps
         data_iterator = self.select_data_iterator(sinkhorn_iteration, train)
 
         for x in data_iterator:
@@ -202,16 +205,16 @@ class SBPipeline(DiffusionPipeline):
             if return_path:
                 full_path = [spins.unsqueeze(1)]
 
-            for idx, t in tqdm(enumerate(timesteps[0:-1])):
+            for idx, t in tqdm(enumerate(timesteps_[0:-1])):
 
-                h = self.select_time_difference(sinkhorn_iteration,timesteps,idx)
-                times = t * torch.ones(num_of_paths)
+                h = self.select_time_difference(sinkhorn_iteration,timesteps_,idx)
+                times_ = t * torch.ones(num_of_paths)
 
                 if sinkhorn_iteration != 0:
-                    logits = past_model.stein_binary_forward(spins,times)
+                    logits = past_model.stein_binary_forward(spins,times_)
                     rates_ = F.softplus(logits)
                 else:
-                    rates_ = self.reference_process.rates_states_and_times(spins,times)
+                    rates_ = self.reference_process.rates_states_and_times(spins,times_)
 
                 spins_new = self.scheduler.step(rates_,spins,t,h,device,return_dict=True,step_type="Poisson").prev_sample
                 spins = spins_new
@@ -221,7 +224,7 @@ class SBPipeline(DiffusionPipeline):
 
             if return_path:
                 full_path = torch.concat(full_path, dim=1)
-                timesteps = timesteps.unsqueeze(0).repeat(num_of_paths,1)
+                timesteps = timesteps_.unsqueeze(0).repeat(num_of_paths,1)
 
                 if return_path_shape:
                     yield (full_path, timesteps)

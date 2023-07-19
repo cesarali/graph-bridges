@@ -33,7 +33,6 @@ class BackwardRateOutput(BaseOutput):
     p0t_sig: torch.Tensor
     reg_x: torch.Tensor
 
-
 class BackwardRate(nn.Module,ABC):
 
     def __init__(self,
@@ -334,8 +333,49 @@ class BackRateMLP(EMA,BackwardRate,GaussianTargetRate):
         nn.init.xavier_uniform_(self.f1.weight)
         nn.init.xavier_uniform_(self.f2.weight)
 
-# make sure EMA inherited first, so it can override the state dict functions
+@backward_rate_utils.register_model
+class BackRateConstant(EMA,BackwardRate,GaussianTargetRate):
 
+    def __init__(self,config,device,rank=None,constant=10.):
+        EMA.__init__(self,config)
+        BackwardRate.__init__(self,config,device,rank)
+        self.constant = constant
+        self.hidden_layer = config.model.hidden_layer
+        self.define_deep_models()
+        #self.init_parameters()
+        self.init_ema()
+
+    def define_deep_models(self):
+        # layers
+        self.f1 = nn.Linear(self.dimension, self.hidden_layer)
+        self.f2 = nn.Linear(self.hidden_layer + self.time_embed_dim,self.dimension*self.num_states)
+
+        # temporal encoding
+        #self.temb_modules = []
+        #self.temb_modules.append(nn.Linear(self.time_embed_dim, self.time_embed_dim * 4))
+        #nn.init.zeros_(self.temb_modules[-1].bias)
+        #self.temb_modules.append(nn.Linear(self.time_embed_dim * 4, self.time_embed_dim * 4))
+        #nn.init.zeros_(self.temb_modules[-1].bias)
+        #self.temb_modules = nn.ModuleList(self.temb_modules)
+
+        #self.expanded_time_dim = 4 * self.time_embed_dim if self.do_time_embed else None
+
+    def _forward(self,
+                x: TensorType["batch_size", "dimension"],
+                times: TensorType["batch_size"]
+                ) -> TensorType["batch_size", "dimension", "num_states"]:
+
+        if self.config.data.type == "doucet":
+            x = self._center_data(x)
+
+        batch_size = x.shape[0]
+
+        return torch.full(torch.Size([batch_size,self.dimension,self.num_states]),self.constant)
+
+    def init_parameters(self):
+        pass
+
+# make sure EMA inherited first, so it can override the state dict functions
 
 @backward_rate_utils.register_model
 class GaussianTargetRateImageX0PredEMA(EMA,ImageX0PredBase,GaussianTargetRate):
@@ -346,6 +386,9 @@ class GaussianTargetRateImageX0PredEMA(EMA,ImageX0PredBase,GaussianTargetRate):
         self.config = cfg
         self.init_ema()
 
+all_backward_rates = {"BackRateConstant":BackRateConstant,
+                      "BackRateMLP":BackRateMLP,
+                      "GaussianTargetRateImageX0PredEMA":GaussianTargetRateImageX0PredEMA}
 
 if __name__=="__main__":
     from graph_bridges.configs.graphs.lobster.config_base import BridgeConfig as GaussianBridgeConfig

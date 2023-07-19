@@ -90,7 +90,7 @@ class SpinsDataLoader(BaseDataLoader):
 
         training_proportion = cfg.training_proportion
         batch_size = cfg.batch_size
-        doucet = cfg.doucet
+        self.doucet = cfg.doucet
 
         # data provided
         if X is not None:
@@ -112,7 +112,7 @@ class SpinsDataLoader(BaseDataLoader):
                                 "real_distribution":self.real_distribution_parameters},
                                data_path)
 
-        if doucet:
+        if self.doucet:
             X = self.convert_to_doucet(X)
 
         self.define_dataset_and_dataloaders(X,
@@ -326,7 +326,6 @@ class GraphSpinsDataLoader(SpinsDataLoader):
         X = torch.Tensor(X)
         return X, (None,)
 
-
     # =======================================
     # EXACT VALUE OF ESTIMATOR
     # =======================================
@@ -342,13 +341,17 @@ class GraphSpinsDataLoader(SpinsDataLoader):
 class BridgeDataLoader:
 
     config : BridgeConfig
+    doucet: bool = True
 
     def __init__(self,config:BridgeConfig,device,rank=None):
         self.config = config
         self.device = device
 
         C,H,W = self.config.data.shape
+
         self.D = C*H*W
+        self.number_of_spins = self.D
+
         self.S = self.config.data.S
         sampler_config = self.config.sampler
 
@@ -364,7 +367,7 @@ class BridgeDataLoader:
 
 @register_dataloader
 class DoucetTargetData(BridgeDataLoader):
-
+    doucet:bool = True
     def __init__(self,config:BridgeConfig,device,rank=None):
         BridgeDataLoader.__init__(self, config, device, rank)
 
@@ -407,6 +410,8 @@ class DoucetTargetData(BridgeDataLoader):
             yield x
 
 
+all_dataloaders = {"GraphSpinsDataLoader":GraphSpinsDataLoader,
+                   "DoucetTargetData":DoucetTargetData}
 
 if __name__=="__main__":
     from graph_bridges.configs.graphs.lobster.config_base import BridgeConfig
