@@ -3,7 +3,7 @@ import torch
 from pathlib import Path
 from pprint import pprint
 from dataclasses import dataclass, asdict
-
+from graph_bridges.models.backward_rates.backward_rate import BackwardRate
 from graph_bridges.data.graph_dataloaders import load_data
 
 
@@ -17,52 +17,50 @@ if __name__=="__main__":
     from graph_bridges.data.dataloaders_utils import create_dataloader
     from graph_bridges.data.dataloaders import all_dataloaders
 
-    config = BridgeConfig(experiment_indentifier="debug")
-    config.data = GraphSpinsDataLoaderConfig()
+    # ===================================================
+    # DATALOADERS
+    # ===================================================
+
+    from graph_bridges.data.graph_dataloaders_config import CommunityConfig, EgoConfig
+    from graph_bridges.data.graph_dataloaders import BridgeGraphDataLoaders
+
     device = torch.device("cpu")
 
-    print(asdict(config.data))
+    bridge_config = BridgeConfig(experiment_indentifier="debug")
+    graph_config = EgoConfig(full_adjacency=True, flatten_adjacency=True, as_image=False, as_spins=False)
 
-    data_loader = all_dataloaders[config.data.name](config.data,device,0)
-    x_spins = next(data_loader.train().__iter__())[0]
-    batch_size = x_spins.shape[0]
+    bridge_config.data = graph_config
+    bridge_graph_dataloader = BridgeGraphDataLoaders(bridge_config, device)
+    databatch = next(bridge_graph_dataloader.train().__iter__())
+    adj_states, features = databatch[0], databatch[1]
+
+    batch_size = adj_states.shape[0]
     times = torch.rand((batch_size))
 
-    #forward_ = model(x_spins_data.squeeze(),times)
-    #forward_stein = model.stein_binary_forward(x_spins_data.squeeze(),times)
-    config.model = GaussianTargetRateImageX0PredEMAConfig()
-    model = all_backward_rates[config.model.name](config,device)
+    bridge_config.model = GaussianTargetRateImageX0PredEMAConfig()
+    model: BackwardRate
+    model = all_backward_rates[bridge_config.model.name](bridge_config,device)
 
-    x_spins_ = x_spins.squeeze()
-    forward_ = model(x_spins_,times)
+    forward_ = model(adj_states,times)
+    forward_stein = model.stein_binary_forward(adj_states,times)
+
     print("Adjacency")
-    print(x_spins_.shape)
+    print(adj_states.shape)
     print("Times")
     print(times.shape)
     print("Forward")
     print(forward_.shape)
+    print("Forward Stein")
+    print(forward_stein.shape)
 
     #config.model = BackRateMLPConfig()
     #model = all_backward_rates[config.model.name](config,device)
 
-    #===================================================
-    # DATALOADERS
-    #===================================================
-
-    from graph_bridges.data.graph_dataloaders_config import CommunityConfig
-    from graph_bridges.data.graph_dataloaders import BridgeGraphDataLoaders
-
-    bridge_config = BridgeConfig(experiment_indentifier="debug")
-    bridge_config.data = CommunityConfig()
     bridge_config.model = GaussianTargetRateImageX0PredEMAConfig()
 
-    bridge_graph_dataloader = BridgeGraphDataLoaders(bridge_config,device)
 
     databatch = next(bridge_graph_dataloader.train().__iter__())
     adj = databatch[0]
     features = databatch[1]
 
 
-    """
-
-    """

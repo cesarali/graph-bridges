@@ -47,7 +47,7 @@ class BackwardRate(nn.Module,ABC):
         # DATA
         self.dimension = config.data.D
         self.num_states = config.data.S
-        self.data_type = config.data.type
+        #self.data_type = config.data.type
         self.data_min_max = config.data.data_min_max
 
         # TIME
@@ -74,7 +74,8 @@ class BackwardRate(nn.Module,ABC):
                 x_tilde: TensorType["batch_size", "dimension"] = None,
                 return_dict: bool = False,
                 )-> Union[BackwardRateOutput, torch.FloatTensor, Tuple]:
-        if self.data_type == "doucet":
+        #if self.data_type == "doucet":
+        if x_tilde is not None:
             return self.ctdd(x,x_tilde,times,return_dict)
         else:
             h = x

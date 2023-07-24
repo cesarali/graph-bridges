@@ -3,6 +3,7 @@ import shutil
 import time
 import os
 import subprocess
+from graph_bridges.models.backward_rates.backward_rate_config import BackRateMLPConfig
 
 def get_git_revisions_hash():
     hashes = []

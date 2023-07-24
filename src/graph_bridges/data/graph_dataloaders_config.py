@@ -47,29 +47,36 @@ class GraphDataConfig:
             if self.full_adjacency:
                 if self.as_image:
                     self.shape = [1, 1, self.max_node_num*self.max_node_num]
+                    self.shape_ = self.shape
                     self.C, self.H, self.W = self.shape[0], self.shape[1], self.shape[2]
                     self.D = self.C * self.H * self.W
                 else:
-                    self.shape = [self.max_node_num * self.max_node_num]
-                    self.C, self.H, self.W = None, None, None
+                    self.shape = [1,1,self.max_node_num * self.max_node_num]
+                    self.shape_ = [self.max_node_num * self.max_node_num]
+                    self.C, self.H, self.W = self.shape[0], self.shape[1], self.shape[2]
                     self.D = self.max_node_num * self.max_node_num
             else:
                 if self.as_image:
                     self.shape = [1, 1,self.number_of_upper_entries]
+                    self.shape_ = self.shape
                     self.C, self.H, self.W = self.shape[0], self.shape[1], self.shape[2]
                     self.D = self.C * self.H * self.W
                 else:
-                    self.shape = [self.number_of_upper_entries]
-                    self.C, self.H, self.W = None, None, None
+                    self.shape = [1,1,self.number_of_upper_entries]
+                    self.shape_ = [self.number_of_upper_entries]
+
+                    self.C, self.H, self.W = self.shape[0], self.shape[1], self.shape[2]
                     self.D = self.max_node_num * self.max_node_num
         else:
             if self.full_adjacency:
                 if self.as_image:
                     self.shape = [1,self.max_node_num,self.max_node_num]
+                    self.shape_ = self.shape
                     self.C, self.H, self.W = self.shape[0], self.shape[1], self.shape[2]
                     self.D = self.C * self.H * self.W
                 else:
-                    self.shape = [self.max_node_num, self.max_node_num]
+                    self.shape_ = [self.max_node_num, self.max_node_num]
+                    self.shape = [1,1,self.max_node_num, self.max_node_num]
                     self.H, self.W =  self.shape[0], self.shape[1]
                     self.C = None
                     self.D = self.H * self.W
@@ -80,6 +87,7 @@ class GraphDataConfig:
         self.number_of_nodes = self.max_node_num
         self.number_of_spins = self.D
         self.number_of_states = self.S
+        self.data_min_max = [0,1]
         self.get_upper_diagonal()
 
     def get_upper_diagonal(self):
@@ -226,7 +234,7 @@ class GraphSpinsDataLoaderConfig:
 if __name__=="__main__":
 
     #================================
-    # full matrix
+    # upper half adjacency
     #================================
 
     graph_config = EgoConfig(full_adjacency=False,flatten_adjacency=True,as_image=True)
@@ -234,12 +242,6 @@ if __name__=="__main__":
 
     graph_config = EgoConfig(full_adjacency=False,flatten_adjacency=True,as_image=False)
     print(graph_config.shape)
-
-    #graph_config = EgoConfig(full_adjacency=False,flatten_adjacency=False,as_image=True)
-    #print(graph_config.shape)
-
-    #graph_config = EgoConfig(full_adjacency=False,flatten_adjacency=False,as_image=False)
-    #print(graph_config.shape)
 
     # ================================
     # full matrix

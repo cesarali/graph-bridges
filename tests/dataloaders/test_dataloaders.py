@@ -5,7 +5,7 @@ from graph_bridges.data.graph_dataloaders import BridgeGraphDataLoaders
 from graph_bridges.configs.graphs.config_sb import BridgeConfig
 if __name__=="__main__":
     #================================
-    # full matrix
+    # upper diagonal matrix
     #================================
 
     device = torch.device("cpu")
@@ -14,58 +14,68 @@ if __name__=="__main__":
 
     bridge_config = BridgeConfig(experiment_indentifier="debug")
 
-
-    graph_config = EgoConfig(full_adjacency=False,flatten_adjacency=True,as_image=True)
-    bridge_config.data = graph_config
-    bridge_graph_dataloader = BridgeGraphDataLoaders(bridge_config,device)
-    databatch = next(bridge_graph_dataloader.train().__iter__())
-    adj,features = databatch[0],databatch[1]
-
-    print(graph_config.shape)
-    print(adj.shape)
+    #graph_config = EgoConfig(full_adjacency=False,flatten_adjacency=True,as_image=True)
+    #bridge_config.data = graph_config
+    #bridge_graph_dataloader = BridgeGraphDataLoaders(bridge_config,device)
+    #databatch = next(bridge_graph_dataloader.train().__iter__())
+    #adj,features = databatch[0],databatch[1]
+    #print(graph_config.shape_)
+    #print(adj.shape)
+    #graph_ = bridge_graph_dataloader.transform_to_graph(adj)
+    #print(graph_.shape)
 
     graph_config = EgoConfig(full_adjacency=False,flatten_adjacency=True,as_image=False)
     bridge_config.data = graph_config
     bridge_graph_dataloader = BridgeGraphDataLoaders(bridge_config,device)
     databatch = next(bridge_graph_dataloader.train().__iter__())
     adj,features = databatch[0],databatch[1]
-
-    print(graph_config.shape)
+    print(graph_config.shape_)
     print(adj.shape)
+    graph_ = bridge_graph_dataloader.transform_to_graph(adj)
+    print(graph_.shape)
 
-    graph_config = EgoConfig(full_adjacency=True,flatten_adjacency=True, as_image=True)
-    bridge_config.data = graph_config
-    bridge_graph_dataloader = BridgeGraphDataLoaders(bridge_config,device)
-    databatch = next(bridge_graph_dataloader.train().__iter__())
-    adj,features = databatch[0],databatch[1]
+    #================================
+    # full matrix
+    #================================
 
-    print(graph_config.shape)
-    print(adj.shape)
+    #graph_config = EgoConfig(full_adjacency=True,flatten_adjacency=True, as_image=True)
+    #bridge_config.data = graph_config
+    #bridge_graph_dataloader = BridgeGraphDataLoaders(bridge_config,device)
+    #databatch = next(bridge_graph_dataloader.train().__iter__())
+    #adj,features = databatch[0],databatch[1]
+    #print(graph_config.shape_)
+    #print(adj.shape)
+    #graph_ = bridge_graph_dataloader.transform_to_graph(adj)
+    #print(graph_.shape)
 
-    graph_config = EgoConfig(full_adjacency=True,flatten_adjacency=True, as_image=False)
-    bridge_config.data = graph_config
-    bridge_graph_dataloader = BridgeGraphDataLoaders(bridge_config,device)
-    databatch = next(bridge_graph_dataloader.train().__iter__())
-    adj,features = databatch[0],databatch[1]
+    #graph_config = EgoConfig(full_adjacency=True,flatten_adjacency=True, as_image=False)
+    #bridge_config.data = graph_config
+    #bridge_graph_dataloader = BridgeGraphDataLoaders(bridge_config,device)
+    #databatch = next(bridge_graph_dataloader.train().__iter__())
+    #adj,features = databatch[0],databatch[1]
 
-    print(graph_config.shape)
-    print(adj.shape)
+    #print(graph_config.shape_)
+    #print(adj.shape)
+    #graph_ = bridge_graph_dataloader.transform_to_graph(adj)
+    #print(graph_.shape)
 
-    graph_config = EgoConfig(full_adjacency=True,flatten_adjacency=False, as_image=True)
-    bridge_config.data = graph_config
-    bridge_graph_dataloader = BridgeGraphDataLoaders(bridge_config,device)
-    databatch = next(bridge_graph_dataloader.train().__iter__())
-    adj,features = databatch[0],databatch[1]
+    #graph_config = EgoConfig(full_adjacency=True,flatten_adjacency=False, as_image=True)
+    #bridge_config.data = graph_config
+    #bridge_graph_dataloader = BridgeGraphDataLoaders(bridge_config,device)
+    #databatch = next(bridge_graph_dataloader.train().__iter__())
+    #adj,features = databatch[0],databatch[1]
+    #print(graph_config.shape_)
+    #print(adj.shape)
+    #graph_ = bridge_graph_dataloader.transform_to_graph(adj)
+    #print(graph_.shape)
 
-    print(graph_config.shape)
-    print(adj.shape)
+    #graph_config = EgoConfig(full_adjacency=True,flatten_adjacency=False, as_image=False,as_spins=False)
+    #bridge_config.data = graph_config
+    #bridge_graph_dataloader = BridgeGraphDataLoaders(bridge_config,device)
+    #databatch = next(bridge_graph_dataloader.train().__iter__())
+    #adj,features = databatch[0],databatch[1]
 
-    graph_config = EgoConfig(full_adjacency=True,flatten_adjacency=False, as_image=False,as_spins=False)
-    bridge_config.data = graph_config
-    bridge_graph_dataloader = BridgeGraphDataLoaders(bridge_config,device)
-    databatch = next(bridge_graph_dataloader.train().__iter__())
-    adj,features = databatch[0],databatch[1]
-
-    print(graph_config.shape)
-    print(adj.shape)
-    print(adj[0])
+    #print(graph_config.shape_)
+    #print(adj.shape)
+    #graph_ = bridge_graph_dataloader.transform_to_graph(adj)
+    #print(graph_.shape)

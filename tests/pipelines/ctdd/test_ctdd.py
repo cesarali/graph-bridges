@@ -10,3 +10,4 @@ if __name__=="__main__":
     ctdd.create_from_config(config,device)
 
     x = ctdd.pipeline(ctdd.model)
+    print(x.shape)

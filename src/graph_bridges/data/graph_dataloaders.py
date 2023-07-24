@@ -22,7 +22,7 @@ def from_networkx_to_spins(graph_,upper_diagonal_indices,full_adjacency=False):
 
 
 # Create a custom transformation class
-class UpperDiagonalIndicesTransform:
+class ToUpperDiagonalIndicesTransform:
 
     def __call__(self, tensor):
         if  len(tensor.shape) == 3:
@@ -33,6 +33,29 @@ class UpperDiagonalIndicesTransform:
             return upper_diagonal_entries
         else:
             raise Exception("Wrong Tensor Shape in Transform")
+
+class FromUpperDiagonalTransform:
+
+    def __call__(self, upper_diagonal_tensor):
+        assert len(upper_diagonal_tensor.shape) == 2
+        number_of_upper_entries = upper_diagonal_tensor.shape[1]
+        batch_size = upper_diagonal_tensor.shape[0]
+
+        matrix_size = int(.5 * (1 + np.sqrt(1 + 8 * number_of_upper_entries)))
+
+        # Create a zero-filled tensor to hold the full matrices
+        full_matrices = torch.zeros(batch_size, matrix_size, matrix_size)
+
+        # Get the indices for the upper diagonal part of the matrices
+        upper_tri_indices = torch.triu_indices(matrix_size, matrix_size, offset=1)
+
+        # Fill the upper diagonal part of the matrices
+        full_matrices[:, upper_tri_indices[0], upper_tri_indices[1]] = upper_diagonal_tensor
+
+        # Transpose and fill the lower diagonal part to make the matrices symmetric
+        full_matrices = full_matrices + full_matrices.transpose(1, 2)
+
+        return full_matrices
 
 class UnsqueezeTensorTransform:
 
@@ -54,31 +77,47 @@ class SpinsToBinaryTensor:
         return binary_tensor
 
 def get_transforms(config:GraphDataConfig):
-    flatten_transform = transforms.Lambda(lambda x: x.reshape(x.shape[0], -1))
+    """
+    :param config:
+
+    :return: transform_list,inverse_transform_list
+    """
+    SqueezeTransform = transforms.Lambda(lambda x: x.squeeze())
+    FlattenTransform = transforms.Lambda(lambda x: x.reshape(x.shape[0], -1))
+    UnFlattenTransform = transforms.Lambda(lambda x: x.reshape(x.shape[0],
+                                                               int(np.sqrt(x.shape[1])),
+                                                               int(np.sqrt(x.shape[1]))))
+
     if config.flatten_adjacency:
         if config.full_adjacency:
             if config.as_image:
-                transform_list = [flatten_transform,UnsqueezeTensorTransform(1),UnsqueezeTensorTransform(1)]
+                transform_list = [FlattenTransform,UnsqueezeTensorTransform(1),UnsqueezeTensorTransform(1)]
+                inverse_transform_list = [SqueezeTransform,UnFlattenTransform]
             else:
-                transform_list = [flatten_transform]
+                transform_list = [FlattenTransform]
+                inverse_transform_list = [UnFlattenTransform]
         else:
             if config.as_image:
-                transform_list = [UpperDiagonalIndicesTransform(),UnsqueezeTensorTransform(1),UnsqueezeTensorTransform(1)]
+                transform_list = [ToUpperDiagonalIndicesTransform(), UnsqueezeTensorTransform(1), UnsqueezeTensorTransform(1)]
+                inverse_transform_list = [SqueezeTransform,FromUpperDiagonalTransform()]
             else:
-                transform_list = [UpperDiagonalIndicesTransform()]
+                transform_list = [ToUpperDiagonalIndicesTransform()]
+                inverse_transform_list = [FromUpperDiagonalTransform()]
     else:
         if config.full_adjacency:
             if config.as_image:
                 transform_list = [UnsqueezeTensorTransform(1)]
+                inverse_transform_list = [SqueezeTransform]
             else:
                 transform_list = []
+                inverse_transform_list = []
         else:  # no flatten no full adjacency
             raise Exception("No Flatten and No Full Adjacency incompatible for data")
 
     if config.as_spins:
         transform_list.append(BinaryTensorToSpinsTransform())
 
-    return transform_list
+    return transform_list,inverse_transform_list
 
 
 class BridgeGraphDataLoaders:
@@ -96,8 +135,9 @@ class BridgeGraphDataLoaders:
         #config.max_node_num
         self.graph_data_config = config.data
         self.device = device
-        transform_list = get_transforms(self.graph_data_config)
-        composed_transform = transforms.Compose(transform_list)
+        transform_list,inverse_transform_list = get_transforms(self.graph_data_config)
+        self.composed_transform = transforms.Compose(transform_list)
+        self.transform_to_graph = transforms.Compose(inverse_transform_list)
 
         train_graph_list, test_graph_list = self.read_graph_lists()
 
@@ -106,7 +146,7 @@ class BridgeGraphDataLoaders:
                                                                              self.graph_data_config.max_node_num,
                                                                              self.graph_data_config.max_feat_num)
 
-        train_adjs_tensor = composed_transform(train_adjs_tensor)
+        train_adjs_tensor = self.composed_transform(train_adjs_tensor)
 
         self.train_dataloader_ = self.create_dataloaders(train_adjs_tensor,train_x_tensor)
 
@@ -116,7 +156,7 @@ class BridgeGraphDataLoaders:
                                                                            self.graph_data_config.max_feat_num)
 
 
-        test_adjs_tensor = composed_transform(test_adjs_tensor)
+        test_adjs_tensor = self.composed_transform(test_adjs_tensor)
 
         self.test_dataloader_ = self.create_dataloaders(test_adjs_tensor,test_x_tensor)
 
@@ -125,7 +165,6 @@ class BridgeGraphDataLoaders:
 
     def test(self):
         return self.test_dataloader_
-
 
     def create_dataloaders(self,x_tensor, adjs_tensor):
         train_ds = TensorDataset(x_tensor, adjs_tensor)
@@ -206,24 +245,18 @@ if __name__=="__main__":
     databatch = next(train_loader.__iter__())
     device = torch.device("cpu")
 
-    """
-    """
-
     bridge_config = BridgeConfig(experiment_indentifier="debug")
-    data_config = CommunityConfig()
+    data_config = CommunityConfig(full_adjacency=False,flatten_adjacency=True,as_image=True)
     bridge_config.data = data_config
     bridge_graph_dataloader = BridgeGraphDataLoaders(bridge_config,device)
 
     databatch = next(bridge_graph_dataloader.train().__iter__())
     adj = databatch[0]
     features = databatch[1]
-
+    print(adj.shape)
 
     transform_list = get_transforms(data_config)
     composed_transform = transforms.Compose(transform_list)
-    transformed_tensor_list = composed_transform(adj)
 
-    print(transformed_tensor_list.shape)
-    print(data_config.shape)
 
 
