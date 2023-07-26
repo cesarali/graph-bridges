@@ -34,4 +34,4 @@ class GaussianTargetRateConfig:
         self.time_base = time_base
 
 
-reference_process_configs = {"GaussianTargetRate":GaussianTargetRateConfig}
+all_reference_process_configs = {"GaussianTargetRate":GaussianTargetRateConfig}

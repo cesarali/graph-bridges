@@ -10,8 +10,6 @@ import subprocess
 import json
 import numpy as np
 from pathlib import Path
-from graph_bridges.data.dataloaders_config import GraphSpinsDataLoaderConfig
-from pprint import pprint
 
 data_path = Path(data_path)
 graph_data_path = data_path / "raw" / "graph"
@@ -38,7 +36,8 @@ class GraphDataConfig:
     number_of_states: int = None
 
     shape : List[int] = None
-    upper_diagonal_indices: np.array = None
+    #upper_diagonal_indices: np.array = None
+    preprocess_datapath:str = "graphs"
 
     def __post_init__(self):
         self.number_of_upper_entries = int(self.max_node_num*(self.max_node_num-1)*.5)
@@ -88,10 +87,7 @@ class GraphDataConfig:
         self.number_of_spins = self.D
         self.number_of_states = self.S
         self.data_min_max = [0,1]
-        self.get_upper_diagonal()
-
-    def get_upper_diagonal(self):
-        self.upper_diagonal_indices = np.triu_indices(self.number_of_nodes, k=1)
+        #self.get_upper_diagonal()
 
 @dataclass
 class EgoConfig(GraphDataConfig):
@@ -151,11 +147,12 @@ class ZincConfig(GraphDataConfig):
     max_feat_num: int = 9
     init: str = 'atom'
 
-
 @dataclass
 class TargetConfig:
     # doucet variables
     name : str = 'DoucetTargetData'
+    data : str = 'DoucetTargetData'
+
     root : str = "datasets_folder"
     train : bool = True
     download : bool = True
@@ -164,10 +161,10 @@ class TargetConfig:
     shuffle : bool = True
 
     shape : List[int] = field(default_factory=lambda : [1,1,45])
-    C: int = field(init=False)
-    H: int = field(init=False)
-    W: int = field(init=False)
-    D :int = field(init=False)
+    C: int = None
+    H: int = None
+    W: int = None
+    D :int = None
 
     random_flips : int = True
 
@@ -185,12 +182,10 @@ class TargetConfig:
         self.C, self.H, self.W = self.shape[0], self.shape[1], self.shape[2]
         self.D = self.C * self.H * self.W
 
-
 @dataclass
 class GraphSpinsDataLoaderConfig:
-
-
     name:str = "GraphSpinsDataLoader"
+    data:str = "GraphSpinsDataLoader"
     graph_type:str = 'lobster'
     remove:bool = False
     training_proportion:float = 0.8
@@ -229,6 +224,16 @@ class GraphSpinsDataLoaderConfig:
         self.possible_params_dict = {'n': np.arange(5, 16).tolist(),
                                      'p1': [0.7],
                                      'p2': [0.5]}
+
+
+all_dataloaders_configs = {"ego_small":EgoConfig,
+                           "community_small":CommunityConfig,
+                           "grid":GridConfig,
+                           "ENZYMES":EnzymesConfig,
+                           "QM9":QM9Config,
+                           "ZINC250k":ZincConfig,
+                           "GraphSpinsDataLoader":GraphSpinsDataLoaderConfig,
+                           "DoucetTargetData":TargetConfig}
 
 
 if __name__=="__main__":

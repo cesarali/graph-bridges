@@ -9,7 +9,6 @@ from graph_bridges.data.graph_dataloaders import load_data
 
 
 if __name__=="__main__":
-
     from graph_bridges.models.backward_rates.backward_rate_config import BackRateMLPConfig,GaussianTargetRateImageX0PredEMAConfig
     from graph_bridges.models.backward_rates.backward_rate import all_backward_rates
     from graph_bridges.data.dataloaders_config import GraphSpinsDataLoaderConfig
@@ -57,8 +56,6 @@ if __name__=="__main__":
     #model = all_backward_rates[config.model.name](config,device)
 
     bridge_config.model = GaussianTargetRateImageX0PredEMAConfig()
-
-
     databatch = next(bridge_graph_dataloader.train().__iter__())
     adj = databatch[0]
     features = databatch[1]

@@ -15,15 +15,14 @@ from abc import ABC, abstractmethod
 from torch.distributions import Bernoulli
 from graph_bridges.data.datasets import DictDataSet
 from torch.utils.data import TensorDataset,DataLoader,random_split
-from graph_bridges.data.dataloaders_utils import register_dataloader
-from graph_bridges.configs.graphs.lobster.config_base import BridgeConfig
+from graph_bridges.configs.graphs.config_sb import BridgeConfig
 from graph_bridges.utils.spin_utils import bool_to_spins, spins_to_bool,flip_and_copy_bool
 from graph_bridges.data.graph_generators import gen_graph_list
 from dataclasses import dataclass
 
 from graph_bridges.data.dataloaders_config import GraphSpinsDataLoaderConfig
 
-@register_dataloader
+
 class BaseDataLoader(ABC):
 
     name_="base_data_loader"
@@ -64,7 +63,6 @@ class BaseDataLoader(ABC):
     def test(self):
         return self._test_iter
 
-@register_dataloader
 class SpinsDataLoader(BaseDataLoader):
 
     name_ = "spins"
@@ -242,7 +240,6 @@ class SpinsDataLoader(BaseDataLoader):
 
         return probability_ratio
 
-@register_dataloader
 class GraphSpinsDataLoader(SpinsDataLoader):
     """
     databatch = next(dataloader.train().__iter__())
@@ -365,7 +362,6 @@ class BridgeDataLoader:
     def sample(self, num_of_paths:int, device=None) -> TensorType["num_of_paths","D"]:
         return None
 
-@register_dataloader
 class DoucetTargetData(BridgeDataLoader):
     doucet:bool = True
     def __init__(self,config:BridgeConfig,device,rank=None):

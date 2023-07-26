@@ -6,10 +6,10 @@ import os
 import subprocess
 import json
 from graph_bridges.data.dataloaders_config import GraphSpinsDataLoaderConfig
-from graph_bridges.models.reference_process.reference_process_config import GaussianTargetRateConfig, reference_process_configs
+from graph_bridges.models.reference_process.reference_process_config import GaussianTargetRateConfig, all_reference_process_configs
 from pathlib import Path
 
-from graph_bridges.models.backward_rates.backward_rate_config import BackRateMLPConfig,GaussianTargetRateImageX0PredEMAConfig,backward_rates_configs
+from graph_bridges.models.backward_rates.backward_rate_config import BackRateMLPConfig,GaussianTargetRateImageX0PredEMAConfig,all_backward_rates_configs
 
 def get_git_revisions_hash():
     hashes = []
@@ -90,7 +90,6 @@ class TargetConfig:
         self.C, self.H, self.W = self.shape[0], self.shape[1], self.shape[2]
         self.D = self.C * self.H * self.W
 
-
 @dataclass
 class ParametrizedSamplerConfig:
     """
@@ -118,14 +117,6 @@ class BackwardEstimatorConfig:
 
     name : str = "BackwardRatioSteinEstimator"
     dimension_to_check : int = None
-
-@dataclass
-class CTDDLossConfig:
-    name :str = 'GenericAux'
-    eps_ratio :float = 1e-9
-    nll_weight :float = 0.001
-    min_time :float = 0.01
-    one_forward_pass :bool = True
 
 @dataclass
 class SBSchedulerConfig:
@@ -166,7 +157,6 @@ class BridgeConfig:
     target : DataConfig =  DataConfig() # corresponds to the distribution at final time
     reference : GaussianTargetRateConfig =  GaussianTargetRateConfig()
     sampler : ParametrizedSamplerConfig =  ParametrizedSamplerConfig()
-    loss : CTDDLossConfig = CTDDLossConfig()
     stein : SteinSpinEstimatorConfig= SteinSpinEstimatorConfig()
     backward_estimator : BackwardEstimatorConfig = BackwardEstimatorConfig()
 
@@ -194,7 +184,7 @@ class BridgeConfig:
     def __post_init__(self):
         if isinstance(self.model,dict):
             model_name = self.model["name"]
-            self.model = backward_rates_configs[model_name](**self.model)
+            self.model = all_backward_rates_configs[model_name](**self.model)
         if isinstance(self.data,dict):
             if self.data["name"] == "GraphSpinsDataLoader":
                 self.data = GraphSpinsDataLoaderConfig(**self.data)
@@ -205,8 +195,6 @@ class BridgeConfig:
             self.reference = reference_process_configs[reference_name](**self.reference)
         if isinstance(self.sampler,dict):
             self.sampler = ParametrizedSamplerConfig(**self.sampler)
-        if isinstance(self.loss,dict):
-            self.loss = CTDDLossConfig(**self.loss)
         if isinstance(self.scheduler,dict):
             self.scheduler = SBSchedulerConfig(**self.scheduler)
         if isinstance(self.pipeline,dict):
@@ -282,7 +270,6 @@ def get_config_from_file(experiment_name,experiment_type,experiment_indentifier)
 if __name__=="__main__":
     from pprint import pprint
 
-    model_config = ModelConfig()
     data_config = DataConfig()
     bridge_config = BridgeConfig(delete=False)
     bridge_config2 = BridgeConfig(experiment_indentifier=None)

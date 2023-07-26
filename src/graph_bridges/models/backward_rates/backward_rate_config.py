@@ -24,7 +24,6 @@ class GaussianTargetRateImageX0PredEMAConfig:
     # arquitecture variables
     ema_decay : float = 0.9999  # 0.9999
     do_ema :bool = True
-    ch :int = 28
     num_res_blocks : int = 2
     num_scales :int = 4
     ch_mult : List[int]= field(default_factory=lambda:[1, 1, 1, 1])
@@ -45,7 +44,7 @@ class GaussianTargetRateImageX0PredEMAConfig:
     time_base :float = 1.0
 
     def __post_init__(self):
-        self.time_embed_dim = self.ch
+        self.ch = self.time_embed_dim
 
-backward_rates_configs = {"BackRateMLP":BackRateMLPConfig,
-                          "GaussianTargetRateImageX0PredEMA":GaussianTargetRateImageX0PredEMAConfig}
+all_backward_rates_configs = {"BackRateMLP":BackRateMLPConfig,
+                              "GaussianTargetRateImageX0PredEMA":GaussianTargetRateImageX0PredEMAConfig}

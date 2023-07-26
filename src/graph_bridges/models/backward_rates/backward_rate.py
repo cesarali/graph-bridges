@@ -158,7 +158,6 @@ class ImageX0PredBase(BackwardRate):
         S = self.S
         x = x.view(B, C, H, W)
 
-
         net_out = self.net(x, times) # (B, 2*C, H, W)
 
         # Truncated logistic output from https://arxiv.org/pdf/2107.03006.pdf
