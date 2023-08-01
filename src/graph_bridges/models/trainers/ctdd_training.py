@@ -12,6 +12,8 @@ from graph_bridges.models.metrics.ctdd_metrics import marginal_histograms_for_ct
 
 from graph_bridges.utils.plots.histograms_plots import plot_histograms
 from graph_bridges.utils.plots.graph_plots import plot_graphs_list2
+from datetime import datetime
+from tqdm import tqdm
 
 class Standard():
     def __init__(self, cfg):
@@ -134,13 +136,13 @@ class CTDDTrainer:
         B = x_adj.shape[0]
 
         # Sample a random timestep for each image
-        ts = torch.rand((B,), device=device) * (1.0 - config.loss.min_time) + config.loss.min_time
+        ts = torch.rand((B,), device=self.device) * (1.0 - self.config.loss.min_time) + self.config.loss.min_time
 
-        x_t, x_tilde, qt0, rate = self.ctdd.scheduler.add_noise(x_adj, self.ctdd.reference_process, ts, device, return_dict=False)
+        x_t, x_tilde, qt0, rate = self.ctdd.scheduler.add_noise(x_adj, self.ctdd.reference_process, ts, self.device, return_dict=False)
         x_logits, p0t_reg, p0t_sig, reg_x = current_model(x_adj, ts, x_tilde)
 
         self.optimizer.zero_grad()
-        loss_ = self.ctdd.loss(x_adj, x_tilde, qt0, rate, x_logits, reg_x, p0t_sig, p0t_reg, device)
+        loss_ = self.ctdd.loss(x_adj, x_tilde, qt0, rate, x_logits, reg_x, p0t_sig, p0t_reg, self.device)
         loss_.backward()
         self.optimizer.step()
 
@@ -148,12 +150,20 @@ class CTDDTrainer:
         self.writer.add_scalar('training loss', loss_.item(), number_of_training_step)
         return loss_
 
-    def test_step(self, current_model, databatch, number_of_test_step, sinkhorn_iteration=0):
+    def test_step(self, current_model, databatch, number_of_test_step):
         with torch.no_grad():
             databatch = self.preprocess_data(databatch)
-            loss = None
-            self.writer.add_scalar('test loss sinkhorn {0}'.format(sinkhorn_iteration), loss, number_of_test_step)
-        return loss
+            x_adj, x_features = databatch[0], databatch[1]
+            B = x_adj.shape[0]
+
+            # Sample a random timestep for each image
+            ts = torch.rand((B,), device=self.device) * (1.0 - self.config.loss.min_time) + self.config.loss.min_time
+            x_t, x_tilde, qt0, rate = self.ctdd.scheduler.add_noise(x_adj, self.ctdd.reference_process, ts, self.device,return_dict=False)
+            x_logits, p0t_reg, p0t_sig, reg_x = current_model(x_adj, ts, x_tilde)
+            loss_ = self.ctdd.loss(x_adj, x_tilde, qt0, rate, x_logits, reg_x, p0t_sig, p0t_reg, self.device)
+            self.writer.add_scalar('test loss', loss_, number_of_test_step)
+
+        return loss_
 
     def preprocess_data(self, databatch):
         return [databatch[0].to(self.device),
@@ -174,7 +184,7 @@ class CTDDTrainer:
         # INITIATE LOSS
         initial_loss = self.initialize()
         best_loss = initial_loss
-        """
+
         LOSS = []
         number_of_test_step = 0
         number_of_training_step = 0
@@ -182,43 +192,35 @@ class CTDDTrainer:
         for epoch in tqdm(range(self.number_of_epochs)):
             #TRAINING
             training_loss = []
-            for spins_path, times in sb.pipeline.paths_iterator(past_model,
-                                                                sinkhorn_iteration=sinkhorn_iteration,
-                                                                device=self.device,
-                                                                train=True):
+            for step, databatch in enumerate(self.ctdd.data_dataloader.train()):
 
-                loss = self.sb.backward_ration_stein_estimator.estimator(training_model,
-                                                                         past_loss,
-                                                                         spins_path,
-                                                                         times)
                 # DATA
-                #loss = self.train_step(current_model,
-                #                       past_to_train,
-                #                       databatch,
-                #                       number_of_training_step,
-                #                       sinkhorn_iteration)
+                loss = self.train_step(training_model,
+                                       databatch,
+                                       number_of_training_step)
 
                 training_loss.append(loss.item())
                 number_of_training_step += 1
                 LOSS.append(loss.item())
-
             training_loss_average = np.asarray(training_loss).mean()
 
             #VALIDATION
             validation_loss = []
-            for spins_path, times in sb.pipeline.paths_iterator(past_model,
-                                                                sinkhorn_iteration=sinkhorn_iteration,
-                                                                device=self.device,
-                                                                train=False):
-                loss = self.sb.backward_ration_stein_estimator.estimator(training_model,
-                                                                         past_loss,
-                                                                         spins_path,
-                                                                         times)
+            for step, databatch in enumerate(self.ctdd.data_dataloader.test()):
+                # DATA
+                loss = self.test_step(training_model,
+                                      databatch,
+                                      number_of_test_step)
+
+                training_loss.append(loss.item())
+                number_of_training_step += 1
+                LOSS.append(loss.item())
                 validation_loss.append(loss.item())
                 number_of_test_step +=1
             validation_loss_average = np.asarray(validation_loss).mean()
 
             # SAVE RESULTS IF LOSS DECREASES IN VALIDATION
+            """
             if validation_loss_average < best_loss:
                 self.save_results(training_model,
                                   past_model,
@@ -227,6 +229,7 @@ class CTDDTrainer:
                                   validation_loss_average,
                                   LOSS,
                                   sinkhorn_iteration)
+            """
 
             if epoch % 10 == 0:
                 print("Epoch: {}, Loss: {}".format(epoch + 1, training_loss_average))
@@ -237,7 +240,6 @@ class CTDDTrainer:
         #=====================================================
 
         self.writer.close()
-        """
         return best_loss
 
     def log_metrics(self,number_of_steps,device):
@@ -254,10 +256,10 @@ class CTDDTrainer:
         plot_histograms(marginal_histograms, plots_path=histograms_plot_path_)
 
         #METRICS
-        graph_metrics_path_ = config.experiment_files.metrics_file.format("graph_{0}".format(number_of_steps))
-        graph_metrics = graph_metrics_for_ctdd(self.ctdd, config)
-        with open(graph_metrics_path_, "w") as f:
-            json.dump(graph_metrics, f)
+        #graph_metrics_path_ = config.experiment_files.metrics_file.format("graph_{0}".format(number_of_steps))
+        #graph_metrics = graph_metrics_for_ctdd(self.ctdd, config)
+        #with open(graph_metrics_path_, "w") as f:
+        #    json.dump(graph_metrics, f)
 
         #PLOTS
         graph_plot_path_ = config.experiment_files.graph_plot_path.format("generative_{0}".format(number_of_steps))
@@ -268,14 +270,16 @@ class CTDDTrainer:
                      current_model,
                      initial_loss,
                      training_loss_average,
-                     validation_loss_average, LOSS):
+                     validation_loss_average,
+                     LOSS,
+                     number_of_training_step):
         RESULTS = {"current_model": current_model,
                    "initial_loss": initial_loss.item(),
                    "LOSS": LOSS,
                    "best_loss": validation_loss_average,
                    "training_loss": training_loss_average}
-        #torch.save(RESULTS,
-        #           self.best_model_path.format(sinkhorn_iteration))
+        torch.save(RESULTS,
+                   self.config.experiment_files.best_model_path_checkpoint.format(number_of_training_step))
 
 
 if __name__=="__main__":
@@ -295,7 +299,6 @@ if __name__=="__main__":
 
     ctdd = CTDD()
     ctdd.create_new_from_config(config,device)
-
 
     ctdd_trainer = CTDDTrainer(ctdd)
     ctdd_trainer.train_ctdd()
