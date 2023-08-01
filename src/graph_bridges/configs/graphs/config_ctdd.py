@@ -7,7 +7,6 @@ import os
 import torch
 
 
-
 from graph_bridges.data.graph_dataloaders_config import TargetConfig, CommunityConfig, GraphDataConfig
 from graph_bridges.data.graph_dataloaders_config import all_dataloaders_configs
 from graph_bridges.models.backward_rates.backward_rate_config import BackRateMLPConfig

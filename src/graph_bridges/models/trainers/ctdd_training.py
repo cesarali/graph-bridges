@@ -159,7 +159,7 @@ class CTDDTrainer:
         return [databatch[0].to(self.device),
                 databatch[1].to(self.device)]
 
-    def train_ctdd(self,past_loss=None):
+    def train_ctdd(self):
         """
         FORWARD  means sampling from p_0 (data) -> p_1 (target)
 
@@ -172,7 +172,7 @@ class CTDDTrainer:
         training_model = training_model.to(self.device)
 
         # INITIATE LOSS
-        initial_loss = self.initialize(training_model)
+        initial_loss = self.initialize()
         best_loss = initial_loss
         """
         LOSS = []
@@ -254,10 +254,10 @@ class CTDDTrainer:
         plot_histograms(marginal_histograms, plots_path=histograms_plot_path_)
 
         #METRICS
-        #graph_metrics_path_ = config.experiment_files.metrics_file.format("graph_{0}".format(number_of_steps))
-        #graph_metrics = graph_metrics_for_ctdd(self.ctdd, config)
-        #with open(graph_metrics_path_, "w") as f:
-        #    json.dump(graph_metrics, f)
+        graph_metrics_path_ = config.experiment_files.metrics_file.format("graph_{0}".format(number_of_steps))
+        graph_metrics = graph_metrics_for_ctdd(self.ctdd, config)
+        with open(graph_metrics_path_, "w") as f:
+            json.dump(graph_metrics, f)
 
         #PLOTS
         graph_plot_path_ = config.experiment_files.graph_plot_path.format("generative_{0}".format(number_of_steps))
@@ -298,5 +298,5 @@ if __name__=="__main__":
 
 
     ctdd_trainer = CTDDTrainer(ctdd)
-    ctdd_trainer.initialize()
+    ctdd_trainer.train_ctdd()
 

@@ -23,4 +23,4 @@ if __name__=="__main__":
 
     ctdd = CTDD()
     ctdd.create_new_from_config(config, device)
-    x = ctdd.pipeline(ctdd.model,36)
+    x = ctdd.pipeline(ctdd.model,sample_size=36)
