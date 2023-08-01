@@ -38,12 +38,21 @@ In order to set up the necessary environment:
    pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
     ```
    
-4. Install the project in edit mode:
+5. Install the project in edit mode:
 
     ```bash
     python setup.py develop
     pip install -e .
     ```
+
+6. create data folders in main directory:
+    `data`
+    `data/raw`
+    `data/preprocessed`
+    look at project organization below
+
+
+
 
 Optional and needed only once after `git clone`:
 
@@ -79,8 +88,6 @@ Then take a look into the `scripts` and `notebooks` folders.
 ├── README.md               <- The top-level README for developers.
 ├── configs                 <- Directory for configurations of model & application.
 ├── data
-│   ├── external            <- Data from third party sources.
-│   ├── interim             <- Intermediate data that has been transformed.
 │   ├── processed           <- The final, canonical data sets for modeling.
 │   └── raw                 <- The original, immutable data dump.
 ├── docs                    <- Directory for Sphinx documentation in rst or md.
