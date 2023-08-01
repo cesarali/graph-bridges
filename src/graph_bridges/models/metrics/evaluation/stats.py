@@ -200,7 +200,7 @@ def edge_list_reindexed(G):
     return edges
 
 
-def orca(graph,discrete_difussion=True):
+def orca(graph):
     tmp_file_path = ORCA_DIR / 'tmp.txt'
     f = open(tmp_file_path, 'w')
     f.write(str(graph.number_of_nodes()) + ' ' + str(graph.number_of_edges()) + '\n')
@@ -208,14 +208,14 @@ def orca(graph,discrete_difussion=True):
         f.write(str(u) + ' ' + str(v) + '\n')
     f.close()
 
-    if discrete_difussion:
-        command = 'orca.exe node 4 ./tmp.txt std' if 'exe' in os.listdir(ORCA_DIR) else 'orca node 4 ./tmp.txt std'
+    if 'exe' in os.listdir(ORCA_DIR):
+        command = 'orca.exe node 4 ./tmp.txt std'
         result = sp.run(command, shell=True, cwd=ORCA_DIR, stdout=sp.PIPE, stderr=sp.PIPE)
         output = result.stdout.decode('utf-8')
         COUNT_START_STR_  = COUNT_START_STR_DD
         split_string = '\r\n'
     else:
-        output = sp.check_output([os.path.join(ORCA_DIR, 'orca.exe'), 'node', '4', tmp_file_path, 'std'])
+        output = sp.check_output([os.path.join(ORCA_DIR, 'orca'), 'node', '4', tmp_file_path, 'std'])
         output = output.decode('utf8').strip()
         COUNT_START_STR_ = COUNT_START_STR
         split_string = '\n'
