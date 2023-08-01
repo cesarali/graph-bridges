@@ -342,7 +342,6 @@ def eval_torch_batch(ref_batch, pred_batch, methods=None):
 def eval_graph_list(graph_ref_list, grad_pred_list, methods=None):
     if methods is None:
         methods = ['degree', 'cluster', 'orbit']
-        #methods = ['orbit']
     results = {}
     for method in methods:
         results[method] = METHOD_NAME_TO_FUNC[method](graph_ref_list, grad_pred_list)

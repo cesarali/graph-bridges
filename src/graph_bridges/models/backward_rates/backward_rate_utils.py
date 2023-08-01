@@ -1,16 +1,15 @@
-_MODELS = {}
+import torch
 
-def register_model(cls):
-    name = cls.__name__
-    if name in _MODELS:
-        raise ValueError(f'{name} is already registered!')
-    _MODELS[name] = cls
-    return cls
+from graph_bridges.models.backward_rates.backward_rate import BackRateMLP, GaussianTargetRateImageX0PredEMA
+from typing import Union
 
-def get_model(name):
-    return _MODELS[name]
 
-def create_model(cfg, device, rank=None):
-    model = get_model(cfg.model.name)(cfg, device, rank)
-    model = model.to(device)
-    return model
+def load_backward_rates(config,device:torch.device):
+    if config.model.name == "BackRateMLP":
+        backward_rate = BackRateMLP(config,device)
+    elif config.model.name == "GaussianTargetRateImageX0PredEMA":
+        backward_rate = GaussianTargetRateImageX0PredEMA(config,device)
+    else:
+        raise Exception("{0} backward rate not implemented".format(config.model.name))
+
+    return backward_rate

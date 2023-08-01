@@ -33,13 +33,6 @@ class ParametrizedSamplerConfig:
     corrector_entry_time:float = 0.1
 
 @dataclass
-class SteinSpinEstimatorConfig:
-
-    name : str = "SteinSpinEstimator"
-    stein_epsilon :float = 1e-3
-    stein_sample_size :int = 150
-
-@dataclass
 class BackwardEstimatorConfig:
 
     name : str = "BackwardRatioSteinEstimator"
@@ -64,7 +57,6 @@ class CTDDPipelineConfig:
 @dataclass
 class TrainerConfig:
     number_of_paths : int = 10
-    number_of_sinkhorn : int = 1
 
     optimizer_name :str = 'AdamW'
     max_n_iters :int = 10000
@@ -154,7 +146,7 @@ class CTDDConfig:
         config_as_dict = asdict(self)
         config_as_dict["experiment_files"]["results_dir"] = str(config_as_dict["experiment_files"]["results_dir"])
         config_as_dict["data"]["dir"] = str(config_as_dict["data"]["dir"])
-        with open(config.experiment_files.config_path, "w") as file:
+        with open(self.experiment_files.config_path, "w") as file:
             json.dump(config_as_dict, file)
 
     def align_configurations(self):
@@ -163,7 +155,14 @@ class CTDDConfig:
         self.data.as_spins = False
 
         # data distributions matches at the end
-        self.data.batch_size = self.target.batch_size
+        self.target.batch_size = self.data.batch_size
+
+        # target
+        self.target.S = self.data.S
+        self.target.D = self.data.D
+        self.target.C = self.data.C
+        self.target.H = self.data.H
+        self.target.W = self.data.W
 
         # model matches reference process
         self.reference.initial_dist = self.model.initial_dist
@@ -180,9 +179,10 @@ class CTDDConfig:
         self.results_dir = self.experiment_files.results_dir
 
         self.experiment_files.data_stats = os.path.join(self.data.preprocess_datapath, "data_stats.json")
-        self.experiment_files.best_model_path_checkpoint = os.path.join(self.results_dir, "sinkhorn_{0}_checkpoint_{1}.tr")
-        self.experiment_files.best_model_path = os.path.join(self.results_dir, "sinkhorn_{0}.tr")
-        self.experiment_files.sinkhorn_plot_path = os.path.join(self.results_dir, "marginal_at_site_sinkhorn_{0}.png")
+        self.experiment_files.best_model_path_checkpoint = os.path.join(self.results_dir, "model_checkpoint_{1}.tr")
+        self.experiment_files.best_model_path = os.path.join(self.results_dir, "best_model.tr")
+        self.experiment_files.plot_path = os.path.join(self.results_dir, "marginal_at_site_{0}.png")
+        self.experiment_files.graph_plot_path = os.path.join(self.results_dir, "graph_plots_{0}.png")
 
 def get_config_from_file(experiment_name,experiment_type,experiment_indentifier)->CTDDConfig:
     from graph_bridges import results_path
@@ -208,7 +208,7 @@ if __name__=="__main__":
     from graph_bridges.models.backward_rates.backward_rate_config import BackRateMLPConfig, GaussianTargetRateImageX0PredEMAConfig
 
     device = torch.device("cpu")
-
+    """
     config = CTDDConfig(experiment_indentifier="test_1")
     config.data = EgoConfig(as_image=False, batch_size=32, full_adjacency=False)
     config.model = GaussianTargetRateImageX0PredEMAConfig(time_embed_dim=32, fix_logistic=False)
@@ -218,6 +218,7 @@ if __name__=="__main__":
     config.data = EgoConfig(as_image=False, batch_size=32, full_adjacency=True)
     config.model = GaussianTargetRateImageX0PredEMAConfig(time_embed_dim=64, fix_logistic=True)
     config.initialize_new_experiment()
-
+    """
     config = get_config_from_file("graph","ctdd","test_2")
     pprint(asdict(config))
+    config.initialize_new_experiment(experiment_indentifier="test_3")

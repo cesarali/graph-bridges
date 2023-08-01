@@ -4,7 +4,7 @@ from pathlib import Path
 from pprint import pprint
 from dataclasses import dataclass, asdict
 from graph_bridges.models.backward_rates.backward_rate import BackwardRate
-from graph_bridges.data.graph_dataloaders import load_data
+from graph_bridges.data.dataloaders_utils import load_dataloader
 
 
 

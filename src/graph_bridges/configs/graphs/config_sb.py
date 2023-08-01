@@ -192,7 +192,7 @@ class BridgeConfig:
             self.target = DataConfig(**self.target)  # corresponds to the distribution at final time
         if isinstance(self.reference,dict):
             reference_name = self.reference["name"]
-            self.reference = reference_process_configs[reference_name](**self.reference)
+            self.reference = all_reference_process_configs[reference_name](**self.reference)
         if isinstance(self.sampler,dict):
             self.sampler = ParametrizedSamplerConfig(**self.sampler)
         if isinstance(self.scheduler,dict):

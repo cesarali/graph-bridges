@@ -7,9 +7,8 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 from dataclasses import dataclass,asdict,field
 
 from abc import ABC,abstractmethod
-from graph_bridges.models.backward_rates import backward_rate_utils
 from graph_bridges.models.networks_arquitectures import networks
-from graph_bridges.configs.graphs.lobster.config_base import BridgeConfig
+from graph_bridges.configs.graphs.config_sb import BridgeConfig
 
 from torchtyping import TensorType
 from graph_bridges.models.networks_arquitectures.network_utils import transformer_timestep_embedding
@@ -284,7 +283,6 @@ class EMA():
             self.move_shadow_params_to_model_params()
 
 
-@backward_rate_utils.register_model
 class BackRateMLP(EMA,BackwardRate,GaussianTargetRate):
 
     def __init__(self,config,device,rank=None):
@@ -333,7 +331,6 @@ class BackRateMLP(EMA,BackwardRate,GaussianTargetRate):
         nn.init.xavier_uniform_(self.f1.weight)
         nn.init.xavier_uniform_(self.f2.weight)
 
-@backward_rate_utils.register_model
 class BackRateConstant(EMA,BackwardRate,GaussianTargetRate):
 
     def __init__(self,config,device,rank=None,constant=10.):
@@ -377,7 +374,6 @@ class BackRateConstant(EMA,BackwardRate,GaussianTargetRate):
 
 # make sure EMA inherited first, so it can override the state dict functions
 
-@backward_rate_utils.register_model
 class GaussianTargetRateImageX0PredEMA(EMA,ImageX0PredBase,GaussianTargetRate):
     def __init__(self, cfg, device, rank=None):
         EMA.__init__(self, cfg)

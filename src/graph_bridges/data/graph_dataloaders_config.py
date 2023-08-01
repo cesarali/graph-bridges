@@ -34,11 +34,11 @@ class GraphDataConfig:
     S: int = None
     number_of_spins: int = None
     number_of_states: int = None
+    total_data_size:int = 200
 
     shape : List[int] = None
-    #upper_diagonal_indices: np.array = None
     preprocess_datapath:str = "graphs"
-
+    doucet:bool = False
     def __post_init__(self):
         self.number_of_upper_entries = int(self.max_node_num*(self.max_node_num-1)*.5)
 
@@ -65,7 +65,7 @@ class GraphDataConfig:
                     self.shape_ = [self.number_of_upper_entries]
 
                     self.C, self.H, self.W = self.shape[0], self.shape[1], self.shape[2]
-                    self.D = self.max_node_num * self.max_node_num
+                    self.D = self.number_of_upper_entries
         else:
             if self.full_adjacency:
                 if self.as_image:
@@ -78,7 +78,7 @@ class GraphDataConfig:
                     self.shape = [1,1,self.max_node_num, self.max_node_num]
                     self.H, self.W =  self.shape[0], self.shape[1]
                     self.C = None
-                    self.D = self.H * self.W
+                    self.D = self.max_node_num * self.max_node_num
             else: # no flatten no full adjacency
                 raise Exception("No Flatten and No Full Adjacency incompatible for data")
 
@@ -87,8 +87,9 @@ class GraphDataConfig:
         self.number_of_spins = self.D
         self.number_of_states = self.S
         self.data_min_max = [0,1]
-        #self.get_upper_diagonal()
-
+        if self.as_spins:
+            self.doucet = False
+        self.training_proportion = 1. - self.test_split
 @dataclass
 class EgoConfig(GraphDataConfig):
     data: str =  "ego_small"
@@ -97,6 +98,7 @@ class EgoConfig(GraphDataConfig):
     test_split: float = 0.2
     max_node_num: int = 18
     max_feat_num: int = 17
+    total_data_size:int = 200
     init: str = "deg"
 
 @dataclass

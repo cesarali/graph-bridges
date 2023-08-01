@@ -209,30 +209,19 @@ class SpinBernoulliMarginal(SpinDataloaderMetric):
 
 
 if __name__=="__main__":
-    from graph_bridges.configs.graphs.config_sb import BridgeConfig
     from graph_bridges.data.dataloaders_config import GraphSpinsDataLoaderConfig
+    from graph_bridges.configs.graphs.config_sb import BridgeConfig
     from graph_bridges.data.dataloaders import GraphSpinsDataLoader
+    from graph_bridges.configs.graphs.config_ctdd import CTDDConfig
+    from graph_bridges.data.graph_dataloaders_config import EgoConfig
+
+    from graph_bridges.data.dataloaders_utils import load_dataloader
 
     device = torch.device("cpu")
 
-    data_config = GraphSpinsDataLoaderConfig()
-    data_config.doucet = False
-    data_loader = GraphSpinsDataLoader(data_config, device, 0)
-    x_spins = next(data_loader.train().__iter__())[0]
-    print(x_spins.shape)
-    print(x_spins[0])
+    ctdd_config = CTDDConfig()
+    ctdd_config.data = EgoConfig(as_image=False)
 
+    data_loader = load_dataloader(ctdd_config,type="data",device=device)
+    marginal_0 = SpinBernoulliMarginal(spin_dataloader=data_loader)()
 
-    bernoulli_marginal = SpinBernoulliMarginal(spin_dataloader=data_loader)
-    marginal_0 = bernoulli_marginal()
-
-    print(marginal_0)
-
-    """
-    data_config = GraphSpinsDataLoaderConfig()
-    data_config.doucet = True
-    data_loader = GraphSpinsDataLoader(data_config, device, 0)
-    x_spins = next(data_loader.train().__iter__())[0]
-    print(x_spins.shape)
-    print(x_spins[0])
-    """

@@ -150,7 +150,7 @@ class CTDDPipeline(DiffusionPipeline):
     def __call__(
         self,
         model: Optional[BackwardRate] = None,
-        sinkhorn_iteration = 0,
+        sample_size = None,
         return_dict: bool = True,
         device :torch.device = None,
     ) -> Union[ImagePipelineOutput, Tuple]:
@@ -163,7 +163,11 @@ class CTDDPipeline(DiffusionPipeline):
         :return:
         """
         # Sample gaussian noise to begin loop
-        num_of_paths = self.bridge_config.number_of_paths
+        if sample_size is None:
+            num_of_paths = self.bridge_config.number_of_paths
+        else:
+            num_of_paths = sample_size
+
         x = self.target.sample(num_of_paths, device)
 
         # set step values

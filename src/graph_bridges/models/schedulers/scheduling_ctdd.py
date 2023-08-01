@@ -21,18 +21,16 @@ import torch
 import torch.functional as F
 
 
-from diffusers.utils import BaseOutput, randn_tensor
+from diffusers.utils import BaseOutput
 from diffusers.configuration_utils import ConfigMixin, register_to_config
 from diffusers.schedulers.scheduling_utils import KarrasDiffusionSchedulers, SchedulerMixin
 
-from graph_bridges.models.reference_process.ctdd_reference import ReferenceProcess
 from graph_bridges.models.schedulers.scheduling_utils import register_scheduler
-from graph_bridges.configs.graphs.lobster.config_base import BridgeConfig
+from graph_bridges.configs.graphs.config_sb import BridgeConfig
 from graph_bridges.models.backward_rates.backward_rate import GaussianTargetRateImageX0PredEMA
-from graph_bridges.data.dataloaders import DoucetTargetData, GraphSpinsDataLoader
+from graph_bridges.data.dataloaders import GraphSpinsDataLoader
 from graph_bridges.models.reference_process.ctdd_reference import ReferenceProcess
 from graph_bridges.models.losses.ctdd_losses import GenericAux
-from graph_bridges.data.dataloaders_config import GraphSpinsDataLoaderConfig
 
 
 @dataclass
@@ -201,7 +199,8 @@ class CTDDScheduler(SchedulerMixin, ConfigMixin):
             returning a tuple, the first element is the sample tensor.
         """
         S = self.cfg.data.S
-        if len(original_samples.shape) == 4:
+        minibatch = original_samples
+        if len(minibatch.shape) == 4:
             B, C, H, W = original_samples.shape
             minibatch = original_samples.view(B, C * H * W)
         B, D = minibatch.shape
@@ -257,43 +256,3 @@ class CTDDScheduler(SchedulerMixin, ConfigMixin):
                                         x_tilde=x_tilde,
                                         qt0=qt0,
                                         rate=rate)
-
-
-if __name__ == "__main__":
-    from graph_bridges.models.schedulers.scheduling_utils import create_scheduler
-    from graph_bridges.models.backward_rates.backward_rate_utils import create_model
-    from graph_bridges.models.reference_process.reference_process_utils import create_reference
-    from graph_bridges.data.dataloaders_utils import create_dataloader
-    from graph_bridges.models.losses.loss_utils import create_loss
-    from pprint import pprint
-
-    from graph_bridges.configs.graphs.lobster.config_base import BridgeConfig, get_config_from_file
-
-    config = get_config_from_file("graph","lobster","1687884918")
-    #pprint(config)
-
-    device = torch.device(config.device)
-    # =================================================================
-    # CREATE OBJECTS FROM CONFIGURATION
-
-    data_dataloader: GraphSpinsDataLoader
-    model: GaussianTargetRateImageX0PredEMA
-    reference_process: ReferenceProcess
-    loss: GenericAux
-    scheduler: CTDDScheduler
-
-    data_dataloader = create_dataloader(config, device)
-    model = create_model(config, device)
-    reference_process = create_reference(config, device)
-    loss = create_loss(config, device)
-    scheduler = create_scheduler(config, device)
-
-    databatch = next(data_dataloader.train().__iter__())[0]
-    print(databatch.shape)
-    """
-    scheduler.step(model_output: torch.FloatTensor,
-        timestep: int,
-        x: torch.FloatTensor,
-        return_dict: bool = True,
-        device:torch.device = None,)
-    """

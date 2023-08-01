@@ -5,7 +5,6 @@ import numpy as np
 import networkx as nx
 from typing import List,Dict,Tuple,Union
 from torch.utils.data import TensorDataset, DataLoader
-from graph_bridges.configs.graphs.config_sb import BridgeConfig
 from graph_bridges.utils.graph_utils import init_features, graphs_to_tensor
 from torchtyping import TensorType
 from graph_bridges.data.graph_dataloaders_config import CommunityConfig, GraphDataConfig
@@ -19,7 +18,6 @@ def from_networkx_to_spins(graph_,upper_diagonal_indices,full_adjacency=False):
         just_upper_edges = adjacency_[upper_diagonal_indices]
         spins = (-1.) ** (just_upper_edges.flatten() + 1)
     return spins
-
 
 # Create a custom transformation class
 class ToUpperDiagonalIndicesTransform:
@@ -119,27 +117,36 @@ def get_transforms(config:GraphDataConfig):
 
     return transform_list,inverse_transform_list
 
-
 class BridgeGraphDataLoaders:
     """
-
     """
     graph_data_config : GraphDataConfig
 
-    def __init__(self,config:BridgeConfig,device):
+    def __init__(self,config,device,type="data"):
         """
 
         :param config:
         :param device:
         """
         #config.max_node_num
-        self.graph_data_config = config.data
+        if type=="data":
+            self.graph_data_config = config.data
+        else:
+            self.graph_data_config = config.target
+
+        self.doucet = self.graph_data_config.doucet
+        self.number_of_spins = self.graph_data_config.number_of_spins
         self.device = device
+
         transform_list,inverse_transform_list = get_transforms(self.graph_data_config)
         self.composed_transform = transforms.Compose(transform_list)
         self.transform_to_graph = transforms.Compose(inverse_transform_list)
 
         train_graph_list, test_graph_list = self.read_graph_lists()
+
+        self.training_data_size = len(train_graph_list)
+        self.test_data_size = len(test_graph_list)
+        self.total_data_size = self.training_data_size + self.test_data_size
 
         train_adjs_tensor,train_x_tensor = self.graph_to_tensor_and_features(train_graph_list,
                                                                              self.graph_data_config.init,
@@ -154,7 +161,6 @@ class BridgeGraphDataLoaders:
                                                                            self.graph_data_config.init,
                                                                            self.graph_data_config.max_node_num,
                                                                            self.graph_data_config.max_feat_num)
-
 
         test_adjs_tensor = self.composed_transform(test_adjs_tensor)
 
@@ -205,7 +211,6 @@ class BridgeGraphDataLoaders:
 
         return train_graph_list, test_graph_list
 
-
 def load_dataset(data_dir='data', file_name=None, need_set=False):
     file_path = os.path.join(data_dir, file_name)
     with open(file_path + '.pkl', 'rb') as f:
@@ -235,28 +240,6 @@ def load_data(graph_data_config, get_graph_list=False):
         return mol_dataloader(graph_data_config, get_graph_list)
     else:
         return dataloader(graph_data_config, get_graph_list)
-
-
-if __name__=="__main__":
-    from dataclasses import asdict
-
-    data_config = CommunityConfig()
-    train_loader, test_loader = load_data(data_config)
-    databatch = next(train_loader.__iter__())
-    device = torch.device("cpu")
-
-    bridge_config = BridgeConfig(experiment_indentifier="debug")
-    data_config = CommunityConfig(full_adjacency=False,flatten_adjacency=True,as_image=True)
-    bridge_config.data = data_config
-    bridge_graph_dataloader = BridgeGraphDataLoaders(bridge_config,device)
-
-    databatch = next(bridge_graph_dataloader.train().__iter__())
-    adj = databatch[0]
-    features = databatch[1]
-    print(adj.shape)
-
-    transform_list = get_transforms(data_config)
-    composed_transform = transforms.Compose(transform_list)
 
 
 

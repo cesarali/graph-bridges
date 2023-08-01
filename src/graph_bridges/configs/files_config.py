@@ -52,6 +52,8 @@ class ExperimentFiles:
             os.makedirs(self.tensorboard_path)
 
         self.config_path = os.path.join(self.results_dir, "config.json")
+        self.metrics_file = os.path.join(self.results_dir, "metrics_{0}.json")
+
 
 if __name__=="__main__":
     experiment_folders = ExperimentFiles(experiment_indentifier="test2",

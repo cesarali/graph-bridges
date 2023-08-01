@@ -19,7 +19,8 @@ class GenericAux():
         self.device = device
         return self
 
-    def calc_loss(self, minibatch,x_tilde,qt0,rate,x_logits,reg_x,p0t_sig,p0t_reg,device):
+
+    def __call__(self, minibatch,x_tilde,qt0,rate,x_logits,reg_x,p0t_sig,p0t_reg,device):
         """
 
         :param minibatch:

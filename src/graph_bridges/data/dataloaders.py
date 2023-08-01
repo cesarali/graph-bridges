@@ -20,6 +20,7 @@ from graph_bridges.utils.spin_utils import bool_to_spins, spins_to_bool,flip_and
 from graph_bridges.data.graph_generators import gen_graph_list
 from dataclasses import dataclass
 
+from graph_bridges.configs.graphs.config_ctdd import CTDDConfig
 from graph_bridges.data.dataloaders_config import GraphSpinsDataLoaderConfig
 
 
@@ -364,7 +365,7 @@ class BridgeDataLoader:
 
 class DoucetTargetData(BridgeDataLoader):
     doucet:bool = True
-    def __init__(self,config:BridgeConfig,device,rank=None):
+    def __init__(self,config:CTDDConfig,device,rank=None):
         BridgeDataLoader.__init__(self, config, device, rank)
 
     def sample(self, num_of_paths:int, device=None) -> TensorType["num_of_paths","D"]:
@@ -390,7 +391,8 @@ class DoucetTargetData(BridgeDataLoader):
         return x
 
     def train(self):
-        training_size = int(self.config.data.number_of_paths*self.config.data.training_proportion)
+        self.config.data.training_proportion
+        training_size = int(self.config.data.total_data_size*self.config.data.training_proportion)
         batch_size =  self.config.data.batch_size
         number_of_batches = int(training_size / batch_size)
         for a in range(number_of_batches):

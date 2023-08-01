@@ -1,4 +1,4 @@
-from graph_bridges.configs.graphs.lobster.config_base import BridgeConfig
+from graph_bridges.configs.graphs.config_sb import BridgeConfig
 from graph_bridges.models.reference_process.reference_process_utils import register_reference
 import torch
 import math
@@ -12,12 +12,15 @@ class ReferenceProcess:
     """
     """
     def __init__(self,config:BridgeConfig,device):
+        assert config.target.S == config.data.S
+        assert config.target.D == config.data.D
+
         self.S = config.data.S
         self.D = config.data.D
         self.eps_ratio = config.sampler.eps_ratio
         self.device = device
 
-    def foward_rates(self,x,t,device):
+    def forward_rates(self, x, t, device):
         num_of_paths = x.shape[0]
         rate = self.rate(t * torch.ones((num_of_paths,), device=device))  # (N, S, S)
 
@@ -29,10 +32,10 @@ class ReferenceProcess:
 
         return forward_rates
 
-    def foward_rates_and_probabilities(self,
-                                       x:TensorType["num_of_paths", "dimensions"],
-                                       t:TensorType["num_of_paths"],
-                                       device=None) -> Tuple[torch.Tensor,torch.Tensor,torch.Tensor]:
+    def forward_rates_and_probabilities(self,
+                                        x:TensorType["num_of_paths", "dimensions"],
+                                        t:TensorType["num_of_paths"],
+                                        device=None) -> Tuple[torch.Tensor,torch.Tensor,torch.Tensor]:
         """
 
         :param x:
@@ -43,7 +46,7 @@ class ReferenceProcess:
             device = self.device
         num_of_paths = x.shape[0]
 
-        forward_rates = self.foward_rates(x, t, device)
+        forward_rates = self.forward_rates(x, t, device)
         qt0 = self.transition(t * torch.ones((num_of_paths,), device=device))  # (N, S, S)
 
         qt0_denom = qt0[
@@ -59,7 +62,7 @@ class ReferenceProcess:
 
     def backward_rates_from_probability(self, p0t, x, t, device):
         num_of_paths = x.shape[0]
-        forward_rates,qt0_denom,qt0_numer = self.foward_rates_and_probabilities(x, t, device)
+        forward_rates,qt0_denom,qt0_numer = self.forward_rates_and_probabilities(x, t, device)
         inner_sum = (p0t / qt0_denom) @ qt0_numer  # (N, D, S)
         backward_rates = forward_rates * inner_sum  # (N, D, S)
         backward_rates[
