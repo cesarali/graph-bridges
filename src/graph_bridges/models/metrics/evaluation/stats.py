@@ -209,7 +209,7 @@ def orca(graph,discrete_difussion=True):
     f.close()
 
     if discrete_difussion:
-        command = 'orca.exe node 4 ./tmp.txt std'
+        command = 'orca.exe node 4 ./tmp.txt std' if 'exe' in os.listdir(ORCA_DIR) else 'orca node 4 ./tmp.txt std'
         result = sp.run(command, shell=True, cwd=ORCA_DIR, stdout=sp.PIPE, stderr=sp.PIPE)
         output = result.stdout.decode('utf-8')
         COUNT_START_STR_  = COUNT_START_STR_DD
