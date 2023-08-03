@@ -25,8 +25,8 @@ if __name__=="__main__":
     ctdd.create_new_from_config(config, device)
 
     minibatch = next(ctdd.data_dataloader.train().__iter__())
-    x_adj = minibatch[0]
-    x_features = minibatch[1]
+    x_adj = minibatch[0].to(device)
+    x_features = minibatch[1].to(device)
     B = minibatch[0].shape[0]
 
     ts = torch.rand((B,), device=device) * (1.0 - config.loss.min_time) + config.loss.min_time

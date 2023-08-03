@@ -3,6 +3,7 @@ diffusers==0.17.1
 pyemd==1.0.0
 geomloss==0.2.6
 pandas==2.0.2
+tensorboard
 numpy
 scipy
 tqdm
