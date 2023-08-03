@@ -16,7 +16,7 @@ from torch.optim import Adam
 
 from typing import Optional
 from graph_bridges.configs.graphs.config_sb import SBConfig
-
+from graph_bridges.models.metrics.sb_metrics import graph_metrics_and_paths_histograms
 def copy_models(model_to, model_from):
     model_to.load_state_dict(model_from.state_dict())
 
@@ -96,8 +96,8 @@ class SBTrainer:
         # CHECK DATA
         spins_path, times = self.sb.pipeline(None, 0, device,return_path=True,return_path_shape=True)
         batch_size, total_number_of_steps, number_of_spins = spins_path.shape[0],spins_path.shape[1],spins_path.shape[2]
-
         spins_path, times = self.sb.pipeline(None, 0, device, return_path=True)
+
         #CHECK LOSS
         initial_loss = self.sb.backward_ratio_stein_estimator.estimator(current_model,
                                                                         past_to_train_model,
@@ -109,59 +109,14 @@ class SBTrainer:
         #DEFINE OPTIMIZERS
         self.optimizer = Adam(current_model.parameters(), lr=self.config.optimizer.learning_rate)
 
-        #CHECK DATA METRICS
-        data_stats_path = Path(self.config.experiment_files.data_stats)
-        if data_stats_path.exists():
-            data_stats = json.load(open(data_stats_path,"rb"))
-        else:
-            from graph_bridges.models.metrics.data_metrics import SpinBernoulliMarginal
-
-            bernoulli_marginal = SpinBernoulliMarginal(spin_dataloader=self.sb.data_dataloader)
-            marginal_0 = bernoulli_marginal()
-            bernoulli_marginal = SpinBernoulliMarginal(spin_dataloader=self.sb.target_dataloader)
-            marginal_1 = bernoulli_marginal()
-
-            histogram_path_0 = torch.zeros(total_number_of_steps,number_of_spins)
-            histogram_path_1 = torch.zeros(total_number_of_steps,number_of_spins)
-
-            for spins_path_1, times_1 in self.sb.pipeline.paths_iterator(past_to_train_model, sinkhorn_iteration=sinkhorn_iteration,return_path_shape=True):
-                end_of_path = spins_path_1[:, -1, :].unsqueeze(1).unsqueeze(1)
-                print(end_of_path)
-                end_of_path = spins_path_1[:, -1, :]
-                spins_path_2, times_2 = self.sb.pipeline(current_model,
-                                                         sinkhorn_iteration + 1,
-                                                         device,
-                                                         end_of_path,
-                                                         return_path=True,
-                                                         return_path_shape=True)
-                binary_0 = (spins_path_1 + 1.)*.5
-                binary_1 = (spins_path_2 + 1.)*.5
-
-                current_sum_0 = binary_0.sum(axis=0)
-                current_sum_1 = binary_1.sum(axis=0)
-
-                histogram_path_0 += current_sum_0
-                histogram_path_1 += current_sum_1
-
-            print(histogram_path_0[0])
-            print(histogram_path_0[-1])
-
-            print(histogram_path_1[0])
-            print(histogram_path_1[-1])
-
-            state_legends = [str(i) for i in range(histogram_path_0.shape[-1])]
-            sinkhorn_plot(sinkhorn_iteration,
-                          marginal_0,
-                          marginal_1,
-                          backward_histogram=histogram_path_1,
-                          forward_histogram=histogram_path_0,
-                          time_=times_1,
-                          states_legends=state_legends)
+        histogram_path_plot_path = self.config.experiment_files.plot_path.format("initial_plot")
+        # METRICS
+        #graph_metrics_and_paths_histograms(sb, sinkhorn_iteration, device, current_model, past_to_train_model,plot_path=histogram_path_plot_path)
 
         # INFO
         #self.parameters_info(sinkhorn_iteration)
 
-        return 0
+        return initial_loss
 
     def train_step(self, current_model, past_model, databatch, number_of_training_step, sinkhorn_iteration=0):
         databatch = self.preprocess_data(databatch)
@@ -216,7 +171,6 @@ class SBTrainer:
             initial_loss = self.initialize(training_model, past_model, sinkhorn_iteration)
             best_loss = initial_loss
 
-            """
             LOSS = []
             number_of_test_step = 0
             number_of_training_step = 0
@@ -224,15 +178,16 @@ class SBTrainer:
             for epoch in tqdm(range(self.number_of_epochs)):
                 #TRAINING
                 training_loss = []
-                for spins_path, times in sb.pipeline.paths_iterator(past_model,
-                                                                    sinkhorn_iteration=sinkhorn_iteration,
-                                                                    device=self.device,
-                                                                    train=True):
+                for spins_path, times in self.sb.pipeline.paths_iterator(past_model,
+                                                                         sinkhorn_iteration=sinkhorn_iteration,
+                                                                         device=self.device,
+                                                                         train=True):
 
-                    loss = self.sb.backward_ration_stein_estimator.estimator(training_model,
-                                                                             past_loss,
-                                                                             spins_path,
-                                                                             times)
+                    loss = self.sb.backward_ratio_stein_estimator.estimator(training_model,
+                                                                            past_loss,
+                                                                            spins_path,
+                                                                            times)
+                    print(loss)
                     # DATA
                     #loss = self.train_step(current_model,
                     #                       past_to_train,
@@ -243,19 +198,22 @@ class SBTrainer:
                     training_loss.append(loss.item())
                     number_of_training_step += 1
                     LOSS.append(loss.item())
+                    break
+
 
                 training_loss_average = np.asarray(training_loss).mean()
 
+                """
                 #VALIDATION
                 validation_loss = []
-                for spins_path, times in sb.pipeline.paths_iterator(past_model,
+                for spins_path, times in self.sb.pipeline.paths_iterator(past_model,
                                                                     sinkhorn_iteration=sinkhorn_iteration,
                                                                     device=self.device,
                                                                     train=False):
-                    loss = self.sb.backward_ration_stein_estimator.estimator(training_model,
-                                                                             past_loss,
-                                                                             spins_path,
-                                                                             times)
+                    loss = self.sb.backward_ratio_stein_estimator.estimator(training_model,
+                                                                            past_loss,
+                                                                            spins_path,
+                                                                            times)
                     validation_loss.append(loss.item())
                     number_of_test_step +=1
                 validation_loss_average = np.asarray(validation_loss).mean()
@@ -268,10 +226,26 @@ class SBTrainer:
                                       training_loss_average,
                                       validation_loss_average,
                                       LOSS,
-                                      sinkhorn_iteration)
+                                      sinkhorn_iteration,
+                                      checkpoint=False)
 
                 if epoch % 10 == 0:
                     print("Epoch: {}, Loss: {}".format(epoch + 1, training_loss_average))
+                """
+                if epoch % self.config.optimizer.save_model_epochs == 0:
+                    self.save_results(current_model=training_model,
+                                      past_model=past_model,
+                                      initial_loss=initial_loss,
+                                      training_loss_average=training_loss_average,
+                                      validation_loss_average=0.,
+                                      LOSS=LOSS,
+                                      number_of_training_step=number_of_training_step,
+                                      sinkhorn_iteration=sinkhorn_iteration,
+                                      checkpoint=True)
+
+                    self.log_metrics(current_model=training_model,past_to_train_model=past_model,
+                                     sinkhorn_iteration=sinkhorn_iteration,number_of_steps=number_of_training_step,
+                                     device=device)
 
             self.time1 = datetime.now()
             #=====================================================
@@ -279,42 +253,44 @@ class SBTrainer:
             #=====================================================
 
         self.writer.close()
-        """
+
         return best_loss
 
-    def update_final_results_with_metrics(self,
-                                          RESULTS,
-                                          sinkhorn_iteration,
-                                          save_path_plot=None):
+    def log_metrics(self,current_model,past_to_train_model,sinkhorn_iteration,number_of_steps,device):
         """
         After the training procedure is done, the model is updated
 
         :return:
         """
-        current_model = RESULTS["current_model"].to(device)
-        past_model = RESULTS["past_model"].to(device)
+        config = self.config
 
-        for metric_string in self.metrics:
-            metric_kwargs = self.metrics_kwargs[metric_string]
-            metric_kwargs.update({"sinkhorn_iteration":sinkhorn_iteration,
-                                  "save_path_plot":save_path_plot})
-            #metric_value = all_metrics[metric_string](self.paths_dataloader,
-            #                                          current_model,
-            #                                          past_model,
-            #                                          **metric_kwargs)
-            metric_value = {}
-            if isinstance(metric_value,dict):
-                RESULTS = RESULTS | metric_value
-            RESULTS.update({metric_string:metric_value})
+        #HISTOGRAMS
+        histograms_plot_path_ = config.experiment_files.plot_path.format("sinkhorn_{0}_checkpoint_{1}".format(sinkhorn_iteration,
+                                                                                                              number_of_steps))
+        graph_metrics_and_paths_histograms(sb,
+                                           sinkhorn_iteration,
+                                           device,
+                                           current_model,
+                                           past_to_train_model,
+                                           plot_path=histograms_plot_path_)
 
+        #METRICS
+        #graph_metrics_path_ = config.experiment_files.metrics_file.format("graph_{0}".format(number_of_steps))
+        #graph_metrics = graph_metrics_for_ctdd(self.ctdd, config)
+        #with open(graph_metrics_path_, "w") as f:
+        #    json.dump(graph_metrics, f)
 
-        training_time = (self.time1 - self.time0).total_seconds()
-        RESULTS["training_time"] = training_time
-        torch.save(RESULTS,
-                   self.best_model_path.format(sinkhorn_iteration))
+        #PLOTS
+        #graph_plot_path_ = config.experiment_files.graph_plot_path.format("generative_{0}".format(number_of_steps))
+        #generated_graphs = self.ctdd.generate_graphs(number_of_graphs=36)
+        #plot_graphs_list2(generated_graphs,title="Generated 0",save_dir=graph_plot_path_)
+
 
     def save_results(self, current_model, past_model,initial_loss,
-                     training_loss_average, validation_loss_average, LOSS, sinkhorn_iteration):
+                     training_loss_average, validation_loss_average, LOSS,
+                     number_of_training_step,
+                     sinkhorn_iteration,
+                     checkpoint=True):
         RESULTS = {"current_model": current_model,
                    "past_model": past_model,
                    "initial_loss": initial_loss.item(),
@@ -322,19 +298,25 @@ class SBTrainer:
                    "best_loss": validation_loss_average,
                    "training_loss": training_loss_average,
                    "sinkhorn_iteration":sinkhorn_iteration}
-        torch.save(RESULTS,
-                   self.best_model_path.format(sinkhorn_iteration))
+        if checkpoint:
+            best_model_path_checkpoint = self.config.experiment_files.best_model_path_checkpoint.format(number_of_training_step,sinkhorn_iteration)
+            torch.save(RESULTS,best_model_path_checkpoint)
+        else:
+            torch.save(RESULTS, self.config.experiment_files.best_model_path)
 
 
 if __name__=="__main__":
-    from graph_bridges.configs.graphs.config_sb import SBConfig
+    from graph_bridges.configs.graphs.config_sb import SBConfig, ParametrizedSamplerConfig, SteinSpinEstimatorConfig
     from graph_bridges.data.graph_dataloaders_config import EgoConfig
     from graph_bridges.models.backward_rates.backward_rate_config import BackRateMLPConfig
     from graph_bridges.models.backward_rates.backward_rate_config import GaussianTargetRateImageX0PredEMAConfig
 
     config = SBConfig(experiment_indentifier="debug")
     config.data = EgoConfig(as_image=False, batch_size=5, full_adjacency=False)
-    config.model = GaussianTargetRateImageX0PredEMAConfig(time_embed_dim=32, fix_logistic=False)
+    config.model = GaussianTargetRateImageX0PredEMAConfig(time_embed_dim=12, fix_logistic=False)
+    #config.model = BackRateMLPConfig(time_embed_dim=9)
+    config.stein = SteinSpinEstimatorConfig(stein_sample_size=20)
+    config.sampler = ParametrizedSamplerConfig(num_steps=10)
 
     #read the model
     device = torch.device("cpu")

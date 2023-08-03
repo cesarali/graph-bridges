@@ -294,8 +294,6 @@ class CTDDTrainer:
             torch.save(RESULTS, self.config.experiment_files.best_model_path)
 
 
-
-
 if __name__=="__main__":
     # CONFIGS
     from graph_bridges.configs.graphs.config_ctdd import CTDDConfig, TrainerConfig

@@ -10,10 +10,13 @@ if __name__=="__main__":
     from graph_bridges.configs.graphs.config_sb import SBConfig
     from graph_bridges.data.graph_dataloaders_config import EgoConfig
     from graph_bridges.models.backward_rates.backward_rate_config import BackRateMLPConfig
+    from graph_bridges.configs.graphs.config_sb import ParametrizedSamplerConfig
 
     config = SBConfig(experiment_indentifier="debug")
     config.data = EgoConfig(as_image=False, batch_size=32, full_adjacency=False)
     config.model = GaussianTargetRateImageX0PredEMAConfig(time_embed_dim=32, fix_logistic=False)
+    config.sampler = ParametrizedSamplerConfig(num_steps=23)
+
 
     #read the model
     #config = get_config_from_file("graph", "lobster", "1687884918")
@@ -28,7 +31,7 @@ if __name__=="__main__":
 
     #test scheduler
     time_steps = sb.scheduler.set_timesteps(10,0.01,sinkhorn_iteration=1)
-    print(time_steps)
+    print(time_steps.shape)
 
     # test model
     times = time_steps[6] * torch.ones(number_of_paths)
@@ -47,8 +50,6 @@ if __name__=="__main__":
     print(forward_.shape)
     print(forward_stein.shape)
 
-    # stuff
-    sb.pipeline.bridge_config.sampler.num_steps = 20
     # test reference process
     x_spins_w_noise = sb.reference_process.spins_on_times(x_spins_data.squeeze(), times)
 

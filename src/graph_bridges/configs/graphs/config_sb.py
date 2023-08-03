@@ -37,7 +37,7 @@ class SBExperimentsFiles(ExperimentFiles):
         super().__post_init__()
         self.best_model_path_checkpoint = os.path.join(self.results_dir, "model_checkpoint_{0}_sinkhorn_{1}.tr")
         self.best_model_path = os.path.join(self.results_dir, "best_model_sinkhorn_{0}.tr")
-        self.plot_path = os.path.join(self.results_dir, "marginal_at_site_{0}.png")
+        self.plot_path = os.path.join(self.results_dir, "path_marginal_at_site_{0}.png")
         self.graph_plot_path = os.path.join(self.results_dir, "graph_plots_{0}.png")
 
 @dataclass
