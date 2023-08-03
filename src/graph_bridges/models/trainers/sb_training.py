@@ -15,7 +15,7 @@ from pathlib import Path
 from torch.optim import Adam
 
 from typing import Optional
-
+from graph_bridges.configs.graphs.config_sb import SBConfig
 
 def copy_models(model_to, model_from):
     model_to.load_state_dict(model_from.state_dict())
@@ -28,9 +28,9 @@ class SBTrainer:
     This trainer is intended to obtain a backward process of a markov jump via
     a ratio estimator with a stein estimator
     """
+    config:SBConfig
     name_ = "schrodinger_bridge"
     def __init__(self,
-                 config:SBConfig=Optional,
                  sb:SB=None,
                  **kwargs):
         """
@@ -42,15 +42,11 @@ class SBTrainer:
 
              the paths_dataloader is a part of the
         """
-        if config is not None:
-            self.config = config
-            sb = SB()
-            sb.create_from_config(config, device)
-        else:
-            self.sb = sb
-            self.config = self.sb.config
 
-        self.config.initialize()
+        self.sb = sb
+        self.config = self.sb.config
+
+        self.config.initialize_new_experiment()
         self.starting_sinkhorn = self.config.optimizer.starting_sinkhorn
         self.number_of_sinkhorn = self.config.optimizer.number_of_sinkhorn
         self.number_of_epochs = self.config.optimizer.num_epochs
@@ -95,7 +91,7 @@ class SBTrainer:
             print(past_to_train_model.parameters().__next__().device)
 
         from torch.utils.tensorboard import SummaryWriter
-        self.writer = SummaryWriter(self.config.tensorboard_path)
+        self.writer = SummaryWriter(self.config.experiment_files.tensorboard_path)
 
         # CHECK DATA
         spins_path, times = self.sb.pipeline(None, 0, device,return_path=True,return_path_shape=True)
@@ -114,7 +110,7 @@ class SBTrainer:
         self.optimizer = Adam(current_model.parameters(), lr=self.config.optimizer.learning_rate)
 
         #CHECK DATA METRICS
-        data_stats_path = Path(self.sb.config.data_stats)
+        data_stats_path = Path(self.config.experiment_files.data_stats)
         if data_stats_path.exists():
             data_stats = json.load(open(data_stats_path,"rb"))
         else:
@@ -129,7 +125,8 @@ class SBTrainer:
             histogram_path_1 = torch.zeros(total_number_of_steps,number_of_spins)
 
             for spins_path_1, times_1 in self.sb.pipeline.paths_iterator(past_to_train_model, sinkhorn_iteration=sinkhorn_iteration,return_path_shape=True):
-                #end_of_path = spins_path_1[:, -1, :].unsqueeze(1).unsqueeze(1)
+                end_of_path = spins_path_1[:, -1, :].unsqueeze(1).unsqueeze(1)
+                print(end_of_path)
                 end_of_path = spins_path_1[:, -1, :]
                 spins_path_2, times_2 = self.sb.pipeline(current_model,
                                                          sinkhorn_iteration + 1,
@@ -330,22 +327,19 @@ class SBTrainer:
 
 
 if __name__=="__main__":
-    from graph_bridges.configs.graphs.config_sb import SBConfig, get_config_from_file
-    from graph_bridges.data.dataloaders_config import GraphSpinsDataLoaderConfig
-    from dataclasses import asdict
+    from graph_bridges.configs.graphs.config_sb import SBConfig
+    from graph_bridges.data.graph_dataloaders_config import EgoConfig
+    from graph_bridges.models.backward_rates.backward_rate_config import BackRateMLPConfig
+    from graph_bridges.models.backward_rates.backward_rate_config import GaussianTargetRateImageX0PredEMAConfig
 
-    config = SBConfig(experiment_indentifier=None)
-    config.data = GraphSpinsDataLoaderConfig()
+    config = SBConfig(experiment_indentifier="debug")
+    config.data = EgoConfig(as_image=False, batch_size=5, full_adjacency=False)
+    config.model = GaussianTargetRateImageX0PredEMAConfig(time_embed_dim=32, fix_logistic=False)
 
     #read the model
-    #config = get_config_from_file("graph", "lobster", "1687884918")
     device = torch.device("cpu")
     sb = SB(config, device)
-    #pprint(sb.config.__dict__)
-    #print(config.config_path)
-    #json.dump(asdict(config),config.config_path)
+    sb_trainer = SBTrainer(sb)
 
-
-    sb_trainer = SBTrainer(None,sb)
     sb_trainer.train_schrodinger()
 

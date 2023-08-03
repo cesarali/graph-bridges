@@ -21,6 +21,7 @@ class ExperimentFiles:
     experiment_type:str= None
     results_dir:str = None
 
+    data_stats:str = None
     delete:bool = False
 
     def __post_init__(self):

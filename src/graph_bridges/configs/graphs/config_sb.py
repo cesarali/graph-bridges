@@ -28,6 +28,10 @@ def get_git_revisions_hash():
 
 @dataclass
 class SBExperimentsFiles(ExperimentFiles):
+    best_model_path_checkpoint:str = None
+    best_model_path:str = None
+    plot_path:str = None
+    graph_plot_path:str = None
 
     def __post_init__(self):
         super().__post_init__()
