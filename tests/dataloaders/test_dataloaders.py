@@ -1,7 +1,7 @@
 import torch
 from graph_bridges.data.graph_dataloaders_config import EgoConfig
 from graph_bridges.data.graph_dataloaders import BridgeGraphDataLoaders
-from graph_bridges.configs.graphs.config_sb import BridgeConfig
+from graph_bridges.configs.graphs.config_sb import SBConfig
 
 if __name__=="__main__":
     #================================
@@ -9,7 +9,7 @@ if __name__=="__main__":
     #================================
 
     device = torch.device("cpu")
-    bridge_config = BridgeConfig(experiment_indentifier="debug")
+    bridge_config = SBConfig(experiment_indentifier="debug")
 
     graph_config = EgoConfig(full_adjacency=False,flatten_adjacency=True,as_image=True)
     bridge_config.data = graph_config

@@ -90,6 +90,7 @@ class GraphDataConfig:
         if self.as_spins:
             self.doucet = False
         self.training_proportion = 1. - self.test_split
+
 @dataclass
 class EgoConfig(GraphDataConfig):
     data: str =  "ego_small"

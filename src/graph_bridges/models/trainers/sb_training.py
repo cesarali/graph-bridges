@@ -7,7 +7,7 @@ from tqdm import tqdm
 
 import numpy as np
 from graph_bridges.models.generative_models.sb import SB
-from graph_bridges.configs.graphs.config_sb import BridgeConfig
+from graph_bridges.configs.graphs.config_sb import SBConfig
 from graph_bridges.utils.plots.sb_plots import sinkhorn_plot
 
 from pathlib import Path
@@ -30,7 +30,7 @@ class SBTrainer:
     """
     name_ = "schrodinger_bridge"
     def __init__(self,
-                 config:BridgeConfig=Optional,
+                 config:SBConfig=Optional,
                  sb:SB=None,
                  **kwargs):
         """
@@ -103,10 +103,10 @@ class SBTrainer:
 
         spins_path, times = self.sb.pipeline(None, 0, device, return_path=True)
         #CHECK LOSS
-        initial_loss = self.sb.backward_ration_stein_estimator.estimator(current_model,
-                                                                  past_to_train_model,
-                                                                  spins_path,
-                                                                  times)
+        initial_loss = self.sb.backward_ratio_stein_estimator.estimator(current_model,
+                                                                        past_to_train_model,
+                                                                        spins_path,
+                                                                        times)
         assert torch.isnan(initial_loss).any() == False
         assert torch.isinf(initial_loss).any() == False
 
@@ -207,7 +207,7 @@ class SBTrainer:
 
         training_model = training_model.to(self.device)
         self.sb.pipeline.bridge_config.sampler.num_steps = 20
-        self.sb.backward_ration_stein_estimator.set_device(self.device)
+        self.sb.backward_ratio_stein_estimator.set_device(self.device)
 
         for sinkhorn_iteration in range(self.starting_sinkhorn,self.number_of_sinkhorn):
             if sinkhorn_iteration == 0:
@@ -330,11 +330,11 @@ class SBTrainer:
 
 
 if __name__=="__main__":
-    from graph_bridges.configs.graphs.config_sb import BridgeConfig, get_config_from_file
+    from graph_bridges.configs.graphs.config_sb import SBConfig, get_config_from_file
     from graph_bridges.data.dataloaders_config import GraphSpinsDataLoaderConfig
     from dataclasses import asdict
 
-    config = BridgeConfig(experiment_indentifier=None)
+    config = SBConfig(experiment_indentifier=None)
     config.data = GraphSpinsDataLoaderConfig()
 
     #read the model

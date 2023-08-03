@@ -30,6 +30,7 @@ class CTDD:
     reference_process: GaussianTargetRate = None
     loss: GenericAux = None
     scheduler: CTDDScheduler = None
+    pipeline: CTDDPipeline = None
 
     def create_new_from_config(self, config:CTDDConfig, device):
         """

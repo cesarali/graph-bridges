@@ -15,7 +15,6 @@ def get_git_revisions_hash():
 
 @dataclass
 class ExperimentFiles:
-    from graph_bridges import results_path
 
     experiment_indentifier:str = None
     experiment_name:str = None
@@ -25,6 +24,10 @@ class ExperimentFiles:
     delete:bool = False
 
     def __post_init__(self):
+        from graph_bridges import results_path
+
+        self.results_path = results_path
+
         self.current_git_commit = str(get_git_revisions_hash()[0])
         if self.experiment_indentifier is None:
             self.experiment_indentifier = str(int(time.time()))

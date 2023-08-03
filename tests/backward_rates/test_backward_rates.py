@@ -12,7 +12,7 @@ if __name__=="__main__":
     from graph_bridges.models.backward_rates.backward_rate_config import BackRateMLPConfig,GaussianTargetRateImageX0PredEMAConfig
     from graph_bridges.models.backward_rates.backward_rate import all_backward_rates
     from graph_bridges.data.dataloaders_config import GraphSpinsDataLoaderConfig
-    from graph_bridges.configs.graphs.config_sb import BridgeConfig
+    from graph_bridges.configs.graphs.config_sb import SBConfig
     from graph_bridges.data.dataloaders_utils import create_dataloader
     from graph_bridges.data.dataloaders import all_dataloaders
 
@@ -25,7 +25,7 @@ if __name__=="__main__":
 
     device = torch.device("cpu")
 
-    bridge_config = BridgeConfig(experiment_indentifier="debug")
+    bridge_config = SBConfig(experiment_indentifier="debug")
     graph_config = EgoConfig(full_adjacency=True, flatten_adjacency=True, as_image=False, as_spins=False)
 
     bridge_config.data = graph_config

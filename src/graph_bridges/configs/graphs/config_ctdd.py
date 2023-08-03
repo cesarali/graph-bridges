@@ -67,36 +67,37 @@ class TrainerConfig:
     gradient_accumulation_steps :int = 1
     lr_warmup_steps :int = 500
     save_image_epochs :int = 10
-    save_model_epochs :int = 30
+    save_model_epochs :int = 2
     save_model_global_iter :int = 1000
+
+    metrics = ["graphs","histograms"]
 
 @dataclass
 class CTDDConfig:
 
     config_path : str = ""
     # different elements configurations------------------------------------------
-    model : BackRateMLPConfig =  BackRateMLPConfig()
-    data : GraphDataConfig =  CommunityConfig() # corresponds to the distributions at start time
-    target : TargetConfig =  TargetConfig() # corresponds to the distribution at final time
+    model : BackRateMLPConfig = BackRateMLPConfig()
+    data : GraphDataConfig = CommunityConfig() # corresponds to the distributions at start time
+    target : TargetConfig = TargetConfig() # corresponds to the distribution at final time
 
     reference : GaussianTargetRateConfig =  GaussianTargetRateConfig()
     sampler : ParametrizedSamplerConfig =  ParametrizedSamplerConfig()
 
     loss : CTDDLossConfig =  CTDDLossConfig()
-    scheduler : CTDDSchedulerConfig =  CTDDSchedulerConfig()
-    pipeline : CTDDPipelineConfig =  CTDDPipelineConfig()
-    optimizer : TrainerConfig =  TrainerConfig()
+    scheduler : CTDDSchedulerConfig = CTDDSchedulerConfig()
+    pipeline : CTDDPipelineConfig = CTDDPipelineConfig()
+    optimizer : TrainerConfig = TrainerConfig()
     experiment_files: ExperimentFiles = None
 
     number_of_paths : int = 10
-    number_of_sinkhorn : int = 1
+
 
     # files, directories and naming ---------------------------------------------
     delete :bool = False
     experiment_name :str = 'graph'
     experiment_type :str = 'ctdd'
     experiment_indentifier :str  = 'testing'
-
     init_model_path = None
 
     # devices and parallelization ----------------------------------------------
@@ -178,7 +179,7 @@ class CTDDConfig:
         self.results_dir = self.experiment_files.results_dir
 
         self.experiment_files.data_stats = os.path.join(self.data.preprocess_datapath, "data_stats.json")
-        self.experiment_files.best_model_path_checkpoint = os.path.join(self.results_dir, "model_checkpoint_{1}.tr")
+        self.experiment_files.best_model_path_checkpoint = os.path.join(self.results_dir, "model_checkpoint_{0}.tr")
         self.experiment_files.best_model_path = os.path.join(self.results_dir, "best_model.tr")
         self.experiment_files.plot_path = os.path.join(self.results_dir, "marginal_at_site_{0}.png")
         self.experiment_files.graph_plot_path = os.path.join(self.results_dir, "graph_plots_{0}.png")

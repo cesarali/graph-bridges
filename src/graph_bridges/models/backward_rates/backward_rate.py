@@ -8,7 +8,7 @@ from dataclasses import dataclass,asdict,field
 
 from abc import ABC,abstractmethod
 from graph_bridges.models.networks_arquitectures import networks
-from graph_bridges.configs.graphs.config_sb import BridgeConfig
+from graph_bridges.configs.graphs.config_sb import SBConfig
 
 from torchtyping import TensorType
 from graph_bridges.models.networks_arquitectures.network_utils import transformer_timestep_embedding
@@ -35,7 +35,7 @@ class BackwardRateOutput(BaseOutput):
 class BackwardRate(nn.Module,ABC):
 
     def __init__(self,
-                 config:BridgeConfig,
+                 config:SBConfig,
                  device,
                  rank,
                  **kwargs):

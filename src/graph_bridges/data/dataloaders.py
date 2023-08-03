@@ -15,12 +15,14 @@ from abc import ABC, abstractmethod
 from torch.distributions import Bernoulli
 from graph_bridges.data.datasets import DictDataSet
 from torch.utils.data import TensorDataset,DataLoader,random_split
-from graph_bridges.configs.graphs.config_sb import BridgeConfig
+from graph_bridges.configs.graphs.config_sb import SBConfig
 from graph_bridges.utils.spin_utils import bool_to_spins, spins_to_bool,flip_and_copy_bool
 from graph_bridges.data.graph_generators import gen_graph_list
 from dataclasses import dataclass
 
 from graph_bridges.configs.graphs.config_ctdd import CTDDConfig
+from graph_bridges.configs.graphs.config_sb import SBConfig
+
 from graph_bridges.data.dataloaders_config import GraphSpinsDataLoaderConfig
 
 
@@ -28,7 +30,7 @@ class BaseDataLoader(ABC):
 
     name_="base_data_loader"
 
-    def __init__(self,cfg:Union[GraphSpinsDataLoaderConfig,BridgeConfig],device:torch.device,rank:int,X:torch.Tensor=None):
+    def __init__(self,cfg:Union[GraphSpinsDataLoaderConfig,SBConfig],device:torch.device,rank:int,X:torch.Tensor=None):
         if isinstance(cfg,BridgeConfig):
             assert  BridgeConfig.data.name == "GraphSpinsDataLoader"
             cfg = BridgeConfig.data
@@ -67,7 +69,7 @@ class BaseDataLoader(ABC):
 class SpinsDataLoader(BaseDataLoader):
 
     name_ = "spins"
-    def __init__(self,cfg:Union[GraphSpinsDataLoaderConfig,BridgeConfig],device,rank,X=None):
+    def __init__(self,cfg:Union[GraphSpinsDataLoaderConfig,SBConfig],device,rank,X=None):
         """
         If given a spins tensor sets as data
         If given a path string read data
@@ -248,7 +250,7 @@ class GraphSpinsDataLoader(SpinsDataLoader):
     """
     name_ = "graph_spins"
 
-    def __init__(self, cfg:Union[GraphSpinsDataLoaderConfig,BridgeConfig], device, rank):
+    def __init__(self, cfg:Union[GraphSpinsDataLoaderConfig,SBConfig], device, rank):
         if isinstance(cfg,BridgeConfig):
             assert cfg.data.name == "GraphSpinsDataLoader"
             cfg = BridgeConfig.data
@@ -303,7 +305,7 @@ class GraphSpinsDataLoader(SpinsDataLoader):
                 graph_list.append(nx.from_numpy_array(adjacencies[graph_index]))
             return graph_list
 
-    def simulate_data(self, cfg:Union[BridgeConfig,GraphSpinsDataLoaderConfig]):
+    def simulate_data(self, cfg:Union[SBConfig,GraphSpinsDataLoaderConfig]):
         if isinstance(cfg,BridgeConfig):
             cfg = cfg.data
         if isinstance(cfg,GraphSpinsDataLoaderConfig):
@@ -338,10 +340,10 @@ class GraphSpinsDataLoader(SpinsDataLoader):
 
 class BridgeDataLoader:
 
-    config : BridgeConfig
+    config : SBConfig
     doucet: bool = True
 
-    def __init__(self,config:BridgeConfig,device,rank=None):
+    def __init__(self,config:SBConfig,device,rank=None):
         self.config = config
         self.device = device
 

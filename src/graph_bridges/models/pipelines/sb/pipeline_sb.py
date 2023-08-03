@@ -15,7 +15,7 @@ from typing import List, Optional, Tuple, Union
 import torch
 
 from diffusers.pipelines.pipeline_utils import DiffusionPipeline, ImagePipelineOutput
-from graph_bridges.configs.graphs.config_sb import BridgeConfig
+from graph_bridges.configs.graphs.config_sb import SBConfig
 from diffusers.utils import randn_tensor
 import torch.nn.functional as F
 from tqdm import tqdm
@@ -123,7 +123,7 @@ class SBPipeline(DiffusionPipeline):
             A scheduler to be used in combination with `unet` to denoise the encoded image. Can be one of
             [`DDPMScheduler`], or [`DDIMScheduler`].
     """
-    config : BridgeConfig
+    config : SBConfig
     model: BackwardRate
     reference_process: ReferenceProcess
     data: SpinsDataLoader
@@ -131,7 +131,7 @@ class SBPipeline(DiffusionPipeline):
     scheduler: SBScheduler
 
     def __init__(self,
-                 config:BridgeConfig,
+                 config:SBConfig,
                  reference_process:ReferenceProcess,
                  data:SpinsDataLoader,
                  target:BridgeDataLoader,

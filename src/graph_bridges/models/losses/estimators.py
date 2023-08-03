@@ -93,7 +93,7 @@ class BackwardRatioSteinEstimator:
     def __init__(self,
                  config:BridgeConfig,
                  device):
-        self.dimension = config.backward_estimator.dimension_to_check
+        self.dimension = config.loss.dimension_to_check
         self.stein_estimator = SteinSpinEstimator(config,device)
         self.device = device
 

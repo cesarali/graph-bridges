@@ -1,15 +1,20 @@
 from graph_bridges.models.backward_rates.backward_rate import GaussianTargetRateImageX0PredEMA
-from graph_bridges.models.backward_rates.backward_rate_utils import create_model
 from graph_bridges.models.reference_process.reference_process_utils import create_reference
-from graph_bridges.data.dataloaders_utils import create_dataloader
 from graph_bridges.data.dataloaders import GraphSpinsDataLoader
 from graph_bridges.models.reference_process.ctdd_reference import ReferenceProcess
+
 from graph_bridges.models.pipelines.sb.pipeline_sb import SBPipeline
 from graph_bridges.models.schedulers.scheduling_sb import SBScheduler
 from dataclasses import dataclass
 from graph_bridges.models.losses.estimators import BackwardRatioSteinEstimator
-from graph_bridges.configs.graphs.config_sb import BridgeConfig
+from graph_bridges.configs.graphs.config_sb import SBConfig
 from pathlib import Path
+
+from graph_bridges.data.dataloaders_utils import load_dataloader
+from graph_bridges.models.backward_rates.backward_rate_utils import load_backward_rates
+from graph_bridges.data.dataloaders import GraphSpinsDataLoader, DoucetTargetData
+from graph_bridges.models.reference_process.ctdd_reference import GaussianTargetRate
+
 
 @dataclass
 class SB:
@@ -18,38 +23,36 @@ class SB:
     from a CTDD model
 
     """
-    pipeline: SBPipeline=None
-    data_dataloader: GraphSpinsDataLoader=None
-    starting_sinkhorn: GraphSpinsDataLoader=None
+    data_dataloader: GraphSpinsDataLoader = None
+    target_dataloader: DoucetTargetData = None
 
     training_model: GaussianTargetRateImageX0PredEMA=None
     past_model: GaussianTargetRateImageX0PredEMA=None
 
     reference_process: ReferenceProcess=None
-    backward_ration_stein_estimator: BackwardRatioSteinEstimator=None
+    backward_ratio_stein_estimator: BackwardRatioSteinEstimator=None
     scheduler: SBScheduler=None
     pipeline: SBPipeline=None
-    config: BridgeConfig = None
+    config: SBConfig = None
 
     def __init__(self,config,device):
         self.create_from_config(config,device)
 
-    def create_from_config(self,config:BridgeConfig,device):
-        if isinstance(config,BridgeConfig):
+    def create_from_config(self, config:SBConfig, device):
+        if isinstance(config, SBConfig):
             if config.config_path == "":
-                config.initialize()
+                config.initialize_new_experiment()
             if not Path(config.config_path).exists():
-                config.initialize()
+                config.initialize_new_experiment()
 
+        self.config = config
+        self.data_dataloader = load_dataloader(config, type="data", device=device)
+        self.target_dataloader = load_dataloader(config, type="target", device=device)
+        self.training_model = load_backward_rates(config, device)
+        self.past_model = load_backward_rates(config, device)
 
-        self.data_dataloader = create_dataloader(config, device)
-        self.target_dataloader = create_dataloader(config, device,target=True)
-
-        self.training_model = create_model(config, device)
-        self.past_model = create_model(config, device)
-
-        self.reference_process = create_reference(config, device)
-        self.backward_ration_stein_estimator = BackwardRatioSteinEstimator(config, device)
+        self.reference_process = GaussianTargetRate(config, device)
+        self.backward_ratio_stein_estimator = BackwardRatioSteinEstimator(config, device)
         self.scheduler = SBScheduler(config, device)
 
         self.pipeline = SBPipeline(config,

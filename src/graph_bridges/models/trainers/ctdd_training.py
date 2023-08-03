@@ -219,17 +219,25 @@ class CTDDTrainer:
                 number_of_test_step +=1
             validation_loss_average = np.asarray(validation_loss).mean()
 
+            if epoch % self.config.optimizer.save_model_epochs == 0:
+                self.save_results(current_model=training_model,
+                                  initial_loss=initial_loss,
+                                  training_loss_average=training_loss_average,
+                                  validation_loss_average=validation_loss_average,
+                                  LOSS=LOSS,
+                                  number_of_training_step=number_of_training_step,
+                                  checkpoint=True)
+
             # SAVE RESULTS IF LOSS DECREASES IN VALIDATION
-            """
+
             if validation_loss_average < best_loss:
-                self.save_results(training_model,
-                                  past_model,
-                                  initial_loss,
-                                  training_loss_average,
-                                  validation_loss_average,
-                                  LOSS,
-                                  sinkhorn_iteration)
-            """
+                self.save_results(current_model=training_model,
+                                  initial_loss=initial_loss,
+                                  training_loss_average=training_loss_average,
+                                  validation_loss_average=validation_loss_average,
+                                  LOSS=LOSS,
+                                  number_of_training_step=number_of_training_step,
+                                  checkpoint=False)
 
             if epoch % 10 == 0:
                 print("Epoch: {}, Loss: {}".format(epoch + 1, training_loss_average))
@@ -272,19 +280,25 @@ class CTDDTrainer:
                      training_loss_average,
                      validation_loss_average,
                      LOSS,
-                     number_of_training_step):
+                     number_of_training_step,
+                     checkpoint=True):
         RESULTS = {"current_model": current_model,
                    "initial_loss": initial_loss.item(),
                    "LOSS": LOSS,
                    "best_loss": validation_loss_average,
                    "training_loss": training_loss_average}
-        torch.save(RESULTS,
-                   self.config.experiment_files.best_model_path_checkpoint.format(number_of_training_step))
+        if checkpoint:
+            best_model_path_checkpoint = self.config.experiment_files.best_model_path_checkpoint.format(number_of_training_step)
+            torch.save(RESULTS,best_model_path_checkpoint)
+        else:
+            torch.save(RESULTS, self.config.experiment_files.best_model_path)
+
+
 
 
 if __name__=="__main__":
     # CONFIGS
-    from graph_bridges.configs.graphs.config_ctdd import CTDDConfig
+    from graph_bridges.configs.graphs.config_ctdd import CTDDConfig, TrainerConfig
     from graph_bridges.data.graph_dataloaders_config import EgoConfig
     from graph_bridges.models.backward_rates.backward_rate_config import GaussianTargetRateImageX0PredEMAConfig
     from graph_bridges.models.generative_models.ctdd import CTDD
@@ -296,7 +310,7 @@ if __name__=="__main__":
     config = CTDDConfig(experiment_indentifier="training_test")
     config.data = EgoConfig(as_image=False, batch_size=32, full_adjacency=False)
     config.model = GaussianTargetRateImageX0PredEMAConfig()
-
+    config.optimizer = TrainerConfig()
     ctdd = CTDD()
     ctdd.create_new_from_config(config,device)
 

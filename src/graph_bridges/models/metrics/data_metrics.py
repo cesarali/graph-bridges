@@ -210,7 +210,7 @@ class SpinBernoulliMarginal(SpinDataloaderMetric):
 
 if __name__=="__main__":
     from graph_bridges.data.dataloaders_config import GraphSpinsDataLoaderConfig
-    from graph_bridges.configs.graphs.config_sb import BridgeConfig
+    from graph_bridges.configs.graphs.config_sb import SBConfig
     from graph_bridges.data.dataloaders import GraphSpinsDataLoader
     from graph_bridges.configs.graphs.config_ctdd import CTDDConfig
     from graph_bridges.data.graph_dataloaders_config import EgoConfig

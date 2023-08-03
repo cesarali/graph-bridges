@@ -1,4 +1,4 @@
-from graph_bridges.configs.graphs.config_sb import BridgeConfig
+from graph_bridges.configs.graphs.config_sb import SBConfig
 from graph_bridges.models.reference_process.reference_process_utils import register_reference
 import torch
 import math
@@ -11,7 +11,7 @@ from torch.distributions import Exponential, Bernoulli
 class ReferenceProcess:
     """
     """
-    def __init__(self,config:BridgeConfig,device):
+    def __init__(self, config:SBConfig, device):
         assert config.target.S == config.data.S
         assert config.target.D == config.data.D
 

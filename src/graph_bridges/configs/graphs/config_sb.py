@@ -5,11 +5,17 @@ import time
 import os
 import subprocess
 import json
-from graph_bridges.data.dataloaders_config import GraphSpinsDataLoaderConfig
-from graph_bridges.models.reference_process.reference_process_config import GaussianTargetRateConfig, all_reference_process_configs
-from pathlib import Path
+import torch
 
-from graph_bridges.models.backward_rates.backward_rate_config import BackRateMLPConfig,GaussianTargetRateImageX0PredEMAConfig,all_backward_rates_configs
+from graph_bridges.data.graph_dataloaders_config import TargetConfig, CommunityConfig, GraphDataConfig
+from graph_bridges.data.graph_dataloaders_config import all_dataloaders_configs
+from graph_bridges.models.backward_rates.backward_rate_config import BackRateMLPConfig
+from graph_bridges.models.backward_rates.backward_rate_config import all_backward_rates_configs
+from graph_bridges.models.reference_process.reference_process_config import GaussianTargetRateConfig
+from graph_bridges.models.reference_process.reference_process_config import all_reference_process_configs
+from graph_bridges.configs.files_config import ExperimentFiles
+from pprint import pprint
+
 
 def get_git_revisions_hash():
     hashes = []
@@ -21,74 +27,14 @@ def get_git_revisions_hash():
 #logs_dir.mkdir(exist_ok=True)
 
 @dataclass
-class DataConfig:
-    # doucet variables
-    name : str = 'DoucetTargetData'
-    root : str = "datasets_folder"
-    train : bool = True
-    download : bool = True
-    batch_size : int = 28 # use 128 if you have enough memory or use distributed
-    training_proportion :float = 0.8
-    shuffle : bool = True
-
-    # shapes and dimensions
-    S :int = 2
-    shape: List[int] = field(default_factory=lambda: [1, 1, 45])
-    C: int = None
-    H: int = None
-    W: int = None
-    D :int = None
-    random_flips = True
-    data_min_max : List[int]= field(default_factory=lambda:[0, 1]) # CHECK THIS for CIFAR 255
-
-
-    # discrete diffusion variables
-    type :str  = "doucet" #one of [doucet, spins]
-    full_adjacency :bool = False
-    preprocess_datapath :str = "lobster_graphs_upper"
-    raw_datapath :str = "lobster_graphs_upper"
-
-    #length = 500
-    max_node :int = 10
-    min_node :int = 10
+class SBExperimentsFiles(ExperimentFiles):
 
     def __post_init__(self):
-        self.C, self.H, self.W = self.shape[0], self.shape[1], self.shape[2]
-        self.D = self.C * self.H * self.W
-
-@dataclass
-class TargetConfig:
-    # doucet variables
-    name : str = 'DoucetTargetData'
-    root : str = "datasets_folder"
-    train : bool = True
-    download : bool = True
-    S : int = 2
-    batch_size :int = 28 # use 128 if you have enough memory or use distributed
-    shuffle : bool = True
-
-    shape : List[int] = field(default_factory=lambda : [1,1,45])
-    C: int = field(init=False)
-    H: int = field(init=False)
-    W: int = field(init=False)
-
-    D :int = field(init=False)
-
-    random_flips : int = True
-
-    # discrete diffusion variables
-    type : str = "doucet" #one of [doucet, spins]
-    full_adjacency : bool = False
-    preprocess_datapath :str = "lobster_graphs_upper"
-    raw_datapath :str = "lobster_graphs_upper"
-
-    #length = 500
-    max_node : int = 10
-    min_node : int = 10
-
-    def __post_init__(self):
-        self.C, self.H, self.W = self.shape[0], self.shape[1], self.shape[2]
-        self.D = self.C * self.H * self.W
+        super().__post_init__()
+        self.best_model_path_checkpoint = os.path.join(self.results_dir, "model_checkpoint_{0}_sinkhorn_{1}.tr")
+        self.best_model_path = os.path.join(self.results_dir, "best_model_sinkhorn_{0}.tr")
+        self.plot_path = os.path.join(self.results_dir, "marginal_at_site_{0}.png")
+        self.graph_plot_path = os.path.join(self.results_dir, "graph_plots_{0}.png")
 
 @dataclass
 class ParametrizedSamplerConfig:
@@ -146,34 +92,38 @@ class TrainerConfig:
     save_model_global_iter :int = 1000
 
 @dataclass
-class BridgeConfig:
+class SBConfig:
 
     from graph_bridges import results_path
 
     config_path : str = ""
+    # files, directories and naming ---------------------------------------------
+    delete :bool = False
+    experiment_name :str = 'graph'
+    experiment_type :str = 'sb'
+    experiment_indentifier :str  = 'testing'
+    init_model_path = None
+
     # different elements configurations------------------------------------------
-    model : GaussianTargetRateImageX0PredEMAConfig =  GaussianTargetRateImageX0PredEMAConfig()
-    data : DataConfig =  DataConfig() # corresponds to the distributions at start time
-    target : DataConfig =  DataConfig() # corresponds to the distribution at final time
+    model : BackRateMLPConfig =  BackRateMLPConfig()
+    data : GraphDataConfig =  CommunityConfig() # corresponds to the distributions at start time
+    target : TargetConfig =  TargetConfig() # corresponds to the distribution at final time
+
     reference : GaussianTargetRateConfig =  GaussianTargetRateConfig()
     sampler : ParametrizedSamplerConfig =  ParametrizedSamplerConfig()
+
     stein : SteinSpinEstimatorConfig= SteinSpinEstimatorConfig()
-    backward_estimator : BackwardEstimatorConfig = BackwardEstimatorConfig()
+    loss : BackwardEstimatorConfig = BackwardEstimatorConfig()
 
     scheduler : SBSchedulerConfig =  SBSchedulerConfig()
     pipeline : SBPipelineConfig =  SBPipelineConfig()
     optimizer : TrainerConfig =  TrainerConfig()
-
+    experiment_files: SBExperimentsFiles = SBExperimentsFiles(delete=delete,
+                                                              experiment_name=experiment_name,
+                                                              experiment_indentifier=experiment_indentifier,
+                                                              experiment_type=experiment_type)
     number_of_paths : int = 10
     number_of_sinkhorn : int = 1
-
-
-    # files, directories and naming ---------------------------------------------
-    delete :bool = False
-    experiment_name :str = 'graph'
-    experiment_type :str = 'lobster'
-    experiment_indentifier :str  = 'testing'
-    init_model_path = None
 
     # devices and parallelization ----------------------------------------------
     device = 'cpu'
@@ -183,13 +133,11 @@ class BridgeConfig:
 
     def __post_init__(self):
         if isinstance(self.model,dict):
-            model_name = self.model["name"]
-            self.model = all_backward_rates_configs[model_name](**self.model)
+            self.model = all_backward_rates_configs[self.model["name"]](**self.model)
         if isinstance(self.data,dict):
-            if self.data["name"] == "GraphSpinsDataLoader":
-                self.data = GraphSpinsDataLoaderConfig(**self.data)
+            self.data =  all_dataloaders_configs[self.data["data"]](**self.data)
         if isinstance(self.target,dict):
-            self.target = DataConfig(**self.target)  # corresponds to the distribution at final time
+            self.target = all_dataloaders_configs[self.target["data"]](**self.target)  # corresponds to the distribution at final time
         if isinstance(self.reference,dict):
             reference_name = self.reference["name"]
             self.reference = all_reference_process_configs[reference_name](**self.reference)
@@ -202,25 +150,38 @@ class BridgeConfig:
         if isinstance(self.optimizer,dict):
             self.optimizer = TrainerConfig(**self.optimizer)
 
-        self.current_git_commit = str(get_git_revisions_hash()[0])
-        if self.experiment_indentifier is None:
-            self.experiment_indentifier = str(int(time.time()))
+        self.experiment_files.data_stats = os.path.join(self.data.preprocess_datapath, "data_stats.json")
 
-        self.experiment_dir = os.path.join(self.results_path, self.experiment_name)
-        self.experiment_type_dir = os.path.join(self.experiment_dir, self.experiment_type)
-        self.results_dir = os.path.join(self.experiment_type_dir, self.experiment_indentifier)
+    def initialize_new_experiment(self,
+                                  experiment_name: str = None,
+                                  experiment_type: str = None,
+                                  experiment_indentifier: str = None):
+        if experiment_name is not None:
+            self.experiment_name = experiment_name
+        if experiment_type is not None:
+            self.experiment_type = experiment_type
+        if experiment_indentifier is not None:
+            self.experiment_indentifier = experiment_indentifier
 
-        # doucet
-        self.save_location = self.results_dir
-
-    def initialize(self):
-        self.create_directories()
         self.align_configurations()
+        self.experiment_files.create_directories()
+        self.config_path = self.experiment_files.config_path
+        self.save_config()
 
     def align_configurations(self):
+        #dataloaders for training
+        self.data.as_image = False
+        self.data.as_spins = True
+
         # data distributions matches at the end
-        self.data.batch_size = self.target.batch_size
-        #model matches data
+        self.target.batch_size = self.data.batch_size
+
+        # target
+        self.target.S = self.data.S
+        self.target.D = self.data.D
+        self.target.C = self.data.C
+        self.target.H = self.data.H
+        self.target.W = self.data.W
 
         # model matches reference process
         self.reference.initial_dist = self.model.initial_dist
@@ -229,56 +190,23 @@ class BridgeConfig:
         self.reference.time_exponential = self.model.time_exponential
         self.reference.time_base = self.model.time_base
 
-    def create_directories(self):
-        if not os.path.isdir(self.results_dir):
-            os.makedirs(self.results_dir)
-        else:
-            if self.delete:
-                shutil.rmtree(self.results_dir)
-                os.makedirs(self.results_dir)
 
-        self.tensorboard_path = os.path.join(self.results_dir, "tensorboard")
-        if os.path.isdir(self.tensorboard_path) and self.delete:
-            shutil.rmtree(self.tensorboard_path)
-        if not os.path.isdir(self.tensorboard_path):
-            os.makedirs(self.tensorboard_path)
-
-        self.config_path = os.path.join(self.results_dir, "config.json")
-
-        self.data_stats = os.path.join(self.data.data_path, "data_stats.json")
-        self.best_model_path_checkpoint = os.path.join(self.results_dir, "sinkhorn_{0}_checkpoint_{1}.tr")
-        self.best_model_path = os.path.join(self.results_dir, "sinkhorn_{0}.tr")
-
-        self.sinkhorn_plot_path = os.path.join(self.results_dir, "marginal_at_site_sinkhorn_{0}.png")
-
-def get_config_from_file(experiment_name,experiment_type,experiment_indentifier)->BridgeConfig:
-    from graph_bridges import results_path
-
-    experiment_dir = os.path.join(results_path, experiment_name)
-    experiment_type_dir = os.path.join(experiment_dir, experiment_type)
-    results_dir = os.path.join(experiment_type_dir, experiment_indentifier)
-
-    config_path = os.path.join(results_dir, "config.json")
-    config_path_json = json.load(open(config_path,"r"))
-    config_path_json["delete"] = False
-
-    config = BridgeConfig(**config_path_json)
-
-    return config
+    def save_config(self):
+        config_as_dict = asdict(self)
+        config_as_dict["experiment_files"]["results_dir"] = str(config_as_dict["experiment_files"]["results_dir"])
+        config_as_dict["data"]["dir"] = str(config_as_dict["data"]["dir"])
+        with open(self.experiment_files.config_path, "w") as file:
+            json.dump(config_as_dict, file)
 
 
 if __name__=="__main__":
     from pprint import pprint
+    from graph_bridges.data.graph_dataloaders_config import EgoConfig, GraphSpinsDataLoaderConfig, TargetConfig
+    from graph_bridges.models.backward_rates.backward_rate_config import BackRateMLPConfig, GaussianTargetRateImageX0PredEMAConfig
 
-    data_config = DataConfig()
-    bridge_config = BridgeConfig(delete=False)
-    bridge_config2 = BridgeConfig(experiment_indentifier=None)
+    device = torch.device("cpu")
 
-    config = get_config_from_file("graph", "lobster", "1688375653")
-    print(config.model)
-    print(config.data)
-    print(config.target)
-    print(config.pipeline)
-    print(config.scheduler)
-    print(config.reference)
-    print(config.optimizer)
+    config = SBConfig()
+    config.data = EgoConfig(as_image=False, batch_size=32, full_adjacency=False)
+    config.model = GaussianTargetRateImageX0PredEMAConfig(time_embed_dim=32, fix_logistic=False)
+    config.initialize_new_experiment()
