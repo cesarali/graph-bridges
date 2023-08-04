@@ -123,7 +123,7 @@ class SBTrainer:
     def train_step(self, current_model, past_model, databatch, number_of_training_step, sinkhorn_iteration=0):
         databatch = self.preprocess_data(databatch)
         # LOSS UPDATE
-        loss = self.backward_estimator.estimator(current_model, past_model, databatch[0], databatch[1])
+        loss = self.sb.backward_ratio_stein_estimator.estimator(current_model, past_model, databatch[0], databatch[1])
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
@@ -191,17 +191,17 @@ class SBTrainer:
                                                                             times)
                     print(loss)
                     # DATA
-                    """
+
                     loss = self.train_step(training_model,
                                            past_model,
                                            databatch,
                                            number_of_training_step,
                                            sinkhorn_iteration)
-                    """
+
                     training_loss.append(loss.item())
                     number_of_training_step += 1
                     LOSS.append(loss.item())
-                    break
+
                 training_loss_average = np.asarray(training_loss).mean()
 
                 """
