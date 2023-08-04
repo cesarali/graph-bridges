@@ -165,6 +165,7 @@ class BridgeGraphDataLoaders:
         test_adjs_tensor = self.composed_transform(test_adjs_tensor)
 
         self.test_dataloader_ = self.create_dataloaders(test_adjs_tensor,test_x_tensor)
+        self.fake_time_ = torch.rand(self.graph_data_config.batch_size)
 
     def train(self):
         return self.train_dataloader_

@@ -184,7 +184,6 @@ class SBConfig:
     def align_configurations(self):
         #dataloaders for training
         self.data.as_image = False
-        self.data.as_spins = True
 
         # data distributions matches at the end
         self.target.batch_size = self.data.batch_size
