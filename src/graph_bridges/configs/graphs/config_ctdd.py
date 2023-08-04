@@ -69,6 +69,7 @@ class TrainerConfig:
     save_image_epochs :int = 10
     save_model_epochs :int = 2
     save_model_global_iter :int = 1000
+    save_metric_epochs: int = 200
 
     metrics = ["graphs","histograms"]
 
