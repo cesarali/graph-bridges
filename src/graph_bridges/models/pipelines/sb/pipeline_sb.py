@@ -184,9 +184,7 @@ class SBPipeline(DiffusionPipeline):
         if past_model is None:
             assert sinkhorn_iteration == 0
         else:
-            if isinstance(past_model,ReferenceProcess):
-                assert sinkhorn_iteration == 0
-            else:
+            if isinstance(past_model,BackwardRate):
                 assert sinkhorn_iteration >= 1
 
         # set step values
@@ -266,7 +264,8 @@ class SBPipeline(DiffusionPipeline):
         if past_model is None:
             assert sinkhorn_iteration == 0
         else:
-            assert sinkhorn_iteration >= 1
+            if isinstance(past_model,BackwardRate):
+                assert sinkhorn_iteration >= 1
 
         # set step values
         self.scheduler.set_timesteps(self.bridge_config.sampler.num_steps,

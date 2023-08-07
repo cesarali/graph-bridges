@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Union,Tuple,List
 import subprocess
 import time
-
+from graph_bridges import results_path
 
 def get_git_revisions_hash():
     hashes = []
@@ -15,7 +15,7 @@ def get_git_revisions_hash():
 
 @dataclass
 class ExperimentFiles:
-
+    results_path:str = results_path
     experiment_indentifier:str = None
     experiment_name:str = None
     experiment_type:str= None
@@ -25,9 +25,7 @@ class ExperimentFiles:
     delete:bool = False
 
     def __post_init__(self):
-        from graph_bridges import results_path
-
-        self.results_path = results_path
+        self.results_path = str(results_path)
 
         self.current_git_commit = str(get_git_revisions_hash()[0])
         if self.experiment_indentifier is None:

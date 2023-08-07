@@ -4,7 +4,7 @@ import torch
 from graph_bridges.models.generative_models.sb import SB
 from graph_bridges.models.backward_rates.backward_rate import GaussianTargetRateImageX0PredEMA
 from graph_bridges.models.backward_rates.backward_rate_config import GaussianTargetRateImageX0PredEMAConfig
-
+import networkx as nx
 
 if __name__=="__main__":
     from graph_bridges.configs.graphs.config_sb import SBConfig
@@ -15,7 +15,7 @@ if __name__=="__main__":
     config = SBConfig(experiment_indentifier="debug")
     config.data = EgoConfig(as_image=False, batch_size=32, full_adjacency=False)
     config.model = GaussianTargetRateImageX0PredEMAConfig(time_embed_dim=32, fix_logistic=False)
-    config.sampler = ParametrizedSamplerConfig(num_steps=23)
+    config.sampler = ParametrizedSamplerConfig(num_steps=18)
 
 
     #read the model
@@ -53,8 +53,8 @@ if __name__=="__main__":
     # test reference process
     x_spins_w_noise = sb.reference_process.spins_on_times(x_spins_data.squeeze(), times)
 
-
-    # test pipeline
+    # test pipeline REFERENCE PROCESS
+    """
     print("From Dataloader image shape")
     x_end = sb.pipeline(None, 0, device, return_path=False)
     print(x_end.shape)
@@ -73,6 +73,33 @@ if __name__=="__main__":
     x_end,times = sb.pipeline(None,0,device,x_spins_data,return_path=True,return_path_shape=True)
     print(x_end.shape)
     print(times.shape)
+    """
+    """
+    #test pipeline PARAMETRIC RATES
+    print("From Dataloader image shape")
+    x_end = sb.pipeline(sb.training_model,1,device, return_path=False)
+    print(x_end.shape)
 
+    print("From Dataloader full path in image shape with times")
+    x_end, times = sb.pipeline(sb.training_model,1, device, return_path=True)
+    print(x_end.shape)
+    print(times.shape)
 
+    print("From given start")
+    x_end,times = sb.pipeline(sb.training_model,1,device,x_spins_data,return_path=True)
+    print(x_end.shape)
+    print(times.shape)
 
+    print("From given start in path shape")
+    x_end,times = sb.pipeline(sb.training_model,1,device,x_spins_data,return_path=True,return_path_shape=True)
+    print(x_end.shape)
+    print(times.shape)
+    """
+
+    # PATHS ITERATORS
+    for spins_path in sb.pipeline.paths_iterator(sb.training_model,
+                                                 sinkhorn_iteration=1,
+                                                 device=device,
+                                                 train=False,
+                                                 return_path=False):
+        print(spins_path.shape)

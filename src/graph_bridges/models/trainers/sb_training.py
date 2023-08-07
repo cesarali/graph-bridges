@@ -16,7 +16,9 @@ from torch.optim import Adam
 
 from typing import Optional
 from graph_bridges.configs.graphs.config_sb import SBConfig
-from graph_bridges.models.metrics.sb_metrics import graph_metrics_and_paths_histograms
+from graph_bridges.models.metrics.sb_metrics import graph_metrics_and_paths_histograms, graph_metrics_for_sb
+from graph_bridges.utils.plots.graph_plots import plot_graphs_list2
+
 def copy_models(model_to, model_from):
     model_to.load_state_dict(model_from.state_dict())
 
@@ -121,7 +123,7 @@ class SBTrainer:
     def train_step(self, current_model, past_model, databatch, number_of_training_step, sinkhorn_iteration=0):
         databatch = self.preprocess_data(databatch)
         # LOSS UPDATE
-        loss = self.backward_estimator.estimator(current_model, past_model, databatch[0], databatch[1])
+        loss = self.sb.backward_ratio_stein_estimator.estimator(current_model, past_model, databatch[0], databatch[1])
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
@@ -178,28 +180,27 @@ class SBTrainer:
             for epoch in tqdm(range(self.number_of_epochs)):
                 #TRAINING
                 training_loss = []
-                for spins_path, times in self.sb.pipeline.paths_iterator(past_model,
+                for databatch in self.sb.pipeline.paths_iterator(past_model,
                                                                          sinkhorn_iteration=sinkhorn_iteration,
                                                                          device=self.device,
                                                                          train=True):
-
+                    spins_path, times = databatch
                     loss = self.sb.backward_ratio_stein_estimator.estimator(training_model,
                                                                             past_loss,
                                                                             spins_path,
                                                                             times)
                     print(loss)
                     # DATA
-                    #loss = self.train_step(current_model,
-                    #                       past_to_train,
-                    #                       databatch,
-                    #                       number_of_training_step,
-                    #                       sinkhorn_iteration)
+
+                    loss = self.train_step(training_model,
+                                           past_model,
+                                           databatch,
+                                           number_of_training_step,
+                                           sinkhorn_iteration)
 
                     training_loss.append(loss.item())
                     number_of_training_step += 1
                     LOSS.append(loss.item())
-                    break
-
 
                 training_loss_average = np.asarray(training_loss).mean()
 
@@ -232,19 +233,23 @@ class SBTrainer:
                 if epoch % 10 == 0:
                     print("Epoch: {}, Loss: {}".format(epoch + 1, training_loss_average))
                 """
-                if epoch % self.config.optimizer.save_model_epochs == 0:
+
+                if (epoch + 1) % self.config.optimizer.save_model_epochs == 0:
                     self.save_results(current_model=training_model,
                                       past_model=past_model,
                                       initial_loss=initial_loss,
                                       training_loss_average=training_loss_average,
                                       validation_loss_average=0.,
                                       LOSS=LOSS,
-                                      number_of_training_step=number_of_training_step,
+                                      epoch=epoch+1,
                                       sinkhorn_iteration=sinkhorn_iteration,
                                       checkpoint=True)
 
-                    self.log_metrics(current_model=training_model,past_to_train_model=past_model,
-                                     sinkhorn_iteration=sinkhorn_iteration,number_of_steps=number_of_training_step,
+                if (epoch + 1) % self.config.optimizer.save_metric_epochs == 0:
+                    self.log_metrics(current_model=training_model,
+                                     past_to_train_model=past_model,
+                                     sinkhorn_iteration=sinkhorn_iteration,
+                                     epoch=epoch+1,
                                      device=device)
 
             self.time1 = datetime.now()
@@ -256,7 +261,7 @@ class SBTrainer:
 
         return best_loss
 
-    def log_metrics(self,current_model,past_to_train_model,sinkhorn_iteration,number_of_steps,device):
+    def log_metrics(self, current_model, past_to_train_model, sinkhorn_iteration, epoch, device):
         """
         After the training procedure is done, the model is updated
 
@@ -265,30 +270,35 @@ class SBTrainer:
         config = self.config
 
         #HISTOGRAMS
-        histograms_plot_path_ = config.experiment_files.plot_path.format("sinkhorn_{0}_checkpoint_{1}".format(sinkhorn_iteration,
-                                                                                                              number_of_steps))
-        graph_metrics_and_paths_histograms(sb,
-                                           sinkhorn_iteration,
-                                           device,
-                                           current_model,
-                                           past_to_train_model,
-                                           plot_path=histograms_plot_path_)
+        if "histograms" in config.optimizer.metrics:
+            histograms_plot_path_ = config.experiment_files.plot_path.format("sinkhorn_{0}_checkpoint_{1}".format(sinkhorn_iteration,
+                                                                                                                  epoch))
+            graph_metrics_and_paths_histograms(sb,
+                                               sinkhorn_iteration,
+                                               device,
+                                               current_model,
+                                               past_to_train_model,
+                                               plot_path=histograms_plot_path_)
 
         #METRICS
-        #graph_metrics_path_ = config.experiment_files.metrics_file.format("graph_{0}".format(number_of_steps))
-        #graph_metrics = graph_metrics_for_ctdd(self.ctdd, config)
-        #with open(graph_metrics_path_, "w") as f:
-        #    json.dump(graph_metrics, f)
+        if "graphs" in config.optimizer.metrics:
+            graph_metrics_path_ = config.experiment_files.metrics_file.format("graph_sinkhorn_{0}_{1}".format(sinkhorn_iteration,
+                                                                                                              epoch))
+            #graph_metrics = graph_metrics_for_sb(self.sb, current_model,config)
+            graph_metrics = {"degree":100.}
+            with open(graph_metrics_path_, "w") as f:
+                json.dump(graph_metrics, f)
 
         #PLOTS
-        #graph_plot_path_ = config.experiment_files.graph_plot_path.format("generative_{0}".format(number_of_steps))
-        #generated_graphs = self.ctdd.generate_graphs(number_of_graphs=36)
-        #plot_graphs_list2(generated_graphs,title="Generated 0",save_dir=graph_plot_path_)
+        if "graphs_plots" in config.optimizer.metrics:
+            graph_plot_path_ = config.experiment_files.graph_plot_path.format("generative_sinkhorn_{0}_checkpoint_{0}".format(epoch, sinkhorn_iteration))
+            generated_graphs = self.sb.generate_graphs(20)
+            plot_graphs_list2(generated_graphs,title="Generated 0",save_dir=graph_plot_path_)
 
 
-    def save_results(self, current_model, past_model,initial_loss,
+    def save_results(self, current_model, past_model, initial_loss,
                      training_loss_average, validation_loss_average, LOSS,
-                     number_of_training_step,
+                     epoch,
                      sinkhorn_iteration,
                      checkpoint=True):
         RESULTS = {"current_model": current_model,
@@ -299,22 +309,21 @@ class SBTrainer:
                    "training_loss": training_loss_average,
                    "sinkhorn_iteration":sinkhorn_iteration}
         if checkpoint:
-            best_model_path_checkpoint = self.config.experiment_files.best_model_path_checkpoint.format(number_of_training_step,sinkhorn_iteration)
+            best_model_path_checkpoint = self.config.experiment_files.best_model_path_checkpoint.format(epoch, sinkhorn_iteration)
             torch.save(RESULTS,best_model_path_checkpoint)
         else:
             torch.save(RESULTS, self.config.experiment_files.best_model_path)
 
 
 if __name__=="__main__":
-    from graph_bridges.configs.graphs.config_sb import SBConfig, ParametrizedSamplerConfig, SteinSpinEstimatorConfig
     from graph_bridges.data.graph_dataloaders_config import EgoConfig
     from graph_bridges.models.backward_rates.backward_rate_config import BackRateMLPConfig
+    from graph_bridges.configs.graphs.config_sb import SBConfig, ParametrizedSamplerConfig, SteinSpinEstimatorConfig
     from graph_bridges.models.backward_rates.backward_rate_config import GaussianTargetRateImageX0PredEMAConfig
 
-    config = SBConfig(experiment_indentifier="debug")
+    config = SBConfig(experiment_indentifier="debug2",delete=True)
     config.data = EgoConfig(as_image=False, batch_size=5, full_adjacency=False)
     config.model = GaussianTargetRateImageX0PredEMAConfig(time_embed_dim=12, fix_logistic=False)
-    #config.model = BackRateMLPConfig(time_embed_dim=9)
     config.stein = SteinSpinEstimatorConfig(stein_sample_size=20)
     config.sampler = ParametrizedSamplerConfig(num_steps=10)
 
@@ -322,6 +331,5 @@ if __name__=="__main__":
     device = torch.device("cpu")
     sb = SB(config, device)
     sb_trainer = SBTrainer(sb)
-
     sb_trainer.train_schrodinger()
 

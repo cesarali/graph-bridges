@@ -11,6 +11,46 @@ from graph_bridges.utils.plots.sb_plots import sinkhorn_plot
 from graph_bridges.models.metrics.evaluation.stats import eval_graph_list
 from graph_bridges.models.metrics.data_metrics import SpinBernoulliMarginal
 
+def graph_metrics_for_sb(sb,current_model,device):
+    """
+
+    :param sb:
+    :param device:
+
+    :return:  generated_graph_list,test_graph_list
+    """
+    # GET GRAPH FROM GENERATIVE MODEL
+    remaining = sb.config.data.test_size
+    generated_graph_list = []
+    for spins_path in sb.pipeline.paths_iterator(current_model,
+                                                 sinkhorn_iteration=1,
+                                                 device=device,
+                                                 train=False,
+                                                 return_path=False):
+        adj_matrices = sb.data_dataloader.transform_to_graph(spins_path)
+        number_of_graphs = adj_matrices.shape[0]
+        adj_matrices = adj_matrices.detach().numpy()
+        for graph_index in range(number_of_graphs):
+            graph_ = nx.from_numpy_array(adj_matrices[graph_index])
+            generated_graph_list.append(graph_)
+            remaining -=1
+            if remaining <= 0:
+                break
+
+    # GET GRAPH FROM TEST DATASET
+    test_graph_list = []
+    for databatch in sb.data_dataloader.test():
+        x = databatch[0]
+        adj_matrices = sb.data_dataloader.transform_to_graph(x)
+        number_of_graphs = adj_matrices.shape[0]
+        adj_matrices = adj_matrices.detach().numpy()
+        for graph_index in range(number_of_graphs):
+            graph_ = nx.from_numpy_array(adj_matrices[graph_index])
+            test_graph_list.append(graph_)
+
+    results_ = eval_graph_list(generated_graph_list, test_graph_list)
+    return results_
+
 def graph_metrics_and_paths_histograms(sb:SB,
                                        sinkhorn_iteration:int,
                                        device:torch.device,
@@ -42,7 +82,6 @@ def graph_metrics_and_paths_histograms(sb:SB,
                                                                 sinkhorn_iteration=sinkhorn_iteration,
                                                                 return_path_shape=True):
             end_of_path = spins_path_1[:, -1, :].unsqueeze(1).unsqueeze(1)
-            print(end_of_path)
             end_of_path = spins_path_1[:, -1, :]
             spins_path_2, times_2 = sb.pipeline(current_model,
                                                 sinkhorn_iteration + 1,

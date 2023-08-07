@@ -40,6 +40,7 @@ class SBExperimentsFiles(ExperimentFiles):
         self.plot_path = os.path.join(self.results_dir, "path_marginal_at_site_{0}.png")
         self.graph_plot_path = os.path.join(self.results_dir, "graph_plots_{0}.png")
 
+
 @dataclass
 class ParametrizedSamplerConfig:
     """
@@ -86,14 +87,18 @@ class TrainerConfig:
     max_n_iters :int = 10000
     clip_grad :bool= True
     warmup :int = 50
-    num_epochs :int = 200
+    num_epochs :int = 50
     learning_rate :float = 2e-4
 
     gradient_accumulation_steps :int = 1
     lr_warmup_steps :int = 500
     save_image_epochs :int = 10
-    save_model_epochs :int = 30
     save_model_global_iter :int = 1000
+    save_metric_epochs: int = 25
+    save_model_epochs :int = 25
+
+    metrics = ["graphs","graphs_plots","histograms"]
+    #metrics = ["graphs","histograms"]
 
 @dataclass
 class SBConfig:
@@ -102,7 +107,7 @@ class SBConfig:
 
     config_path : str = ""
     # files, directories and naming ---------------------------------------------
-    delete :bool = False
+    delete :bool = True
     experiment_name :str = 'graph'
     experiment_type :str = 'sb'
     experiment_indentifier :str  = 'testing'
@@ -122,10 +127,8 @@ class SBConfig:
     scheduler : SBSchedulerConfig =  SBSchedulerConfig()
     pipeline : SBPipelineConfig =  SBPipelineConfig()
     optimizer : TrainerConfig =  TrainerConfig()
-    experiment_files: SBExperimentsFiles = SBExperimentsFiles(delete=delete,
-                                                              experiment_name=experiment_name,
-                                                              experiment_indentifier=experiment_indentifier,
-                                                              experiment_type=experiment_type)
+    experiment_files: SBExperimentsFiles = None
+
     number_of_paths : int = 10
     number_of_sinkhorn : int = 1
 
@@ -136,6 +139,12 @@ class SBConfig:
     num_gpus = 0
 
     def __post_init__(self):
+        self.experiment_files = SBExperimentsFiles(delete=self.delete,
+                                                   experiment_name=self.experiment_name,
+                                                   experiment_indentifier=self.experiment_indentifier,
+                                                   experiment_type=self.experiment_type)
+
+
         if isinstance(self.model,dict):
             self.model = all_backward_rates_configs[self.model["name"]](**self.model)
         if isinstance(self.data,dict):
@@ -175,7 +184,6 @@ class SBConfig:
     def align_configurations(self):
         #dataloaders for training
         self.data.as_image = False
-        self.data.as_spins = True
 
         # data distributions matches at the end
         self.target.batch_size = self.data.batch_size

@@ -1,6 +1,7 @@
 from pathlib import Path
 import concurrent.futures
 import os
+import sys
 import subprocess as sp
 from datetime import datetime
 
@@ -344,7 +345,11 @@ def eval_graph_list(graph_ref_list, grad_pred_list, methods=None):
         methods = ['degree', 'cluster', 'orbit']
     results = {}
     for method in methods:
-        results[method] = METHOD_NAME_TO_FUNC[method](graph_ref_list, grad_pred_list)
+        try:
+            results[method] = METHOD_NAME_TO_FUNC[method](graph_ref_list, grad_pred_list)
+        except Exception as e:
+            print(e)
+            continue
         print(results)
     return results
 

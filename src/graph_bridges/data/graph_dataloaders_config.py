@@ -35,10 +35,15 @@ class GraphDataConfig:
     number_of_spins: int = None
     number_of_states: int = None
     total_data_size:int = 200
+    training_size:int = None
+    test_size:int = None
 
     shape : List[int] = None
     preprocess_datapath:str = "graphs"
     doucet:bool = False
+    type:str=None
+
+
     def __post_init__(self):
         self.number_of_upper_entries = int(self.max_node_num*(self.max_node_num-1)*.5)
 
@@ -89,7 +94,14 @@ class GraphDataConfig:
         self.data_min_max = [0,1]
         if self.as_spins:
             self.doucet = False
+
+        if self.doucet:
+            self.type = "doucet"
+
+
         self.training_proportion = 1. - self.test_split
+        self.training_size = int(self.training_proportion*self.total_data_size)
+        self.test_size = int(self.test_split*self.total_data_size)
 
 @dataclass
 class EgoConfig(GraphDataConfig):

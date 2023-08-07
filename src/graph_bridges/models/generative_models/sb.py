@@ -9,11 +9,15 @@ from dataclasses import dataclass
 from graph_bridges.models.losses.estimators import BackwardRatioSteinEstimator
 from graph_bridges.configs.graphs.config_sb import SBConfig
 from pathlib import Path
+import torch
+import networkx as nx
+from typing import List
 
+from graph_bridges.data.dataloaders import DoucetTargetData
 from graph_bridges.data.dataloaders_utils import load_dataloader
-from graph_bridges.models.backward_rates.backward_rate_utils import load_backward_rates
-from graph_bridges.data.dataloaders import GraphSpinsDataLoader, DoucetTargetData
+from graph_bridges.data.graph_dataloaders import BridgeGraphDataLoaders
 from graph_bridges.models.reference_process.ctdd_reference import GaussianTargetRate
+from graph_bridges.models.backward_rates.backward_rate_utils import load_backward_rates
 
 
 @dataclass
@@ -23,7 +27,7 @@ class SB:
     from a CTDD model
 
     """
-    data_dataloader: GraphSpinsDataLoader = None
+    data_dataloader: BridgeGraphDataLoaders = None
     target_dataloader: DoucetTargetData = None
 
     training_model: GaussianTargetRateImageX0PredEMA=None
@@ -61,3 +65,31 @@ class SB:
                                    self.target_dataloader,
                                    self.scheduler)
         self.config = config
+
+    def generate_graphs(self,number_of_graphs,generating_model=None,device=torch.device("cpu"))->List[nx.Graph]:
+        """
+
+        :param number_of_graphs:
+        :return:
+        """
+        if generating_model is None:
+            generating_model = self.training_model
+        ready = False
+        graphs_ = []
+        remaining_graphs = number_of_graphs
+        for spins_path in self.pipeline.paths_iterator(generating_model,
+                                                       sinkhorn_iteration=1,
+                                                       device=device,
+                                                       train=True,
+                                                       return_path=False):
+            adj_matrices = self.data_dataloader.transform_to_graph(spins_path)
+            number_of_graphs = adj_matrices.shape[0]
+            for graph_index in range(number_of_graphs):
+                graphs_.append(nx.from_numpy_array(adj_matrices[graph_index].numpy()))
+                remaining_graphs -= 1
+                if remaining_graphs < 1:
+                    ready = True
+                    break
+            if ready:
+                break
+        return  graphs_
