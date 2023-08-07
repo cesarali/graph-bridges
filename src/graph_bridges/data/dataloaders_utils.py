@@ -7,7 +7,7 @@ def load_dataloader(config,type:str="data",device:torch.device=torch.device("cpu
     if type == "data":
         if config.data.data == "GraphSpinsDataLoader":
             dataloader = GraphSpinsDataLoader(config.data,device,rank)
-        elif config.data.data in ['grid','community_small',"ego_small",'ENZYMES','QM9','ZINC250k']:
+        elif config.data.data in ['grid','community_small',"ego_small",'ENZYMES','QM9','ZINC250k', 'MNIST']:
             dataloader = BridgeGraphDataLoaders(config,device)
         elif config.data.data == "DoucetTargetData":
             dataloader = DoucetTargetData(config,device)
