@@ -174,11 +174,14 @@ class CTDDPipeline(DiffusionPipeline):
         # set step values
         self.scheduler.set_timesteps(self.bridge_config.sampler.num_steps,self.bridge_config.sampler.min_t)
         timesteps = self.scheduler.timesteps
+        timesteps = timesteps.to(x.device)
 
         for idx, t in tqdm(enumerate(timesteps[0:-1])):
             h = timesteps[idx] - timesteps[idx + 1]
+            # h = h.to(x.device)
+            # t = t.to(x.device)
 
-            p0t = F.softmax(model(x, t * torch.ones((num_of_paths,), device=device)), dim=2)  # (N, D, S)
+            p0t = F.softmax(model(x, t * torch.ones((num_of_paths,), device=x.device)), dim=2)  # (N, D, S)
             rates_ = self.reference_process.backward_rates_from_probability(p0t, x, t, device)
 
             x_new = self.scheduler.step(rates_,x,t,h).prev_sample
