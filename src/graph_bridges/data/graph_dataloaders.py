@@ -9,6 +9,8 @@ from graph_bridges.utils.graph_utils import init_features, graphs_to_tensor
 from torchtyping import TensorType
 from graph_bridges.data.graph_dataloaders_config import CommunityConfig, GraphDataConfig
 import torchvision.transforms as transforms
+from torchvision.datasets import MNIST
+
 
 def from_networkx_to_spins(graph_,upper_diagonal_indices,full_adjacency=False):
     adjacency_ = nx.to_numpy_array(graph_)
@@ -142,7 +144,7 @@ class BridgeGraphDataLoaders:
         self.composed_transform = transforms.Compose(transform_list)
         self.transform_to_graph = transforms.Compose(inverse_transform_list)
 
-        train_graph_list, test_graph_list = self.read_graph_lists()
+        train_graph_list, test_graph_list = self.read_graph_lists() if self.graph_data_config.data != "MNIST" else self.read_pepperized_mnist_lists()
 
         self.training_data_size = len(train_graph_list)
         self.test_data_size = len(test_graph_list)
@@ -210,6 +212,32 @@ class BridgeGraphDataLoaders:
         train_graph_list, test_graph_list = graph_list[test_size:], graph_list[:test_size]
 
         return train_graph_list, test_graph_list
+
+    # def read_pepperized_mnist_lists(self)->Tuple[List[nx.Graph]]:
+    #     data_dir = self.graph_data_config.dir
+    #     threshold = self.graph_data_config.pepper_threshold
+    #     pepperize = transforms.Compose([ transforms.ToTensor(),
+    #                                     transforms.Lambda(lambda x: (x > threshold).float())
+    #                                     ])
+    #     mnist_list = MNIST(root=data_dir, train=True, download=True, transform=pepperize)
+    #     test_size = int(self.graph_data_config.test_split * len(mnist_list))
+    #     train_graph_list, test_graph_list = mnist_list[test_size:], mnist_list[:test_size]
+
+    #     return train_graph_list, test_graph_list
+
+
+    def read_pepperized_mnist_lists(self):
+        data_dir = self.graph_data_config.dir
+        threshold = self.graph_data_config.pepper_threshold
+        pepperize = transforms.Compose([ transforms.ToTensor(),
+                                        transforms.Lambda(lambda x: (x > threshold).float())
+                                        ])
+        mnist_dataset = MNIST(root=data_dir, train=True, download=True, transform=pepperize)
+        
+        test_size = int(self.graph_data_config.test_split * len(mnist_dataset))
+        train_size = len(mnist_dataset) - test_size
+        train_dataset, test_dataset = torch.utils.data.random_split(mnist_dataset, [train_size, test_size])
+        return train_dataset.dataset, test_dataset.dataset
 
 def load_dataset(data_dir='data', file_name=None, need_set=False):
     file_path = os.path.join(data_dir, file_name)
