@@ -14,7 +14,7 @@ if __name__=="__main__":
     from graph_bridges.data.graph_dataloaders_config import EgoConfig, GraphSpinsDataLoaderConfig, TargetConfig
     from graph_bridges.models.backward_rates.backward_rate_config import BackRateMLPConfig, GaussianTargetRateImageX0PredEMAConfig
 
-    device = torch.device("cpu")
+    device = torch.device("cuda:1")
 
     config = CTDDConfig(experiment_indentifier="test_1")
     config.data = EgoConfig(as_image=False, batch_size=32, full_adjacency=False)

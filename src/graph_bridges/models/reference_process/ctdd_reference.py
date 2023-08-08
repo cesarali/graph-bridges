@@ -180,6 +180,7 @@ class GaussianTargetRate(ReferenceProcess):
 
     def rate(self, t: TensorType["B"]
              ) -> TensorType["B", "S", "S"]:
+        
         B = t.shape[0]
         S = self.S
         rate_scalars = self._rate_scalar(t)
