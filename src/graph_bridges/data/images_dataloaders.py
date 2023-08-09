@@ -7,9 +7,9 @@ from torch.utils.data import TensorDataset, DataLoader
 from graph_bridges.utils.graph_utils import init_features, graphs_to_tensor
 from torchtyping import TensorType
 import torchvision.transforms as transforms
-from torchvision.datasets import MNIST
+from torchvision.datasets import MNIST, CIFAR10
 
-from graph_bridges.data.binary_images_dataloaders_config import PepperMNISTGraphDataConfig
+from graph_bridges.data.images_dataloaders_config import PepperMNISTConfig
 
 
 def get_transforms(config:GraphDataConfig):
@@ -57,7 +57,7 @@ def get_transforms(config:GraphDataConfig):
 
 class PepperMNISTDataLoaders:
 
-    image_data_config : PepperMNISTGraphDataConfig
+    image_data_config : PepperMNISTDataConfig
 
     def __init__(self,config, device, type="data"):
         """

@@ -1,6 +1,6 @@
 import torch
 from graph_bridges.data.graph_dataloaders_config import EgoConfig 
-from graph_bridges.data.binary_images_dataloaders_config import MNISTGraphDataConfig
+from graph_bridges.data.images_dataloaders_config import MNISTDataConfig
 
 from graph_bridges.data.graph_dataloaders import BridgeGraphDataLoaders
 from graph_bridges.configs.graphs.config_sb import SBConfig
@@ -8,7 +8,7 @@ from graph_bridges.configs.graphs.config_sb import SBConfig
 
 if __name__=="__main__":
 
-    GeneralConfig = MNISTGraphDataConfig
+    GeneralConfig = MNISTDataConfig
 
     #================================
     # upper diagonal matrix
