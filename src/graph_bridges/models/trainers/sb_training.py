@@ -319,7 +319,7 @@ if __name__=="__main__":
     #config.data = EgoConfig(as_image=False, batch_size=32, full_adjacency=False)
 
     config.data = CommunityConfig(as_image=False, batch_size=32, full_adjacency=False)
-    config.data = CommunitySmallConfig(as_image=False, batch_size=32, full_adjacency=False)
+    #config.data = CommunitySmallConfig(as_image=False, batch_size=32, full_adjacency=False)
     #config.model = GaussianTargetRateImageX0PredEMAConfig(time_embed_dim=12, fix_logistic=False)
 
     config.model = BackRateMLPConfig(time_embed_dim=14,hidden_layer=150)

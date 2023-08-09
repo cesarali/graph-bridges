@@ -23,7 +23,6 @@ def sinkhorn_plot(sinkhorn_iteration,
     start_target = backward_histogram[0,:]
     end_target = forward_histogram[-1,:]
     number_of_total_states = states_histogram_at_0.shape[0]
-
     # create the layout with GridSpec
 
     fig, axs = plt.subplots(figsize=(12, 3),
@@ -44,8 +43,8 @@ def sinkhorn_plot(sinkhorn_iteration,
         state_label = "{0}:".format(spin_state_index) + " " + str(state_spins_vector)
         color = colors[spin_state_index % len(colors)]
         # create the main plot
-        ax2.plot(time_[0], backward_histogram[:, spin_state_index], "-", label=state_label, alpha=0.4, color=color)
-        ax2.plot(time_[0], forward_histogram[:, spin_state_index], "*", alpha=0.4, color=color)
+        ax2.plot(time_, backward_histogram[:, spin_state_index], "-", label=state_label, alpha=0.4, color=color)
+        ax2.plot(time_, forward_histogram[:, spin_state_index], "*", alpha=0.4, color=color)
 
     ax2.legend(loc='upper center',bbox_to_anchor=(0.5, -0.2), fancybox=True, shadow=True, ncol=4)
 

@@ -11,6 +11,7 @@ from graph_bridges.utils.plots.sb_plots import sinkhorn_plot
 from graph_bridges.models.metrics.evaluation.stats import eval_graph_list
 from graph_bridges.models.metrics.data_metrics import SpinBernoulliMarginal
 
+from graph_bridges.data.graph_dataloaders import BinaryTensorToSpinsTransform, SpinsToBinaryTensor
 def graph_metrics_for_sb(sb,current_model,device):
     """
 
@@ -51,6 +52,64 @@ def graph_metrics_for_sb(sb,current_model,device):
     results_ = eval_graph_list(generated_graph_list, test_graph_list)
     return results_
 
+def paths_marginal_histograms(sb:SB,
+                              sinkhorn_iteration:int,
+                              device:torch.device,
+                              current_model,
+                              past_to_train_model):
+    """
+
+    :param sb:
+    :param sinkhorn_iteration:
+    :param device:
+    :param current_model:
+    :param past_to_train_model:
+    :param plot_path:
+
+    :return: backward_histogram,forward_histogram,forward_time
+
+    """
+    total_number_of_steps = sb.config.sampler.num_steps + 1
+    number_of_spins = sb.config.data.number_of_spins
+
+    histogram_path_1 = torch.zeros(total_number_of_steps, number_of_spins)
+    histogram_path_2 = torch.zeros(total_number_of_steps, number_of_spins)
+
+    for spins_path_1, times_1 in sb.pipeline.paths_iterator(past_to_train_model,
+                                                            sinkhorn_iteration=sinkhorn_iteration,
+                                                            return_path_shape=True):
+        end_of_path = spins_path_1[:, -1, :]
+        spins_path_2, times_2 = sb.pipeline(current_model,
+                                            sinkhorn_iteration + 1,
+                                            device,
+                                            end_of_path,
+                                            return_path=True,
+                                            return_path_shape=True)
+        binary_path_1 = SpinsToBinaryTensor(spins_path_1)
+        binary_path_2 = SpinsToBinaryTensor(spins_path_2)
+
+        current_sum_1 = binary_path_1.sum(axis=0)
+        current_sum_2 = binary_path_2.sum(axis=0)
+
+        histogram_path_1 += current_sum_1
+        histogram_path_2 += current_sum_2
+
+    if sinkhorn_iteration % 2 == 0:
+        backward_time = times_2[0]
+        forward_time = times_1[0]
+        backward_histogram = histogram_path_2
+        forward_histogram = histogram_path_1
+    else:
+        backward_time = times_1[0]
+        forward_time = times_2[0]
+        backward_histogram = histogram_path_2
+        forward_histogram = histogram_path_1
+
+    backward_histogram = torch.flip(backward_histogram, [0])
+
+    return backward_histogram,forward_histogram,forward_time
+
+
 def graph_metrics_and_paths_histograms(sb:SB,
                                        sinkhorn_iteration:int,
                                        device:torch.device,
@@ -63,8 +122,6 @@ def graph_metrics_and_paths_histograms(sb:SB,
     :return:
     """
     # CHECK DATA METRICS
-    total_number_of_steps = sb.config.sampler.num_steps + 1
-    number_of_spins = sb.config.data.number_of_spins
 
     data_stats_path = Path(sb.config.experiment_files.data_stats)
     if data_stats_path.exists():
@@ -75,44 +132,15 @@ def graph_metrics_and_paths_histograms(sb:SB,
         marginal_0 = SpinBernoulliMarginal(spin_dataloader=sb.data_dataloader)()
         marginal_1 = SpinBernoulliMarginal(spin_dataloader=sb.target_dataloader)()
 
-        histogram_path_0 = torch.zeros(total_number_of_steps, number_of_spins)
-        histogram_path_1 = torch.zeros(total_number_of_steps, number_of_spins)
+        backward_histogram,forward_histogram,forward_time = paths_marginal_histograms(sb,sinkhorn_iteration,device,current_model,past_to_train_model)
 
-        for spins_path_1, times_1 in sb.pipeline.paths_iterator(past_to_train_model,
-                                                                sinkhorn_iteration=sinkhorn_iteration,
-                                                                return_path_shape=True):
-            end_of_path = spins_path_1[:, -1, :]
-            spins_path_2, times_2 = sb.pipeline(current_model,
-                                                sinkhorn_iteration + 1,
-                                                device,
-                                                end_of_path,
-                                                return_path=True,
-                                                return_path_shape=True)
-            binary_0 = (spins_path_1 + 1.) * .5
-            binary_1 = (spins_path_2 + 1.) * .5
-
-            current_sum_0 = binary_0.sum(axis=0)
-            current_sum_1 = binary_1.sum(axis=0)
-
-            histogram_path_0 += current_sum_0
-            histogram_path_1 += current_sum_1
-
-        print("Past Model 0")
-        print(histogram_path_0[0])
-        print("Past Model 1")
-        print(histogram_path_0[-1])
-        print("Training Model 0")
-        print(histogram_path_1[0])
-        print("Training Model 1")
-        print(histogram_path_1[-1])
-
-        state_legends = [str(i) for i in range(histogram_path_0.shape[-1])]
+        state_legends = [str(i) for i in range(backward_histogram.shape[-1])]
         sinkhorn_plot(sinkhorn_iteration,
                       marginal_0,
                       marginal_1,
-                      backward_histogram=histogram_path_1,
-                      forward_histogram=histogram_path_0,
-                      time_=times_1,
+                      backward_histogram=backward_histogram,
+                      forward_histogram=forward_histogram,
+                      time_=forward_time,
                       states_legends=state_legends,
                       save_path=plot_path)
 

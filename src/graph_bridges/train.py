@@ -13,7 +13,6 @@ class SchrodingerBridge:
     """
 
     """
-
     model : BackwardRate
     data : BridgeDataLoader
     target : BridgeDataLoader

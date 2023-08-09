@@ -194,11 +194,9 @@ class SBPipeline(DiffusionPipeline):
         timesteps_ = self.scheduler.timesteps
         data_iterator = self.select_data_iterator(sinkhorn_iteration, train)
 
-        for x in data_iterator:
-            x = x[0]
-            num_of_paths = x.shape[0]
-
-            spins = (-1.)**(x.squeeze().float()+1)
+        for databatch in data_iterator:
+            spins = databatch[0]
+            num_of_paths = spins.shape[0]
 
             if return_path:
                 full_path = [spins.unsqueeze(1)]

@@ -34,7 +34,7 @@ class GraphDataConfig:
     S: int = None
     number_of_spins: int = None
     number_of_states: int = None
-    total_data_size:int = 200
+    total_data_size:int = None
     training_size:int = None
     test_size:int = None
 
@@ -122,6 +122,7 @@ class CommunitySmallConfig(GraphDataConfig):
     test_split: float = 0.2
     max_node_num: int = 20
     max_feat_num: int = 10
+    total_data_size:int = 200
     init: str = 'deg'
 
 @dataclass
@@ -132,6 +133,7 @@ class CommunityConfig(GraphDataConfig):
     test_split: float = 0.2
     max_node_num: int = 11
     max_feat_num: int = 10
+    total_data_size:int = 1000
     init: str = 'deg'
 
 
@@ -139,10 +141,11 @@ class CommunityConfig(GraphDataConfig):
 class GridConfig(GraphDataConfig):
     data: str = 'grid'
     dir: Path = graph_data_path
-    batch_size: int = 8
+    batch_size: int = 32
     test_split: float = 0.2
     max_node_num: int = 361
     max_feat_num: int = 5
+    total_data_size:int = 200
     init: str = 'deg'
 
 @dataclass
@@ -268,7 +271,7 @@ if __name__=="__main__":
     # upper half adjacency
     #================================
 
-    graph_config = EgoConfig(full_adjacency=False,flatten_adjacency=True,as_image=True)
+    graph_config = CommunityConfig(full_adjacency=False,flatten_adjacency=True,as_image=True)
     print(graph_config.shape)
 
     graph_config = EgoConfig(full_adjacency=False,flatten_adjacency=True,as_image=False)
