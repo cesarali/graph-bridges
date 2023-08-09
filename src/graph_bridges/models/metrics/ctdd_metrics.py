@@ -52,7 +52,7 @@ def graph_metrics_for_ctdd(ctdd,config):
     # GET GRAPH FROM GENERATIVE MODEL
     generated_graph_list = []
     number_of_graphs = adj_matrices.shape[0]
-    adj_matrices = adj_matrices.detach().numpy()
+    adj_matrices = adj_matrices.detach().cpu().numpy()
     for graph_index in range(number_of_graphs):
         graph_ = nx.from_numpy_array(adj_matrices[graph_index])
         generated_graph_list.append(graph_)

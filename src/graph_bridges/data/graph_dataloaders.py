@@ -44,10 +44,10 @@ class FromUpperDiagonalTransform:
         matrix_size = int(.5 * (1 + np.sqrt(1 + 8 * number_of_upper_entries)))
 
         # Create a zero-filled tensor to hold the full matrices
-        full_matrices = torch.zeros(batch_size, matrix_size, matrix_size)
+        full_matrices = torch.zeros(batch_size, matrix_size, matrix_size, device=upper_diagonal_tensor.device)
 
         # Get the indices for the upper diagonal part of the matrices
-        upper_tri_indices = torch.triu_indices(matrix_size, matrix_size, offset=1)
+        upper_tri_indices = torch.triu_indices(matrix_size, matrix_size, offset=1, device=upper_diagonal_tensor.device)
 
         # Fill the upper diagonal part of the matrices
         full_matrices[:, upper_tri_indices[0], upper_tri_indices[1]] = upper_diagonal_tensor

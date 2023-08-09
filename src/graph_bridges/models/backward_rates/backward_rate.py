@@ -293,6 +293,7 @@ class BackRateMLP(EMA,BackwardRate,GaussianTargetRate):
         self.define_deep_models()
         #self.init_parameters()
         self.init_ema()
+        self.to(device)
 
     def define_deep_models(self):
         # layers

@@ -16,7 +16,7 @@ if __name__=="__main__":
     from graph_bridges.configs.graphs.config_sb import SBConfig, ParametrizedSamplerConfig, SteinSpinEstimatorConfig
     from graph_bridges.models.backward_rates.backward_rate_config import GaussianTargetRateImageX0PredEMAConfig
 
-    device = torch.device("cpu")
+    device = torch.device("cuda:3")
     config = SBConfig(experiment_indentifier="debug")
     config.data = EgoConfig(as_image=False, batch_size=5, full_adjacency=False,as_spins=False)
     #config.model = GaussianTargetRateImageX0PredEMAConfig(time_embed_dim=12, fix_logistic=False)
@@ -30,13 +30,15 @@ if __name__=="__main__":
     # ===================================================
     data_dataloader = load_dataloader(config,type="data",device=device)
     model = load_backward_rates(config,device)
+    model = model.to(device)
     databatch = next(data_dataloader.train().__iter__())
 
     x_adj = databatch[0]
+    x_adj = x_adj.to(device)
     print(x_adj[0][:2])
     print(databatch[0].shape)
     print(data_dataloader.fake_time_)
 
-    forward_ = model(x_adj,data_dataloader.fake_time_)
+    forward_ = model(x_adj,data_dataloader.fake_time_.to(device))
     forward_stein = model.stein_binary_forward(x_adj,data_dataloader.fake_time_)
 

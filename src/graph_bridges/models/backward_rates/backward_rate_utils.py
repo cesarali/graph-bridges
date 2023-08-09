@@ -9,6 +9,7 @@ def load_backward_rates(config,device:torch.device):
         backward_rate = BackRateMLP(config,device)
     elif config.model.name == "GaussianTargetRateImageX0PredEMA":
         backward_rate = GaussianTargetRateImageX0PredEMA(config,device)
+        
     else:
         raise Exception("{0} backward rate not implemented".format(config.model.name))
 
