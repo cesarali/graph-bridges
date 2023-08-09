@@ -99,11 +99,11 @@ if __name__=="__main__":
     print(times.shape)
     """
 
-    print("From Dataloader full path in image shape with times")
-    spins_path_1, times_1 = sb.pipeline(None, 0, device, return_path=True, return_path_shape=True)
+    #print("From Dataloader full path in image shape with times")
+    #spins_path_1, times_1 = sb.pipeline(None, 0, device, return_path=True, return_path_shape=True)
 
-    print("From given start")
-    spins_path_2, times_2 = sb.pipeline(sb.training_model,1,device,x_spins_data,return_path=True,return_path_shape=True)
+    #print("From given start")
+    #spins_path_2, times_2 = sb.pipeline(sb.training_model,1,device,x_spins_data,return_path=True,return_path_shape=True)
 
-    print(spins_path_2.shape)
-    print(x_spins_data.shape)
+    print("From Forward Stuff")
+    spins_path_1, times_1 = sb.pipeline(sb.training_model,sinkhorn_iteration=1,device=device,train=True,return_path=True)

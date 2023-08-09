@@ -21,6 +21,10 @@ if __name__=="__main__":
     #read the model
     device = torch.device("cpu")
     sb = SB(config, device)
-    #x = sb.pipeline(sb.model,sample_size=36)
-    generated_graphs = sb.generate_graphs(100)
-    print(len(generated_graphs))
+    spins_path_1, times_1 = sb.pipeline(sb.training_model,
+                                        sinkhorn_iteration=1,
+                                        device=device,
+                                        train=True,
+                                        return_path=False)
+    #generated_graphs = sb.generate_graphs(100)
+    #print(len(generated_graphs))

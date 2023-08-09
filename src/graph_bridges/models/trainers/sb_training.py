@@ -80,7 +80,7 @@ class SBTrainer:
         print("# Number of Epochs {0}".format(self.number_of_epochs))
         print("# ==================================================")
 
-    def initialize(self, current_model, past_to_train_model, device, sinkhorn_iteration=0):
+    def initialize(self, current_model, past_to_train_model, sinkhorn_iteration=0):
         """
         Obtains initial loss to know when to save, restart the optimizer
 
@@ -89,6 +89,7 @@ class SBTrainer:
         :param sinkhorn_iteration:
         :return:
         """
+        print(current_model.parameters().__next__().device)
         if sinkhorn_iteration != 0:
             print(past_to_train_model.parameters().__next__().device)
 
@@ -96,9 +97,9 @@ class SBTrainer:
         self.writer = SummaryWriter(self.config.experiment_files.tensorboard_path)
 
         # CHECK DATA
-        spins_path, times = self.sb.pipeline(None, 0, device,return_path=True,return_path_shape=True)
+        spins_path, times = self.sb.pipeline(None, 0, self.device,return_path=True,return_path_shape=True)
         batch_size, total_number_of_steps, number_of_spins = spins_path.shape[0],spins_path.shape[1],spins_path.shape[2]
-        spins_path, times = self.sb.pipeline(None, 0, device, return_path=True)
+        spins_path, times = self.sb.pipeline(None, 0, self.device, return_path=True)
 
         #CHECK LOSS
         initial_loss = self.sb.backward_ratio_stein_estimator.estimator(current_model,
@@ -113,8 +114,11 @@ class SBTrainer:
         # histogram_path_plot_path = self.config.experiment_files.plot_path.format("initial_plot")
 
         # METRICS
-        #graph_metrics_and_paths_histograms(sb, sinkhorn_iteration, device, current_model, past_to_train_model,plot_path=histogram_path_plot_path)
-
+        self.log_metrics(current_model=current_model,
+                         past_to_train_model=past_to_train_model,
+                         sinkhorn_iteration=sinkhorn_iteration,
+                         epoch=0,
+                         device=self.device)
         # INFO
         #self.parameters_info(sinkhorn_iteration)
 
@@ -169,8 +173,10 @@ class SBTrainer:
             else:
                 past_model = self.sb.past_model
 
+
             # INITIATE LOSS
             initial_loss = self.initialize(training_model, past_model, sinkhorn_iteration)
+
             best_loss = initial_loss
 
             LOSS = []
@@ -259,7 +265,7 @@ class SBTrainer:
 
         #HISTOGRAMS
         if "histograms" in config.optimizer.metrics:
-            histograms_plot_path_ = config.experiment_files.plot_path.format("sinkhorn_{0}_checkpoint_{1}".format(sinkhorn_iteration,
+            histograms_plot_path_ = config.experiment_files.plot_path.format("sinkhorn_{0}_{1}".format(sinkhorn_iteration,
                                                                                                                   epoch))
             graph_metrics_and_paths_histograms(sb,
                                                sinkhorn_iteration,
@@ -278,7 +284,7 @@ class SBTrainer:
 
         #PLOTS
         if "graphs_plots" in config.optimizer.metrics:
-            graph_plot_path_ = config.experiment_files.graph_plot_path.format("generative_sinkhorn_{0}_checkpoint_{0}".format(epoch, sinkhorn_iteration))
+            graph_plot_path_ = config.experiment_files.graph_plot_path.format("generative_sinkhorn_{0}_{1}".format(sinkhorn_iteration,epoch))
             generated_graphs = self.sb.generate_graphs(20)
             plot_graphs_list2(generated_graphs,title="Generated 0",save_dir=graph_plot_path_)
 
@@ -326,7 +332,7 @@ if __name__=="__main__":
     config.stein = SteinSpinEstimatorConfig(stein_sample_size=100)
     config.sampler = ParametrizedSamplerConfig(num_steps=10)
     config.optimizer = TrainerConfig(learning_rate=1e-3,
-                                     num_epochs=200,
+                                     num_epochs=1000,
                                      save_metric_epochs=20,
                                      metrics=["graphs_plots",
                                               "histograms"])

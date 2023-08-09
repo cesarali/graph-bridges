@@ -18,17 +18,13 @@ if __name__=="__main__":
     data_dataloader = load_dataloader(config,"data",device)
     target_dataloader = load_dataloader(config,"target",device)
 
-    batch_number = 0
-    for a in target_dataloader.train():
-        batch_number += 1
-    print(a[0].shape)
-    print(batch_number)
+    x_data_adj = next(data_dataloader.train().__iter__())[0]
+    x_target_adj = next(target_dataloader.train().__iter__())[0]
 
-    batch_number = 0
-    for a in data_dataloader.train():
-        batch_number += 1
-    print(a[0].shape)
-    print(batch_number)
+    print(x_data_adj[0,:3])
+    print(x_target_adj[0,:3])
+
+
 
     """
     #================================
