@@ -163,7 +163,8 @@ class CTDDScheduler(SchedulerMixin, ConfigMixin):
 
         """
         num_of_paths = x.shape[0]
-        diffs = torch.arange(self.S, device=device).view(1, 1, self.S) - x.view(num_of_paths, self.D, 1)
+        h = h.to(x.device)
+        diffs = torch.arange(self.S, device=x.device).view(1, 1, self.S) - x.view(num_of_paths, self.D, 1)
         poisson_dist = torch.distributions.poisson.Poisson(rates_ * h)
         jump_nums = poisson_dist.sample()
         adj_diffs = jump_nums * diffs
@@ -205,6 +206,7 @@ class CTDDScheduler(SchedulerMixin, ConfigMixin):
             minibatch = original_samples.view(B, C * H * W)
         B, D = minibatch.shape
 
+        timesteps = timesteps.to(device)
         qt0 = reference_process.transition(timesteps)  # (B, S, S)
         rate = reference_process.rate(timesteps)  # (B, S, S)
 

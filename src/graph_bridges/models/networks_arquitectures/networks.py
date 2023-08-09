@@ -193,7 +193,7 @@ class Upsample(nn.Module):
 class UNet(nn.Module):
     def __init__(self, ch, num_res_blocks, num_scales, ch_mult, input_channels,
         output_channels, scale_count_to_put_attn, data_min_max, dropout,
-        skip_rescale, do_time_embed, time_scale_factor=None, time_embed_dim=None):
+        skip_rescale, do_time_embed, time_scale_factor=None, time_embed_dim=None, device='cpu'):
         super().__init__()
         assert num_scales == len(ch_mult)
 
@@ -210,7 +210,7 @@ class UNet(nn.Module):
         self.do_time_embed = do_time_embed # Whether to add in time embeddings
         self.time_scale_factor = time_scale_factor # scale to make the range of times be 0 to 1000
         self.time_embed_dim = time_embed_dim
-
+        self.device = device 
         self.act = nn.functional.silu
 
         if self.do_time_embed:
@@ -219,14 +219,14 @@ class UNet(nn.Module):
             nn.init.zeros_(self.temb_modules[-1].bias)
             self.temb_modules.append(nn.Linear(self.time_embed_dim*4, self.time_embed_dim*4))
             nn.init.zeros_(self.temb_modules[-1].bias)
-            self.temb_modules = nn.ModuleList(self.temb_modules)
+            self.temb_modules = nn.ModuleList(self.temb_modules).to(self.device)
 
         self.expanded_time_dim = 4 * self.time_embed_dim if self.do_time_embed else None
 
         self.input_conv = nn.Conv2d(
             in_channels=input_channels, out_channels=self.ch,
             kernel_size=3, padding=1
-        )
+        ).to(self.device)
 
         h_cs = [self.ch]
         in_ch = self.ch
@@ -253,7 +253,7 @@ class UNet(nn.Module):
                 self.downsampling_modules.append(Downsample(in_ch))
                 h_cs.append(in_ch)
 
-        self.downsampling_modules = nn.ModuleList(self.downsampling_modules)
+        self.downsampling_modules = nn.ModuleList(self.downsampling_modules).to(self.device)
 
         # Middle
         self.middle_modules = []
@@ -269,7 +269,7 @@ class UNet(nn.Module):
             ResBlock(in_ch, in_ch, temb_dim=self.expanded_time_dim,
                 dropout=dropout, skip_rescale=self.skip_rescale)
         )
-        self.middle_modules = nn.ModuleList(self.middle_modules)
+        self.middle_modules = nn.ModuleList(self.middle_modules).to(self.device)
 
         # Upsampling
         self.upsampling_modules = []
@@ -294,7 +294,7 @@ class UNet(nn.Module):
             if scale_count != 0:
                 self.upsampling_modules.append(Upsample(in_ch))
 
-        self.upsampling_modules = nn.ModuleList(self.upsampling_modules)
+        self.upsampling_modules = nn.ModuleList(self.upsampling_modules).to(self.device)
 
         assert len(h_cs) == 0
 
@@ -308,7 +308,7 @@ class UNet(nn.Module):
         self.output_modules.append(
             nn.Conv2d(in_ch, self.output_channels, kernel_size=3, padding=1)
         )
-        self.output_modules = nn.ModuleList(self.output_modules)
+        self.output_modules = nn.ModuleList(self.output_modules).to(self.device)
 
 
     def _center_data(self, x):
@@ -408,6 +408,7 @@ class UNet(nn.Module):
     ) -> TensorType["B", "twoC", "H", "W"]:
 
         B,C,H,W = x.shape
+        timesteps = timesteps.to(x.device)
         h = self._center_data(x)
         centered_x_in = h
 

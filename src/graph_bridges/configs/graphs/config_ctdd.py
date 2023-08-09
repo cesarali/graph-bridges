@@ -103,7 +103,7 @@ class CTDDConfig:
 
     # devices and parallelization ----------------------------------------------
     device = 'cpu'
-    device_paths = 'cpu'
+    # device_paths = 'cpu' # not used
     distributed = False
     num_gpus = 0
 

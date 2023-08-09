@@ -304,14 +304,13 @@ if __name__=="__main__":
     #==================================================================
     # CREATE OBJECTS FROM CONFIGURATION
 
-    device = torch.device("cpu")
+    device = torch.device("cuda:1")
     config = CTDDConfig(experiment_indentifier="training_test")
     config.data = EgoConfig(as_image=False, batch_size=32, full_adjacency=False)
     config.model = GaussianTargetRateImageX0PredEMAConfig()
     config.optimizer = TrainerConfig()
     ctdd = CTDD()
     ctdd.create_new_from_config(config,device)
-
     ctdd_trainer = CTDDTrainer(ctdd)
     ctdd_trainer.train_ctdd()
 
