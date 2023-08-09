@@ -40,7 +40,6 @@ class SBExperimentsFiles(ExperimentFiles):
         self.plot_path = os.path.join(self.results_dir, "path_marginal_at_site_{0}.png")
         self.graph_plot_path = os.path.join(self.results_dir, "graph_plots_{0}.png")
 
-
 @dataclass
 class ParametrizedSamplerConfig:
     """
@@ -48,6 +47,7 @@ class ParametrizedSamplerConfig:
     """
     name:str = 'TauLeaping' # TauLeaping or PCTauLeaping
     type:str = 'doucet'
+    step_type:str = 'TauLeaping' # TauLeaping
     num_steps:int = 20
     min_t:float = 0.01
     eps_ratio:float = 1e-9
@@ -97,7 +97,7 @@ class TrainerConfig:
     save_metric_epochs: int = 25
     save_model_epochs :int = 25
 
-    metrics = ["graphs","graphs_plots","histograms"]
+    metrics: List[str] = field(default_factory=lambda: ["graphs", "graphs_plots", "histograms"])
     #metrics = ["graphs","histograms"]
 
 @dataclass
@@ -110,7 +110,7 @@ class SBConfig:
     delete :bool = True
     experiment_name :str = 'graph'
     experiment_type :str = 'sb'
-    experiment_indentifier :str  = 'testing'
+    experiment_indentifier :str  = None
     init_model_path = None
 
     # different elements configurations------------------------------------------
@@ -184,6 +184,7 @@ class SBConfig:
     def align_configurations(self):
         #dataloaders for training
         self.data.as_image = False
+        self.data.as_spins = True
 
         # data distributions matches at the end
         self.target.batch_size = self.data.batch_size
@@ -202,14 +203,12 @@ class SBConfig:
         self.reference.time_exponential = self.model.time_exponential
         self.reference.time_base = self.model.time_base
 
-
     def save_config(self):
         config_as_dict = asdict(self)
         config_as_dict["experiment_files"]["results_dir"] = str(config_as_dict["experiment_files"]["results_dir"])
         config_as_dict["data"]["dir"] = str(config_as_dict["data"]["dir"])
         with open(self.experiment_files.config_path, "w") as file:
             json.dump(config_as_dict, file)
-
 
 if __name__=="__main__":
     from pprint import pprint

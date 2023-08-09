@@ -14,7 +14,7 @@ if __name__=="__main__":
 
     config = SBConfig(experiment_indentifier="debug")
     config.data = EgoConfig(as_image=False, batch_size=32, full_adjacency=False)
-    config.model = GaussianTargetRateImageX0PredEMAConfig(time_embed_dim=32, fix_logistic=False)
+    config.model = GaussianTargetRateImageX0PredEMAConfig(time_embed_dim=12, fix_logistic=False)
     config.sampler = ParametrizedSamplerConfig(num_steps=18)
 
 
@@ -29,6 +29,7 @@ if __name__=="__main__":
     number_of_paths = x_spins_data.shape[0]
     x_spins_noise = sb.target_dataloader.sample(number_of_paths,device)
 
+    """
     #test scheduler
     time_steps = sb.scheduler.set_timesteps(10,0.01,sinkhorn_iteration=1)
     print(time_steps.shape)
@@ -52,12 +53,12 @@ if __name__=="__main__":
 
     # test reference process
     x_spins_w_noise = sb.reference_process.spins_on_times(x_spins_data.squeeze(), times)
-
-    # test pipeline REFERENCE PROCESS
     """
-    print("From Dataloader image shape")
-    x_end = sb.pipeline(None, 0, device, return_path=False)
-    print(x_end.shape)
+    # test pipeline REFERENCE PROCESS
+
+    #print("From Dataloader image shape")
+    #x_end = sb.pipeline(None, 0, device, return_path=False)
+    #print(x_end.shape)
 
     print("From Dataloader full path in image shape with times")
     x_end, times = sb.pipeline(None, 0, device, return_path=True)
@@ -69,6 +70,7 @@ if __name__=="__main__":
     print(x_end.shape)
     print(times.shape)
 
+    """
     print("From given start in path shape")
     x_end,times = sb.pipeline(None,0,device,x_spins_data,return_path=True,return_path_shape=True)
     print(x_end.shape)

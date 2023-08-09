@@ -115,7 +115,7 @@ class EgoConfig(GraphDataConfig):
     init: str = "deg"
 
 @dataclass
-class CommunityConfig(GraphDataConfig):
+class CommunitySmallConfig(GraphDataConfig):
     data: str = 'community_small'
     dir: Path = graph_data_path
     batch_size: int = 128
@@ -123,6 +123,17 @@ class CommunityConfig(GraphDataConfig):
     max_node_num: int = 20
     max_feat_num: int = 10
     init: str = 'deg'
+
+@dataclass
+class CommunityConfig(GraphDataConfig):
+    data: str = 'community'
+    dir: Path = graph_data_path
+    batch_size: int = 32
+    test_split: float = 0.2
+    max_node_num: int = 11
+    max_feat_num: int = 10
+    init: str = 'deg'
+
 
 @dataclass
 class GridConfig(GraphDataConfig):

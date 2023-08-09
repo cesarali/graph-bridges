@@ -6,7 +6,7 @@ import networkx as nx
 import numpy as np
 import scipy.sparse as sp
 import argparse
-
+from pathlib import Path
 
 # -------- Generate community graphs --------
 def n_community(num_communities, max_nodes, p_inter=0.05):
@@ -234,7 +234,7 @@ def citeseer_ego(radius=3, node_min=50, node_max=400):
 def save_dataset(data_dir, graphs, save_name):
     if not os.path.isdir(data_dir):
         os.makedirs(data_dir)
-    file_path = os.path.join('data', save_name)
+    file_path = os.path.join(data_dir, save_name)
     print(save_name, len(graphs))
     with open(file_path + '.pkl', 'wb') as f:
         pickle.dump(obj=graphs, file=f, protocol=pickle.HIGHEST_PROTOCOL)
@@ -245,21 +245,35 @@ def save_dataset(data_dir, graphs, save_name):
 
 # -------- Generate datasets --------
 def generate_dataset(data_dir='data', dataset='community_small'):
-    if dataset == 'community_small':
+    if dataset == 'community':
+        res_graph_list = gen_graph_list(graph_type='community', possible_params_dict={
+            'num_communities': [2],
+            'max_nodes': np.arange(10, 11).tolist()},
+                                        corrupt_func=None, length=1000, save_dir=data_dir, file_name=dataset)
+        sizes_ = [graph.number_of_nodes() for graph in res_graph_list]
+        print(max(sizes_))
+        print(min(sizes_))
+        save_dataset(data_dir, res_graph_list, dataset)
+
+    elif dataset == 'community_small':
         res_graph_list = gen_graph_list(graph_type='community', possible_params_dict={
             'num_communities': [2],
             'max_nodes': np.arange(12, 21).tolist()},
                                         corrupt_func=None, length=100, save_dir=data_dir, file_name=dataset)
+        save_dataset(data_dir, res_graph_list, dataset)
+
     elif dataset == 'grid':
         res_graph_list = gen_graph_list(graph_type='grid', possible_params_dict={
             'm': np.arange(10, 20).tolist(),
             'n': np.arange(10, 20).tolist()},
                                         corrupt_func=None, length=100, save_dir=data_dir, file_name=dataset)
+        save_dataset(data_dir, res_graph_list, dataset)
 
     elif dataset == 'ego_small':
         graphs = citeseer_ego(radius=1, node_min=4, node_max=18)[:200]
         save_dataset(data_dir, graphs, dataset)
         print(max([g.number_of_nodes() for g in graphs]))
+        save_dataset(data_dir, graphs, dataset)
 
     elif dataset == 'ENZYMES':
         graphs = graph_load_batch(min_num_nodes=10, max_num_nodes=1000, name=dataset,
@@ -268,13 +282,18 @@ def generate_dataset(data_dir='data', dataset='community_small'):
         print(max([g.number_of_nodes() for g in graphs]))
 
     else:
-        raise NotImplementedError(f'Dataset {datset} not supproted.')
+        raise NotImplementedError(f'Dataset {dataset} not supproted.')
 
 
 if __name__ == "__main__":
+    from graph_bridges import data_path
+
+    data_dir = os.path.join(data_path,"raw","graph")
+    print(data_dir)
+
     parser = argparse.ArgumentParser(description='Generate dataset')
-    parser.add_argument('--data-dir', type=str, default='data', help='directory to save the generated dataset')
+    parser.add_argument('--data-dir', type=str, default=data_dir, help='directory to save the generated dataset')
     parser.add_argument('--dataset', type=str, default='community_small', help='dataset to generate',
-                        choices=['ego_small', 'community_small', 'ENZYMES', 'grid'])
+                        choices=['ego_small', 'community','community', 'ENZYMES', 'grid'])
     args = parser.parse_args()
     generate_dataset(args.data_dir, args.dataset)

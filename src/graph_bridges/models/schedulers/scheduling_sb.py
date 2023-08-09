@@ -46,6 +46,8 @@ from graph_bridges.configs.graphs.lobster.config_base import BridgeConfig
 from graph_bridges.models.backward_rates.backward_rate import BackwardRate
 from graph_bridges.models.reference_process.ctdd_reference import ReferenceProcess
 from torch.distributions.poisson import Poisson
+from graph_bridges.data.graph_dataloaders import SpinsToBinaryTensor
+from graph_bridges.data.graph_dataloaders import BinaryTensorToSpinsTransform
 
 @dataclass
 class SBSchedulerOutput(BaseOutput):
@@ -53,16 +55,16 @@ class SBSchedulerOutput(BaseOutput):
     Output class for the scheduler's step function output.
 
     Args:
-        prev_sample (`torch.FloatTensor` of shape `(batch_size, num_channels, height, width)` for images):
+        new_sample (`torch.FloatTensor` of shape `(batch_size, num_channels, height, width)` for images):
             Computed sample (x_{t-1}) of previous timestep. `prev_sample` should be used as next model input in the
             denoising loop.
-        pred_original_sample (`torch.FloatTensor` of shape `(batch_size, num_channels, height, width)` for images):
+        original_sample (`torch.FloatTensor` of shape `(batch_size, num_channels, height, width)` for images):
             The predicted denoised sample (x_{0}) based on the model output from the current timestep.
             `pred_original_sample` can be used to preview progress or for guidance.
     """
 
-    prev_sample: torch.FloatTensor
-    pred_original_sample: Optional[torch.FloatTensor] = None
+    new_sample: torch.FloatTensor
+    original_sample: Optional[torch.FloatTensor] = None
 
 @register_scheduler
 class SBScheduler(SchedulerMixin, ConfigMixin):
@@ -123,6 +125,7 @@ class SBScheduler(SchedulerMixin, ConfigMixin):
     ) -> Union[SBSchedulerOutput, Tuple]:
         """
         """
+        assert x.min() == -1. #make sure that we receive spins
         x_new = copy.deepcopy(x)
         poisson_probabilities = rates_ * h
 
@@ -135,35 +138,39 @@ class SBScheduler(SchedulerMixin, ConfigMixin):
         x_new[where_to_flip] = x_new[where_to_flip] * (-1.)
 
         if return_dict:
-            return SBSchedulerOutput(prev_sample=x_new,
-                                     pred_original_sample=x)
+            output = SBSchedulerOutput(new_sample=x_new, original_sample=x)
+            return output
         else:
             return (x_new, x)
 
     def step_tau(
         self,
         rates_: torch.FloatTensor,
-        x: torch.FloatTensor,
+        spins: torch.FloatTensor,
         h:float,
         device:torch.device = None,
         return_dict: bool = True,
     ) -> Union[SBSchedulerOutput, Tuple]:
         """
         """
+        assert spins.min() == -1. #make sure that we receive spins
+        x = SpinsToBinaryTensor(spins)
         num_of_paths = x.shape[0]
         diffs = torch.arange(self.S, device=device).view(1, 1, self.S) - x.view(num_of_paths, self.D, 1)
+        rates_ = rates_[:, :, None].repeat(1, 1, 2) # here the rates to flip per spins are the same
         poisson_dist = torch.distributions.poisson.Poisson(rates_ * h)
         jump_nums = poisson_dist.sample()
         adj_diffs = jump_nums * diffs
         overall_jump = torch.sum(adj_diffs, dim=2)
         xp = x + overall_jump
         x_new = torch.clamp(xp, min=0, max=self.S - 1)
+        new_spins = BinaryTensorToSpinsTransform(x_new)
 
         if return_dict:
-            return SBSchedulerOutput(prev_sample=x_new,
-                                       pred_original_sample=x)
+            return SBSchedulerOutput(new_sample=new_spins,
+                                     original_sample=spins)
         else:
-            return (x_new,x)
+            return (new_spins, spins)
 
     def step(self,rates_,x,timestep,h,device,return_dict=True,step_type=None):
         if step_type is None:

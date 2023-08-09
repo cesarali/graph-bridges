@@ -13,7 +13,6 @@ def create_default_list() -> List[Optional[int]]:
 @dataclass
 class GraphSpinsDataLoaderConfig:
 
-
     name:str = "GraphSpinsDataLoader"
     graph_type:str = 'lobster'
     remove:bool = False

@@ -68,11 +68,14 @@ class BinaryTensorToSpinsTransform:
         spins = (-1.) ** (binary_tensor + 1)
         return spins
 
-class SpinsToBinaryTensor:
 
-    def __call__(self, spins):
-        binary_tensor = int( (1. + spins)*.5)
-        return binary_tensor
+SqueezeTransform = transforms.Lambda(lambda x: x.squeeze())
+FlattenTransform = transforms.Lambda(lambda x: x.reshape(x.shape[0], -1))
+UnFlattenTransform = transforms.Lambda(lambda x: x.reshape(x.shape[0],
+                                                           int(np.sqrt(x.shape[1])),
+                                                           int(np.sqrt(x.shape[1]))))
+SpinsToBinaryTensor = transforms.Lambda(lambda spins: ((1. + spins) * .5).float())
+BinaryTensorToSpinsTransform = transforms.Lambda(lambda binary_tensor: (-1.) ** (binary_tensor + 1))
 
 def get_transforms(config:GraphDataConfig):
     """
@@ -80,11 +83,6 @@ def get_transforms(config:GraphDataConfig):
 
     :return: transform_list,inverse_transform_list
     """
-    SqueezeTransform = transforms.Lambda(lambda x: x.squeeze())
-    FlattenTransform = transforms.Lambda(lambda x: x.reshape(x.shape[0], -1))
-    UnFlattenTransform = transforms.Lambda(lambda x: x.reshape(x.shape[0],
-                                                               int(np.sqrt(x.shape[1])),
-                                                               int(np.sqrt(x.shape[1]))))
 
     if config.flatten_adjacency:
         if config.full_adjacency:
@@ -113,7 +111,7 @@ def get_transforms(config:GraphDataConfig):
             raise Exception("No Flatten and No Full Adjacency incompatible for data")
 
     if config.as_spins:
-        transform_list.append(BinaryTensorToSpinsTransform())
+        transform_list.append(BinaryTensorToSpinsTransform)
 
     return transform_list,inverse_transform_list
 

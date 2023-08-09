@@ -81,7 +81,6 @@ def graph_metrics_and_paths_histograms(sb:SB,
         for spins_path_1, times_1 in sb.pipeline.paths_iterator(past_to_train_model,
                                                                 sinkhorn_iteration=sinkhorn_iteration,
                                                                 return_path_shape=True):
-            end_of_path = spins_path_1[:, -1, :].unsqueeze(1).unsqueeze(1)
             end_of_path = spins_path_1[:, -1, :]
             spins_path_2, times_2 = sb.pipeline(current_model,
                                                 sinkhorn_iteration + 1,
@@ -98,10 +97,13 @@ def graph_metrics_and_paths_histograms(sb:SB,
             histogram_path_0 += current_sum_0
             histogram_path_1 += current_sum_1
 
+        print("Past Model 0")
         print(histogram_path_0[0])
+        print("Past Model 1")
         print(histogram_path_0[-1])
-
+        print("Training Model 0")
         print(histogram_path_1[0])
+        print("Training Model 1")
         print(histogram_path_1[-1])
 
         state_legends = [str(i) for i in range(histogram_path_0.shape[-1])]
