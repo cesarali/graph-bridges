@@ -47,22 +47,18 @@ class SBTrainer:
 
         self.sb = sb
         self.config = self.sb.config
-
         self.config.initialize_new_experiment()
-        self.starting_sinkhorn = self.config.optimizer.starting_sinkhorn
-        self.number_of_sinkhorn = self.config.optimizer.number_of_sinkhorn
-        self.number_of_epochs = self.config.optimizer.num_epochs
+
+        self.starting_sinkhorn = self.config.trainer.starting_sinkhorn
+        self.number_of_sinkhorn = self.config.trainer.number_of_sinkhorn
+        self.number_of_epochs = self.config.trainer.num_epochs
 
         # METRICS
         self.metrics = None
         self.metrics_kwargs = None
 
         # select device
-        self.cuda = kwargs.get("cuda")
-        if self.cuda is not None:
-            self.device = torch.device('cuda:{0}'.format(self.cuda) if torch.cuda.is_available() else "cuda")
-        else:
-            self.device = torch.device("cpu")
+        self.device = torch.device(self.config.trainer.device)
 
     def parameters_info(self, sinkhorn_iteration=0):
         print("# ==================================================")
@@ -74,7 +70,7 @@ class SBTrainer:
             print("# Reference Parameters **********************************")
             pprint(self.config.reference.__dict__)
             print("# Trainer Parameters")
-            pprint(self.config.optimizer.__dict__)
+            pprint(self.config.trainer.__dict__)
 
         print("# ==================================================")
         print("# Number of Epochs {0}".format(self.number_of_epochs))
@@ -110,7 +106,7 @@ class SBTrainer:
         assert torch.isinf(initial_loss).any() == False
 
         #DEFINE OPTIMIZERS
-        self.optimizer = Adam(current_model.parameters(), lr=self.config.optimizer.learning_rate)
+        self.optimizer = Adam(current_model.parameters(), lr=self.config.trainer.learning_rate)
         # histogram_path_plot_path = self.config.experiment_files.plot_path.format("initial_plot")
 
         # METRICS
@@ -229,7 +225,7 @@ class SBTrainer:
                 if epoch % 10 == 0:
                     print("Epoch: {}, Loss: {}".format(epoch + 1, training_loss_average))
 
-                if (epoch + 1) % self.config.optimizer.save_model_epochs == 0:
+                if (epoch + 1) % self.config.trainer.save_model_epochs == 0:
                     self.save_results(current_model=training_model,
                                       past_model=past_model,
                                       initial_loss=initial_loss,
@@ -240,7 +236,7 @@ class SBTrainer:
                                       sinkhorn_iteration=sinkhorn_iteration,
                                       checkpoint=True)
 
-                if (epoch + 1) % self.config.optimizer.save_metric_epochs == 0:
+                if (epoch + 1) % self.config.trainer.save_metric_epochs == 0:
                     self.log_metrics(current_model=training_model,
                                      past_to_train_model=past_model,
                                      sinkhorn_iteration=sinkhorn_iteration,
@@ -264,7 +260,7 @@ class SBTrainer:
         config = self.config
 
         #HISTOGRAMS
-        if "histograms" in config.optimizer.metrics:
+        if "histograms" in config.trainer.metrics:
             histograms_plot_path_ = config.experiment_files.plot_path.format("sinkhorn_{0}_{1}".format(sinkhorn_iteration,
                                                                                                                   epoch))
             graph_metrics_and_paths_histograms(sb,
@@ -275,7 +271,7 @@ class SBTrainer:
                                                plot_path=histograms_plot_path_)
 
         #METRICS
-        if "graphs" in config.optimizer.metrics:
+        if "graphs" in config.trainer.metrics:
             graph_metrics_path_ = config.experiment_files.metrics_file.format("graph_sinkhorn_{0}_{1}".format(sinkhorn_iteration,
                                                                                                               epoch))
             graph_metrics =  graph_metrics_for_sb(self.sb, current_model,config)
@@ -283,7 +279,7 @@ class SBTrainer:
                 json.dump(graph_metrics, f)
 
         #PLOTS
-        if "graphs_plots" in config.optimizer.metrics:
+        if "graphs_plots" in config.trainer.metrics:
             graph_plot_path_ = config.experiment_files.graph_plot_path.format("generative_sinkhorn_{0}_{1}".format(sinkhorn_iteration,epoch))
             generated_graphs = self.sb.generate_graphs(20)
             plot_graphs_list2(generated_graphs,title="Generated 0",save_dir=graph_plot_path_)
@@ -331,10 +327,10 @@ if __name__=="__main__":
     config.model = BackRateMLPConfig(time_embed_dim=14,hidden_layer=150)
     config.stein = SteinSpinEstimatorConfig(stein_sample_size=100)
     config.sampler = ParametrizedSamplerConfig(num_steps=10)
-    config.optimizer = TrainerConfig(learning_rate=1e-3,
-                                     num_epochs=1000,
-                                     save_metric_epochs=20,
-                                     metrics=["graphs_plots",
+    config.trainer = TrainerConfig(learning_rate=1e-3,
+                                   num_epochs=1000,
+                                   save_metric_epochs=20,
+                                   metrics=["graphs_plots",
                                               "histograms"])
 
     #read the model

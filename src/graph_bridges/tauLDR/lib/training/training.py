@@ -8,7 +8,7 @@ class Standard():
         self.do_ema = 'ema_decay' in cfg.model
         self.clip_grad = cfg.training.clip_grad
         self.warmup = cfg.training.warmup
-        self.lr = cfg.optimizer.lr
+        self.lr = cfg.trainer.lr
 
     def step(self, state, minibatch, loss, writer):
         state['optimizer'].zero_grad()

@@ -25,10 +25,10 @@ if __name__=="__main__":
     #config.model = BackRateMLPConfig(time_embed_dim=14,hidden_layer=150)
     config.stein = SteinSpinEstimatorConfig(stein_sample_size=100)
     config.sampler = ParametrizedSamplerConfig(num_steps=10,step_type="TauLeaping")
-    config.optimizer = TrainerConfig(learning_rate=1e-3,
-                                     num_epochs=200,
-                                     save_metric_epochs=20,
-                                     metrics=["graphs_plots",
+    config.trainer = TrainerConfig(learning_rate=1e-3,
+                                   num_epochs=200,
+                                   save_metric_epochs=20,
+                                   metrics=["graphs_plots",
                                               "histograms"])
     #read the model
     device = torch.device("cpu")

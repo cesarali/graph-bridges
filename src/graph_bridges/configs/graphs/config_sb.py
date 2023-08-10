@@ -79,6 +79,7 @@ class SBPipelineConfig:
 
 @dataclass
 class TrainerConfig:
+    device = "cpu"
     number_of_paths : int = 10
     number_of_sinkhorn : int = 1
     starting_sinkhorn: int = 0
@@ -126,7 +127,7 @@ class SBConfig:
 
     scheduler : SBSchedulerConfig =  SBSchedulerConfig()
     pipeline : SBPipelineConfig =  SBPipelineConfig()
-    optimizer : TrainerConfig =  TrainerConfig()
+    trainer : TrainerConfig =  TrainerConfig()
     experiment_files: SBExperimentsFiles = None
 
     number_of_paths : int = 10
@@ -134,6 +135,7 @@ class SBConfig:
 
     # devices and parallelization ----------------------------------------------
     device = 'cpu'
+    training_device = 'cpu'
     device_paths = 'cpu'
     distributed = False
     num_gpus = 0
@@ -160,8 +162,8 @@ class SBConfig:
             self.scheduler = SBSchedulerConfig(**self.scheduler)
         if isinstance(self.pipeline,dict):
             self.pipeline = SBPipelineConfig(**self.pipeline)
-        if isinstance(self.optimizer,dict):
-            self.optimizer = TrainerConfig(**self.optimizer)
+        if isinstance(self.trainer, dict):
+            self.trainer = TrainerConfig(**self.trainer)
 
         self.experiment_files.data_stats = os.path.join(self.data.preprocess_datapath, "data_stats.json")
 
