@@ -55,6 +55,7 @@ class CTDDPipelineConfig:
 
 @dataclass
 class TrainerConfig:
+    device: str = "cuda:0"
     number_of_paths : int = 10
 
     optimizer_name :str = 'AdamW'
@@ -67,11 +68,11 @@ class TrainerConfig:
     gradient_accumulation_steps :int = 1
     lr_warmup_steps :int = 500
     save_image_epochs :int = 10
-    save_model_epochs :int = 2
+    save_model_epochs :int = 50
     save_model_global_iter :int = 1000
-    save_metric_epochs: int = 200
+    save_metric_epochs: int = 100
 
-    metrics = ["graphs","histograms"]
+    metrics:List[str] = field(default_factory=lambda: ["graphs", "graphs_plots", "histograms"])
 
 @dataclass
 class CTDDConfig:
@@ -88,7 +89,7 @@ class CTDDConfig:
     loss : CTDDLossConfig =  CTDDLossConfig()
     scheduler : CTDDSchedulerConfig = CTDDSchedulerConfig()
     pipeline : CTDDPipelineConfig = CTDDPipelineConfig()
-    optimizer : TrainerConfig = TrainerConfig()
+    trainer : TrainerConfig = TrainerConfig()
     experiment_files: ExperimentFiles = None
 
     number_of_paths : int = 10
@@ -124,8 +125,8 @@ class CTDDConfig:
             self.scheduler = CTDDSchedulerConfig(**self.scheduler)
         if isinstance(self.pipeline,dict):
             self.pipeline = CTDDPipelineConfig(**self.pipeline)
-        if isinstance(self.optimizer,dict):
-            self.optimizer = TrainerConfig(**self.optimizer)
+        if isinstance(self.trainer, dict):
+            self.trainer = TrainerConfig(**self.trainer)
 
     def initialize_new_experiment(self,
                                   experiment_name: str = None,

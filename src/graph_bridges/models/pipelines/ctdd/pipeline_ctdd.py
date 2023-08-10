@@ -20,6 +20,7 @@ from tqdm import tqdm
 
 from typing import List, Optional, Tuple, Union
 import torch
+from graph_bridges.utils.test_utils import check_model_devices
 
 class DDPMPipeline(DiffusionPipeline):
     r"""
@@ -168,20 +169,21 @@ class CTDDPipeline(DiffusionPipeline):
             num_of_paths = self.bridge_config.number_of_paths
         else:
             num_of_paths = sample_size
-
         x = self.target.sample(num_of_paths, device)
-
+        x = x.float()
         # set step values
         self.scheduler.set_timesteps(self.bridge_config.sampler.num_steps,self.bridge_config.sampler.min_t)
         timesteps = self.scheduler.timesteps
         timesteps = timesteps.to(x.device)
 
+
         for idx, t in tqdm(enumerate(timesteps[0:-1])):
             h = timesteps[idx] - timesteps[idx + 1]
             # h = h.to(x.device)
             # t = t.to(x.device)
-
-            p0t = F.softmax(model(x, t * torch.ones((num_of_paths,), device=x.device)), dim=2)  # (N, D, S)
+            t = t*torch.ones((num_of_paths,), device=x.device)
+            logits = model(x, t )
+            p0t = F.softmax(logits,dim=2)  # (N, D, S)
             rates_ = self.reference_process.backward_rates_from_probability(p0t, x, t, device)
 
             x_new = self.scheduler.step(rates_,x,t,h).prev_sample

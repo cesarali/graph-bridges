@@ -27,7 +27,7 @@ class BaseBackwardRateForSBTest(object):
         self.backward_rate_config = None  # To be overridden by subclasses
 
     def basicConfigSetUp(self):
-        self.sb_config = SBConfig(experiment_indentifier="unittest",delete=True)
+        self.sb_config = SBConfig(experiment_indentifier="backward_rates_unittest",delete=True)
         self.backwardRateSetConfig()
 
         self.sb_config.model = self.backward_rate_config
@@ -65,6 +65,8 @@ class BaseBackwardRateForSBTest(object):
 
         self.assertIsInstance(forward_,torch.Tensor)
         self.assertIsInstance(forward_binary,torch.Tensor)
+        self.assertFalse(torch.isnan(forward_).any())
+        self.assertFalse(torch.isinf(forward_).any())
 
     def test_gpus(self):
         print("Testing GPUs")
@@ -90,7 +92,6 @@ class TestBackRateMLP(BaseBackwardRateForSBTest,unittest.TestCase):
     def backwardRateSetConfig(self):
         from graph_bridges.models.backward_rates.backward_rate_config import BackRateMLPConfig
         self.backward_rate_config = BackRateMLPConfig()  # To be overridden by subclasses
-
 
 class TestBackRateDoucetArchitecture(BaseBackwardRateForSBTest,unittest.TestCase):
 

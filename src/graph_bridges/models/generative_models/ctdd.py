@@ -7,6 +7,7 @@ from graph_bridges.models.backward_rates.backward_rate_utils import load_backwar
 
 from graph_bridges.models.schedulers.scheduling_ctdd import CTDDScheduler
 from graph_bridges.data.dataloaders import GraphSpinsDataLoader, DoucetTargetData
+from graph_bridges.data.graph_dataloaders import BridgeGraphDataLoaders
 from graph_bridges.models.losses.ctdd_losses import GenericAux
 from graph_bridges.models.pipelines.ctdd.pipeline_ctdd import CTDDPipeline
 from graph_bridges.models.reference_process.ctdd_reference import GaussianTargetRate
@@ -24,7 +25,7 @@ class CTDD:
     from a CTDD model
 
     """
-    data_dataloader: GraphSpinsDataLoader = None
+    data_dataloader: BridgeGraphDataLoaders = None
     target_dataloader: DoucetTargetData = None
     model: GaussianTargetRateImageX0PredEMA = None
     reference_process: GaussianTargetRate = None
@@ -67,7 +68,7 @@ class CTDD:
         graphs_ = []
         number_of_graphs = adj_matrices.shape[0]
         for graph_index in range(number_of_graphs):
-            graphs_.append(nx.from_numpy_array(adj_matrices[graph_index].numpy()))
+            graphs_.append(nx.from_numpy_array(adj_matrices[graph_index].cpu().numpy()))
         return graphs_
 
 

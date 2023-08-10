@@ -54,10 +54,11 @@ class CTDDTrainer:
     """
 
     config: CTDDConfig
+    ctdd: CTDD
     name_ = "continuos_time_discrete_denoising"
 
     def __init__(self,
-                 ctdd:CTDD,
+                 config:CTDDConfig,
                  **kwargs):
         """
         :param paths_dataloader: contains a data distribution and a target distribution (also possibly data)
@@ -68,16 +69,12 @@ class CTDDTrainer:
 
              the paths_dataloader is a part of the
         """
-        self.ctdd =  ctdd
-        self.config = self.ctdd.config
-        self.number_of_epochs = self.config.optimizer.num_epochs
-
-        # select device
-        self.cuda = kwargs.get("cuda")
-        if self.cuda is not None:
-            self.device = torch.device('cuda:{0}'.format(self.cuda) if torch.cuda.is_available() else "cuda")
-        else:
-            self.device = torch.device("cpu")
+        self.config = config
+        self.number_of_epochs = self.config.trainer.num_epochs
+        device_str = self.config.trainer.device
+        self.device = torch.device(device_str if torch.cuda.is_available() else "cpu")
+        self.ctdd = CTDD()
+        self.ctdd.create_new_from_config(self.config,self.device)
 
     def parameters_info(self, sinkhorn_iteration=0):
         print("# ==================================================")
@@ -89,7 +86,7 @@ class CTDDTrainer:
         print("# Reference Parameters **********************************")
         pprint(self.config.reference.__dict__)
         print("# Trainer Parameters")
-        pprint(self.config.optimizer.__dict__)
+        pprint(self.config.trainer.__dict__)
 
         print("# ==================================================")
         print("# Number of Epochs {0}".format(self.number_of_epochs))
@@ -109,15 +106,11 @@ class CTDDTrainer:
         self.writer = SummaryWriter(self.config.experiment_files.tensorboard_path)
 
         #DEFINE OPTIMIZERS
-        self.optimizer = Adam(self.ctdd.model.parameters(), lr=self.config.optimizer.learning_rate)
+        self.optimizer = Adam(self.ctdd.model.parameters(), lr=self.config.trainer.learning_rate)
 
         # CHECK DATA
         databatch = next(self.ctdd.data_dataloader.train().__iter__())
-        x_adj = databatch[0]
-        x_features =  databatch[1]
-        print(x_adj.shape)
-        print(x_features.shape)
-
+        databatch = self.preprocess_data(databatch)
         #CHECK LOSS
         initial_loss = self.train_step(self.ctdd.model, databatch, 0)
         assert torch.isnan(initial_loss).any() == False
@@ -127,7 +120,6 @@ class CTDDTrainer:
         self.log_metrics(0,self.device)
 
         #SAVE INITIAL STUFF
-
         return initial_loss
 
     def train_step(self, current_model, databatch, number_of_training_step):
@@ -177,10 +169,8 @@ class CTDDTrainer:
         :param past_model:
         :return:
         """
-        # SET GPUS
-        training_model = self.ctdd.model
-        training_model = training_model.to(self.device)
 
+        training_model = self.ctdd.model
         # INITIATE LOSS
         initial_loss = self.initialize()
         best_loss = initial_loss
@@ -219,7 +209,7 @@ class CTDDTrainer:
                 number_of_test_step +=1
             validation_loss_average = np.asarray(validation_loss).mean()
 
-            if epoch % self.config.optimizer.save_model_epochs == 0:
+            if epoch % self.config.trainer.save_model_epochs == 0:
                 self.save_results(current_model=training_model,
                                   initial_loss=initial_loss,
                                   training_loss_average=training_loss_average,
@@ -228,8 +218,10 @@ class CTDDTrainer:
                                   number_of_training_step=number_of_training_step,
                                   checkpoint=True)
 
-            # SAVE RESULTS IF LOSS DECREASES IN VALIDATION
+            if (epoch + 1) % self.config.trainer.save_metric_epochs == 0:
+                self.log_metrics(epoch, self.device)
 
+            # SAVE RESULTS IF LOSS DECREASES IN VALIDATION
             if validation_loss_average < best_loss:
                 self.save_results(current_model=training_model,
                                   initial_loss=initial_loss,
@@ -259,20 +251,23 @@ class CTDDTrainer:
         config = self.config
 
         #HISTOGRAMS
-        histograms_plot_path_ = config.experiment_files.plot_path.format("histograms_{0}".format(number_of_steps))
-        marginal_histograms = marginal_histograms_for_ctdd(self.ctdd,config,device)
-        plot_histograms(marginal_histograms, plots_path=histograms_plot_path_)
+        if "histograms" in config.trainer.metrics:
+            histograms_plot_path_ = config.experiment_files.plot_path.format("histograms_{0}".format(number_of_steps))
+            marginal_histograms = marginal_histograms_for_ctdd(self.ctdd,config,device)
+            plot_histograms(marginal_histograms, plots_path=histograms_plot_path_)
 
         #METRICS
-        #graph_metrics_path_ = config.experiment_files.metrics_file.format("graph_{0}".format(number_of_steps))
-        #graph_metrics = graph_metrics_for_ctdd(self.ctdd, config)
-        #with open(graph_metrics_path_, "w") as f:
-        #    json.dump(graph_metrics, f)
+        if "graphs" in config.trainer.metrics:
+            graph_metrics_path_ = config.experiment_files.metrics_file.format("graph_{0}".format(number_of_steps))
+            graph_metrics = graph_metrics_for_ctdd(self.ctdd, device)
+            with open(graph_metrics_path_, "w") as f:
+                json.dump(graph_metrics, f)
 
         #PLOTS
-        graph_plot_path_ = config.experiment_files.graph_plot_path.format("generative_{0}".format(number_of_steps))
-        generated_graphs = self.ctdd.generate_graphs(number_of_graphs=36)
-        plot_graphs_list2(generated_graphs,title="Generated 0",save_dir=graph_plot_path_)
+        if "graph_plot" in config.trainer.metrics:
+            graph_plot_path_ = config.experiment_files.graph_plot_path.format("generative_{0}".format(number_of_steps))
+            generated_graphs = self.ctdd.generate_graphs(number_of_graphs=36)
+            plot_graphs_list2(generated_graphs,title="Generated 0",save_dir=graph_plot_path_)
 
     def save_results(self,
                      current_model,
@@ -295,22 +290,15 @@ class CTDDTrainer:
 
 
 if __name__=="__main__":
-    # CONFIGS
-    from graph_bridges.configs.graphs.config_ctdd import CTDDConfig, TrainerConfig
+    from graph_bridges.configs.graphs.config_ctdd import CTDDConfig,TrainerConfig
     from graph_bridges.data.graph_dataloaders_config import EgoConfig
-    from graph_bridges.models.backward_rates.backward_rate_config import GaussianTargetRateImageX0PredEMAConfig
-    from graph_bridges.models.generative_models.ctdd import CTDD
+    from graph_bridges.models.backward_rates.backward_rate_config import BackRateMLPConfig
 
-    #==================================================================
-    # CREATE OBJECTS FROM CONFIGURATION
+    ctdd_config = CTDDConfig(experiment_indentifier="ctdd_trainer", delete=True)
+    ctdd_config.data = EgoConfig(batch_size=32, full_adjacency=False)
+    ctdd_config.model = BackRateMLPConfig()
+    ctdd_config.trainer = TrainerConfig(device="cuda:0",metrics=["graphs_plots", "histograms"])
 
-    device = torch.device("cuda:1")
-    config = CTDDConfig(experiment_indentifier="training_test")
-    config.data = EgoConfig(as_image=False, batch_size=32, full_adjacency=False)
-    config.model = GaussianTargetRateImageX0PredEMAConfig()
-    config.optimizer = TrainerConfig()
-    ctdd = CTDD()
-    ctdd.create_new_from_config(config,device)
-    ctdd_trainer = CTDDTrainer(ctdd)
+    ctdd_trainer = CTDDTrainer(ctdd_config)
     ctdd_trainer.train_ctdd()
 

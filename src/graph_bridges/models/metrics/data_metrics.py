@@ -124,9 +124,11 @@ class SpinDataloaderMetric(ABC):
     name_ = "abstract_spins_metric"
     def __init__(self,
                  spin_dataloader:BridgeDataLoader=None,
+                 device=torch.device("cpu"),
                  **kwargs):
         self.spin_dataloader = spin_dataloader
         self.doucet = spin_dataloader.doucet
+        self.device = device
 
     @abstractmethod
     def metric_on_pathbatch(self,batch,aggregation):
@@ -188,12 +190,12 @@ class SpinBernoulliMarginal(SpinDataloaderMetric):
             batch = batch.squeeze()
 
         number_of_paths += batch.shape[0]
-        histogram_of_spins += batch.sum(axis=0)
+        histogram_of_spins += batch.to("cpu").sum(axis=0)
 
         return (histogram_of_spins,number_of_paths)
 
     def before_loop(self):
-        histogram_of_spins = torch.zeros(self.spin_dataloader.number_of_spins)
+        histogram_of_spins = torch.zeros(self.spin_dataloader.number_of_spins,device=self.device)
         return (histogram_of_spins,0.)
 
     def after_loop(self, aggregation):

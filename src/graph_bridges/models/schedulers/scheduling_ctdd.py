@@ -206,6 +206,7 @@ class CTDDScheduler(SchedulerMixin, ConfigMixin):
             minibatch = original_samples.view(B, C * H * W)
         B, D = minibatch.shape
 
+        tensor_dtype = original_samples.dtype
         timesteps = timesteps.to(device)
         qt0 = reference_process.transition(timesteps)  # (B, S, S)
         rate = reference_process.rate(timesteps)  # (B, S, S)
@@ -250,6 +251,8 @@ class CTDDScheduler(SchedulerMixin, ConfigMixin):
             torch.arange(B, device=device),
             square_dims
         ] = square_newval_samples
+
+        x_t,x_tilde,qt0,rate = x_t.to(tensor_dtype),x_tilde.to(tensor_dtype),qt0.to(tensor_dtype),rate.to(tensor_dtype)
 
         if not return_dict:
             return (x_t,x_tilde,qt0,rate)
