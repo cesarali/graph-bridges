@@ -16,7 +16,10 @@ class TestDataDataloader(unittest.TestCase):
 
     def setUp(self) -> None:
         self.config = SBConfig(delete=True,experiment_indentifier="testing")
-        self.config.data = CommunityConfig(as_image=False, batch_size=32, full_adjacency=False)
+        self.config.data = CommunityConfig(as_image=False,
+                                           as_spins=True,
+                                           batch_size=32,
+                                           full_adjacency=False)
         self.device = torch.device("cpu")
         self.config.align_configurations()
         self.dataloader = load_dataloader(self.config,"data",self.device)
@@ -26,6 +29,13 @@ class TestDataDataloader(unittest.TestCase):
         samples = self.dataloader.sample(sample_size=sample_size,type="train")
         self.assertTrue(samples[0].shape[0] == sample_size)
         self.assertTrue(samples[1].shape[0] == sample_size)
+
+    @unittest.skip
+    def test_back_to_graph(self):
+        databatch = next(self.dataloader.train().__iter__())
+        x_adj_spins = databatch[0]
+        x_adj = self.dataloader.transform_to_graph(x_adj_spins)
+        self.assertTrue(x_adj.min() >= 0.)
 
     def test_databatch(self):
         databatch = next(self.dataloader.train().__iter__())

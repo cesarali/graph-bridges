@@ -31,6 +31,7 @@ class TestSBTrainer(unittest.TestCase):
                                   experiment_name="graph",
                                   experiment_type="sb",
                                   experiment_indentifier="unittest_sb_trainer")
+        self.sb_config.data = EgoConfig(as_image=False, batch_size=17, flatten_adjacency=True,full_adjacency=True)
         self.sb_config.model = BackRateMLPConfig(time_embed_dim=14, hidden_layer=150)
         self.sb_config.stein = SteinSpinEstimatorConfig(stein_sample_size=10)
         self.sb_config.sampler = ParametrizedSamplerConfig(num_steps=5)
@@ -52,7 +53,11 @@ class TestSBTrainer(unittest.TestCase):
                                     sinkhorn_iteration_to_load=0)
         x_end = sb.pipeline(None,0,torch.device("cpu"),sample_size=32,return_path=False)
         x_adj = sb.data_dataloader.transform_to_graph(x_end)
-        print(x_adj.min())
+        print("Original")
+        pprint(self.sb_config.data.__dict__)
+        print("Loaded")
+        pprint(sb.config.data.__dict__)
+
 
     def test_sinkhorn_initialization(self):
         current_model = self.sb_trainer.sb.training_model
