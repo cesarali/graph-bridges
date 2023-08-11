@@ -51,9 +51,13 @@ class TestSB(unittest.TestCase):
 
     def test_graph_generation(self):
         number_of_graph_to_generate = 12
-        graph_list = self.sb.generate_graphs(number_of_graph_to_generate)
-        self.assertTrue(len(graph_list) == number_of_graph_to_generate)
-        self.assertIsInstance(graph_list[0],nx.Graph)
+        target_graph_list = self.sb.generate_graphs(number_of_graph_to_generate,self.sb.training_model,sinkhorn_iteration=1)
+        self.assertTrue(len(target_graph_list) == number_of_graph_to_generate)
+        self.assertIsInstance(target_graph_list[0],nx.Graph)
+
+        data_graph_list = self.sb.generate_graphs(number_of_graph_to_generate,self.sb.reference_process,sinkhorn_iteration=0)
+        self.assertTrue(len(data_graph_list) == number_of_graph_to_generate)
+        self.assertIsInstance(data_graph_list[0],nx.Graph)
 
 if __name__ == '__main__':
     unittest.main()

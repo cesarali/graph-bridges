@@ -16,7 +16,7 @@ from torch.optim import Adam
 
 from typing import Optional
 from graph_bridges.configs.graphs.config_sb import SBConfig
-from graph_bridges.models.metrics.sb_metrics import graph_metrics_and_paths_histograms, graph_metrics_for_sb
+from graph_bridges.models.metrics.sb_metrics import marginal_paths_histograms_plots, graph_metrics_for_sb
 from graph_bridges.utils.plots.graph_plots import plot_graphs_list2
 
 def copy_models(model_to, model_from):
@@ -268,25 +268,27 @@ class SBTrainer:
         if "histograms" in config.trainer.metrics:
             histograms_plot_path_ = config.experiment_files.plot_path.format("sinkhorn_{0}_{1}".format(sinkhorn_iteration,
                                                                                                                   epoch))
-            graph_metrics_and_paths_histograms(self.sb,
-                                               sinkhorn_iteration,
-                                               device,
-                                               current_model,
-                                               past_to_train_model,
-                                               plot_path=histograms_plot_path_)
+            marginal_paths_histograms_plots(self.sb,
+                                            sinkhorn_iteration,
+                                            device,
+                                            current_model,
+                                            past_to_train_model,
+                                            plot_path=histograms_plot_path_)
 
         #METRICS
         if "graphs" in config.trainer.metrics:
             graph_metrics_path_ = config.experiment_files.metrics_file.format("graph_sinkhorn_{0}_{1}".format(sinkhorn_iteration,
                                                                                                               epoch))
-            graph_metrics =  graph_metrics_for_sb(self.sb, current_model,config)
+            graph_metrics =  graph_metrics_for_sb(self.sb, current_model,device)
             with open(graph_metrics_path_, "w") as f:
                 json.dump(graph_metrics, f)
 
         #PLOTS
         if "graphs_plots" in config.trainer.metrics:
             graph_plot_path_ = config.experiment_files.graph_plot_path.format("generative_sinkhorn_{0}_{1}".format(sinkhorn_iteration,epoch))
-            generated_graphs = self.sb.generate_graphs(20)
+            generated_graphs = self.sb.generate_graphs(number_of_graphs=20,
+                                                       generating_model=current_model,
+                                                       sinkhorn_iteration=1)
             plot_graphs_list2(generated_graphs,title="Generated 0",save_dir=graph_plot_path_)
 
     def save_results(self,

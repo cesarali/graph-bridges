@@ -5,7 +5,7 @@ from graph_bridges.models.generative_models.sb import SB
 from graph_bridges.models.backward_rates.backward_rate import GaussianTargetRateImageX0PredEMA
 from graph_bridges.models.backward_rates.backward_rate_config import GaussianTargetRateImageX0PredEMAConfig
 import networkx as nx
-from graph_bridges.models.metrics.sb_metrics import graph_metrics_and_paths_histograms, paths_marginal_histograms
+from graph_bridges.models.metrics.sb_metrics import marginal_paths_histograms_plots, paths_marginal_histograms
 from graph_bridges.configs.graphs.config_sb import TrainerConfig
 from graph_bridges.data.graph_dataloaders_config import EgoConfig, CommunityConfig, CommunitySmallConfig
 from graph_bridges.models.backward_rates.backward_rate_config import BackRateMLPConfig
@@ -70,12 +70,12 @@ class TestSB(unittest.TestCase):
 
 
     def test_graph_metrics_and_paths_histograms(self):
-        graph_metrics_and_paths_histograms(sb=self.sb,
-                                           sinkhorn_iteration=0,
-                                           device=self.device,
-                                           current_model=self.sb.training_model,
-                                           past_to_train_model=None,
-                                           plot_path="./histogram_test.png")
+        marginal_paths_histograms_plots(sb=self.sb,
+                                        sinkhorn_iteration=0,
+                                        device=self.device,
+                                        current_model=self.sb.training_model,
+                                        past_to_train_model=None,
+                                        plot_path="./histogram_test.png")
 
 
 if __name__ == '__main__':

@@ -57,20 +57,20 @@ class CTDDPipelineConfig:
 class TrainerConfig:
     device: str = "cuda:0"
     number_of_paths : int = 10
+    num_epochs :int = 200
 
     optimizer_name :str = 'AdamW'
     max_n_iters :int = 10000
     clip_grad :bool= True
     warmup :int = 50
-    num_epochs :int = 200
     learning_rate :float = 2e-4
 
     gradient_accumulation_steps :int = 1
     lr_warmup_steps :int = 500
-    save_image_epochs :int = 10
+    save_metric_epochs: int = 50
+    save_image_epochs :int = 50
     save_model_epochs :int = 50
     save_model_global_iter :int = 1000
-    save_metric_epochs: int = 100
 
     metrics:List[str] = field(default_factory=lambda: ["graphs", "graphs_plots", "histograms"])
 

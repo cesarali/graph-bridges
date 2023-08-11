@@ -19,7 +19,7 @@ from graph_bridges.data.dataloaders_utils import load_dataloader
 from graph_bridges.data.graph_dataloaders import BridgeGraphDataLoaders
 from graph_bridges.models.reference_process.ctdd_reference import GaussianTargetRate
 from graph_bridges.models.backward_rates.backward_rate_utils import load_backward_rates
-
+from graph_bridges.utils.test_utils import check_model_devices
 
 @dataclass
 class SB:
@@ -71,7 +71,7 @@ class SB:
     def generate_graphs(self,
                         number_of_graphs,
                         generating_model,
-                        type:str="data",device=torch.device("cpu"))->List[nx.Graph]:
+                        sinkhorn_iteration=0)->List[nx.Graph]:
         """
         :param number_of_graphs:
         :return:
@@ -79,19 +79,23 @@ class SB:
         if generating_model is None:
             generating_model = self.training_model
 
+        try:
+            device = check_model_devices(generating_model)
+        except:
+            device = generating_model.device
 
         ready = False
         graphs_ = []
         remaining_graphs = number_of_graphs
         for spins_path in self.pipeline.paths_iterator(generating_model,
-                                                       sinkhorn_iteration=1,
+                                                       sinkhorn_iteration=sinkhorn_iteration,
                                                        device=device,
                                                        train=True,
                                                        return_path=False):
             adj_matrices = self.data_dataloader.transform_to_graph(spins_path)
             number_of_graphs = adj_matrices.shape[0]
             for graph_index in range(number_of_graphs):
-                graphs_.append(nx.from_numpy_array(adj_matrices[graph_index].numpy()))
+                graphs_.append(nx.from_numpy_array(adj_matrices[graph_index].cpu().numpy()))
                 remaining_graphs -= 1
                 if remaining_graphs < 1:
                     ready = True

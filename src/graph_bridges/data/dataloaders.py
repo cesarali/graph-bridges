@@ -411,7 +411,7 @@ class DoucetTargetData(BridgeDataLoader):
         batch_size =  self.config.data.batch_size
         number_of_batches = int(test_size / batch_size) + 1
         for a in range(number_of_batches):
-            x = [self.sample(batch_size),None]
+            x = self.sample(batch_size)
             yield x
 
 

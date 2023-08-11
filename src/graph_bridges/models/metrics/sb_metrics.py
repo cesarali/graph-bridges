@@ -23,7 +23,7 @@ def graph_metrics_for_sb(sb,current_model,device):
     :return:  generated_graph_list,test_graph_list
     """
     # GET GRAPH FROM GENERATIVE MODEL
-    remaining = sb.sb_config.data.test_size
+    remaining = sb.config.data.test_size
     generated_graph_list = []
     for spins_path in sb.pipeline.paths_iterator(current_model,
                                                  sinkhorn_iteration=1,
@@ -32,7 +32,7 @@ def graph_metrics_for_sb(sb,current_model,device):
                                                  return_path=False):
         adj_matrices = sb.data_dataloader.transform_to_graph(spins_path)
         number_of_graphs = adj_matrices.shape[0]
-        adj_matrices = adj_matrices.detach().numpy()
+        adj_matrices = adj_matrices.cpu().detach().numpy()
         for graph_index in range(number_of_graphs):
             graph_ = nx.from_numpy_array(adj_matrices[graph_index])
             generated_graph_list.append(graph_)
@@ -114,12 +114,12 @@ def paths_marginal_histograms(sb:SB,
     return backward_histogram,forward_histogram,forward_time
 
 
-def graph_metrics_and_paths_histograms(sb:SB,
-                                       sinkhorn_iteration:int,
-                                       device:torch.device,
-                                       current_model,
-                                       past_to_train_model,
-                                       plot_path:str):
+def marginal_paths_histograms_plots(sb:SB,
+                                    sinkhorn_iteration:int,
+                                    device:torch.device,
+                                    current_model,
+                                    past_to_train_model,
+                                    plot_path:str):
     """
 
     :param sb:
@@ -147,7 +147,3 @@ def graph_metrics_and_paths_histograms(sb:SB,
                       time_=forward_time.cpu(),
                       states_legends=state_legends,
                       save_path=plot_path)
-
-
-if __name__=="__main__":
-    print("Hey!")

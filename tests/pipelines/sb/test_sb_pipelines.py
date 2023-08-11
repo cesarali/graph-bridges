@@ -72,7 +72,9 @@ class TestSB(unittest.TestCase):
     # WITH REFERENCE PROCESS
     #=============================================
     def test_pipeline_reference_no_path(self):
-        x_end = self.sb.pipeline(None, 0, self.device, return_path=False)
+        sample_size = 50
+        x_end = self.sb.pipeline(None, 0, self.device, sample_size=sample_size, return_path=False)
+        self.assertTrue(x_end.shape[0] == sample_size)
         self.assertIsInstance(x_end,torch.Tensor)
 
     def test_pipeline_reference_with_path(self):
@@ -111,20 +113,22 @@ class TestSB(unittest.TestCase):
         print(times2.shape)
 
     def test_paths_generator(self):
-        number_of_states_1 = 0
-        for spins_path_1, times_1 in self.sb.pipeline.paths_iterator(None,
-                                                                     sinkhorn_iteration=0,
-                                                                     device=self.device,
-                                                                     return_path_shape=True):
-            number_of_states_1 += spins_path_1.shape[0]
-
         number_of_states_2 = 0
         for spins_path_2, times_2 in self.sb.pipeline.paths_iterator(self.sb.training_model,
                                                                      device=self.device,
                                                                      sinkhorn_iteration=1,
                                                                      return_path_shape=True):
             number_of_states_2 += spins_path_2.shape[0]
+
+        number_of_states_1 = 0
+        for spins_path_1, times_1 in self.sb.pipeline.paths_iterator(None,
+                                                                     sinkhorn_iteration=0,
+                                                                     device=self.device,
+                                                                     return_path_shape=True):
+            number_of_states_1 += spins_path_1.shape[0]
         self.assertTrue(number_of_states_1 == number_of_states_2)
+
+
 
 
 if __name__ == '__main__':

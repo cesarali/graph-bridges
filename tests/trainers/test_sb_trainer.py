@@ -35,11 +35,10 @@ class TestSBTrainer(unittest.TestCase):
                                                num_epochs=6,
                                                save_metric_epochs=2,
                                                device="cuda:0",
-                                               metrics=["graphs_plots",
-                                                        "histograms"])
+                                               metrics=["graphs_plots","histograms"])
+
         self.sb_trainer = SBTrainer(self.sb_config)
 
-    @unittest.skip("Not Now")
     def test_training(self):
         self.sb_trainer.train_schrodinger()
 
@@ -48,6 +47,16 @@ class TestSBTrainer(unittest.TestCase):
         past_model = self.sb_trainer.sb.reference_process
         self.sb_trainer.initialize_sinkhorn(current_model,past_model,sinkhorn_iteration=0)
 
+    def test_metrics_login(self):
+        sinkhorn_iteration = 0
+        current_model = self.sb_trainer.sb.training_model
+        past_model = self.sb_trainer.sb.reference_process
+
+        self.sb_trainer.log_metrics(current_model=current_model,
+                                    past_to_train_model=past_model,
+                                    sinkhorn_iteration=sinkhorn_iteration,
+                                    epoch=10,
+                                    device=self.sb_trainer.device)
 
 if __name__ == '__main__':
     unittest.main()

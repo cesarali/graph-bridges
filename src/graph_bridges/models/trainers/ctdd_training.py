@@ -296,10 +296,11 @@ if __name__=="__main__":
     from graph_bridges.data.graph_dataloaders_config import CommunitySmallConfig
     from graph_bridges.models.backward_rates.backward_rate_config import BackRateMLPConfig
 
-    ctdd_config = CTDDConfig(experiment_indentifier="ctdd_trainer_community_batch_12", delete=True)
-    ctdd_config.data = EgoConfig(batch_size=12, full_adjacency=False)
+    ctdd_config = CTDDConfig(experiment_indentifier="ctdd_trainer_community_batch_24", delete=True)
+    ctdd_config.data = EgoConfig(batch_size=24, full_adjacency=False)
     ctdd_config.model = BackRateMLPConfig()
-    ctdd_config.trainer = TrainerConfig(device="cuda:0",metrics=["graphs_plots","graphs","histograms"])
+    ctdd_config.trainer = TrainerConfig(device="cuda:0",
+                                        metrics=["graphs_plots","graphs","histograms"])
 
     ctdd_trainer = CTDDTrainer(ctdd_config)
     ctdd_trainer.train_ctdd()
