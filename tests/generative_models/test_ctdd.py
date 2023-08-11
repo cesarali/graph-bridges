@@ -25,10 +25,15 @@ class TestCTDD(unittest.TestCase):
         self.ctdd_config.model = GaussianTargetRateImageX0PredEMAConfig(time_embed_dim=32, fix_logistic=False)
         self.ctdd_config.initialize_new_experiment()
 
-        self.device = torch.device("cuda:0")
+        if torch.cuda.is_available():
+            self.device = torch.device("cuda:0")
+        else:
+            self.device = torch.device("cpu")
+
         self.ctdd = CTDD()
         self.ctdd.create_new_from_config(self.ctdd_config, self.device)
 
+    @unittest.skipIf(not torch.cuda.is_available(),"Cuda Not Available")
     def test_gpu(self):
         print("Test GPU")
         self.assertTrue(self.device == check_model_devices(self.ctdd.model))

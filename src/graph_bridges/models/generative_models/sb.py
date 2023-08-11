@@ -39,10 +39,7 @@ class SB:
     pipeline: SBPipeline=None
     config: SBConfig = None
 
-    def __init__(self,config,device):
-        self.create_from_config(config,device)
-
-    def create_from_config(self, config:SBConfig, device):
+    def create_new_from_config(self, config:SBConfig, device):
         if isinstance(config, SBConfig):
             if config.config_path == "":
                 config.initialize_new_experiment()

@@ -15,15 +15,18 @@ from graph_bridges.configs.graphs.config_ctdd import CTDDConfig
 import networkx as nx
 
 from typing import List
-from dataclasses import dataclass, asdict
 from pprint import pprint
+from dataclasses import dataclass, asdict
+
 
 @dataclass
 class CTDD:
     """
-    This class integrates all the objects requiered to train and generate data
-    from a CTDD model
+    This class integrates all the objects required to train and generate data
 
+    from a CTDD model, it also provides the functionality to load the models
+
+    from the experiment files.
     """
     data_dataloader: BridgeGraphDataLoaders = None
     target_dataloader: DoucetTargetData = None
@@ -40,9 +43,9 @@ class CTDD:
         :param device:
         :return:
         """
-        config.initialize_new_experiment()
-
         self.config = config
+        self.config.initialize_new_experiment()
+
         self.data_dataloader = load_dataloader(config, type="data", device=device)
         self.target_dataloader = load_dataloader(config, type="target", device=device)
         self.model = load_backward_rates(config, device)

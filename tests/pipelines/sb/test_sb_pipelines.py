@@ -1,109 +1,101 @@
 import os
-import json
 import torch
-from graph_bridges.models.generative_models.sb import SB
-from graph_bridges.models.backward_rates.backward_rate import GaussianTargetRateImageX0PredEMA
-from graph_bridges.models.backward_rates.backward_rate_config import GaussianTargetRateImageX0PredEMAConfig
+import unittest
+import numpy as np
+import pandas as pd
 import networkx as nx
+from pprint import pprint
+from dataclasses import asdict
 
-if __name__=="__main__":
-    from graph_bridges.configs.graphs.config_sb import SBConfig
-    from graph_bridges.data.graph_dataloaders_config import EgoConfig
-    from graph_bridges.models.backward_rates.backward_rate_config import BackRateMLPConfig
-    from graph_bridges.configs.graphs.config_sb import ParametrizedSamplerConfig
-
-    config = SBConfig(experiment_indentifier="debug")
-    config.data = EgoConfig(as_image=False, batch_size=32, full_adjacency=False)
-    config.model = GaussianTargetRateImageX0PredEMAConfig(time_embed_dim=12, fix_logistic=False)
-    config.sampler = ParametrizedSamplerConfig(num_steps=18)
+from graph_bridges.models.generative_models.sb import SB
+from graph_bridges.utils.test_utils import check_model_devices
+from graph_bridges.data.graph_dataloaders_config import EgoConfig
+from graph_bridges.models.backward_rates.backward_rate_config import BackRateMLPConfig
+from graph_bridges.configs.graphs.config_sb import SBConfig, ParametrizedSamplerConfig, SteinSpinEstimatorConfig
 
 
-    #read the model
-    #config = get_config_from_file("graph", "lobster", "1687884918")
-    device = torch.device(config.device)
-    sb = SB(config,device)
-
-    #test dataloaders
-    databatch = next(sb.data_dataloader.train().__iter__())
-    x_spins_data = databatch[0]
-    number_of_paths = x_spins_data.shape[0]
-    x_spins_noise = sb.target_dataloader.sample(number_of_paths,device)
-
+class TestSB(unittest.TestCase):
     """
-    #test scheduler
-    time_steps = sb.scheduler.set_timesteps(10,0.01,sinkhorn_iteration=1)
-    print(time_steps.shape)
+    Test the Schrödinger Bridge Generative Model with a super basic MLP as
 
-    # test model
-    times = time_steps[6] * torch.ones(number_of_paths)
-    generating_model : GaussianTargetRateImageX0PredEMA
-    generating_model = sb.past_model
-    forward_ = generating_model(x_spins_data.squeeze(),times)
-    forward_stein = generating_model.stein_binary_forward(x_spins_data.squeeze(),times)
-
-
-    # test losses
-    estimator_ = sb.backward_ratio_stein_estimator.estimator(sb.training_model,
-                                                             sb.past_model,
-                                                             x_spins_data.squeeze(),
-                                                             times)
-
-    print(forward_.shape)
-    print(forward_stein.shape)
-
-    # test reference process
-    x_spins_w_noise = sb.reference_process.spins_on_times(x_spins_data.squeeze(), times)
+    backward rate model
     """
-    # test pipeline REFERENCE PROCESS
+    sb_config: SBConfig
+    sb: SB
 
-    #print("From Dataloader image shape")
-    #x_end = sb.pipeline(None, 0, device, return_path=False)
-    #print(x_end.shape)
+    def setUp(self) -> None:
+        self.sb_config = SBConfig(experiment_indentifier="sb_unittest")
+        self.sb_config.data = EgoConfig(as_image=False, batch_size=5, full_adjacency=False)
+        self.sb_config.model = BackRateMLPConfig(time_embed_dim=12)
+        self.sb_config.stein = SteinSpinEstimatorConfig(stein_sample_size=5)
+        #self.sb_config.sampler = ParametrizedSamplerConfig(num_steps=5)
+        self.sb_config.sampler = ParametrizedSamplerConfig(num_steps=5, step_type="TauLeaping")
 
-    """
-    print("From Dataloader full path in image shape with times")
-    x_end, times = sb.pipeline(None, 0, device, return_path=True)
-    print(x_end.shape)
-    print(times.shape)
+        self.device = torch.device("cpu")
 
-    print("From given start")
-    x_end,times = sb.pipeline(None,0,device,x_spins_data,return_path=True)
-    print(x_end.shape)
-    print(times.shape)
+        self.sb = SB()
+        self.sb.create_new_from_config(self.sb_config, self.device)
+        databatch = next(self.sb.data_dataloader.train().__iter__())
+        self.x_ajd = databatch[0]
+        self.x_features = databatch[1]
+
+    #=============================================
+    # WITH REFERENCE PROCESS
+    #=============================================
+    def test_pipeline_reference_no_path(self):
+        x_end = self.sb.pipeline(None, 0, self.device, return_path=False)
+        self.assertIsInstance(x_end,torch.Tensor)
+
+    def test_pipeline_reference_with_path(self):
+        x_end, times = self.sb.pipeline(None, 0, self.device, return_path=True)
+        self.assertIsInstance(x_end,torch.Tensor)
+        self.assertIsInstance(times,torch.Tensor)
+        self.assertTrue(len(x_end.shape) == 2)
+        self.assertTrue(len(times.shape) == 1)
+
+    def test_pipeline_reference_with_pathshape(self):
+        x_end, times = self.sb.pipeline(None, 0, self.device, return_path=True,return_path_shape=True)
+        self.assertIsInstance(x_end,torch.Tensor)
+        self.assertIsInstance(times,torch.Tensor)
+        self.assertTrue(len(x_end.shape) == 3)
+        self.assertTrue(len(times.shape) == 2)
+
+    def test_pipeline_reference_with_path_with_start(self):
+        x_end, times = self.sb.pipeline(None, 0, self.device, self.x_ajd, return_path=True)
+        self.assertIsInstance(x_end,torch.Tensor)
+        self.assertIsInstance(times,torch.Tensor)
+
+    def test_pipeline_reference_with_path_with_start(self):
+        x_end, times = self.sb.pipeline(None, 0, self.device, self.x_ajd, return_path=True)
+        print(x_end.shape)
+        print(times.shape)
 
 
-    print("From given start in path shape")
-    x_end,times = sb.pipeline(None,0,device,x_spins_data,return_path=True,return_path_shape=True)
-    print(x_end.shape)
-    print(times.shape)
-    """
-    """
-    #test pipeline PARAMETRIC RATES
-    print("From Dataloader image shape")
-    x_end = sb.pipeline(sb.training_model,1,device, return_path=False)
-    print(x_end.shape)
+    # =============================================
+    # WITH PARAMETRIC BACKWARD RATE PROCESS
+    # =============================================
+    def test_pipeline_parametric_backward_rate_with_path_with_start(self):
+        x_end1, times1 = self.sb.pipeline(self.sb.past_model, 1, self.device, self.x_ajd, return_path=True)
+        print(x_end1.shape)
+        print(times1.shape)
+        x_end2, times2 = self.sb.pipeline(self.sb.training_model, 2, self.device, self.x_ajd, return_path=True)
+        print(x_end2.shape)
+        print(times2.shape)
 
-    print("From Dataloader full path in image shape with times")
-    x_end, times = sb.pipeline(sb.training_model,1, device, return_path=True)
-    print(x_end.shape)
-    print(times.shape)
+    def test_paths_generator(self):
+        number_of_states_1 = 0
+        for spins_path_1, times_1 in self.sb.pipeline.paths_iterator(None,
+                                                                     sinkhorn_iteration=0,
+                                                                     return_path_shape=True):
+            number_of_states_1 += spins_path_1.shape[0]
 
-    print("From given start")
-    x_end,times = sb.pipeline(sb.training_model,1,device,x_spins_data,return_path=True)
-    print(x_end.shape)
-    print(times.shape)
+        number_of_states_2 = 0
+        for spins_path_2, times_2 in self.sb.pipeline.paths_iterator(self.sb.training_model,
+                                                                     sinkhorn_iteration=1,
+                                                                     return_path_shape=True):
+            number_of_states_2 += spins_path_2.shape[0]
+        self.assertTrue(number_of_states_1 == number_of_states_2)
 
-    print("From given start in path shape")
-    x_end,times = sb.pipeline(sb.training_model,1,device,x_spins_data,return_path=True,return_path_shape=True)
-    print(x_end.shape)
-    print(times.shape)
-    """
 
-    #print("From Dataloader full path in image shape with times")
-    #spins_path_1, times_1 = sb.pipeline(None, 0, device, return_path=True, return_path_shape=True)
-
-    #print("From given start")
-    #spins_path_2, times_2 = sb.pipeline(sb.training_model,1,device,x_spins_data,return_path=True,return_path_shape=True)
-
-    print("From Forward Stuff")
-    spins_path_1, times_1 = sb.pipeline(sb.training_model,sinkhorn_iteration=1,device=device,train=True,return_path=True)
+if __name__ == '__main__':
+    unittest.main()

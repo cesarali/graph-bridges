@@ -1,30 +1,61 @@
 import os
-import sys
 import torch
+import unittest
+import numpy as np
+import pandas as pd
+import networkx as nx
+from pprint import pprint
+from dataclasses import asdict
 
-if __name__=="__main__":
-    from graph_bridges.data.dataloaders_utils import load_dataloader
-    from graph_bridges.models.backward_rates.backward_rate_utils import load_backward_rates
+from graph_bridges.models.generative_models.sb import SB
+from graph_bridges.utils.test_utils import check_model_devices
+from graph_bridges.data.graph_dataloaders_config import EgoConfig
+from graph_bridges.models.backward_rates.backward_rate_config import BackRateMLPConfig
+from graph_bridges.configs.graphs.config_sb import SBConfig, ParametrizedSamplerConfig, SteinSpinEstimatorConfig
 
-    from graph_bridges.models.generative_models.sb import SB
-    from graph_bridges.data.graph_dataloaders_config import EgoConfig
-    from graph_bridges.models.backward_rates.backward_rate_config import BackRateMLPConfig
-    from graph_bridges.configs.graphs.config_sb import SBConfig, ParametrizedSamplerConfig, SteinSpinEstimatorConfig
-    from graph_bridges.models.backward_rates.backward_rate_config import GaussianTargetRateImageX0PredEMAConfig
 
-    config = SBConfig(experiment_indentifier="debug")
-    config.data = EgoConfig(as_image=False, batch_size=5, full_adjacency=False)
-    config.model = GaussianTargetRateImageX0PredEMAConfig(time_embed_dim=12, fix_logistic=False)
-    config.stein = SteinSpinEstimatorConfig(stein_sample_size=20)
-    config.sampler = ParametrizedSamplerConfig(num_steps=10)
+class TestSB(unittest.TestCase):
+    """
+    Test the Schrödinger Bridge Generative Model with a super basic MLP as
 
-    #read the model
-    device = torch.device("cpu")
-    sb = SB(config, device)
-    spins_path_1, times_1 = sb.pipeline(sb.training_model,
-                                        sinkhorn_iteration=1,
-                                        device=device,
-                                        train=True,
-                                        return_path=False)
-    #generated_graphs = sb.generate_graphs(100)
-    #print(len(generated_graphs))
+    backward rate model
+    """
+    sb_config: SBConfig
+    sb: SB
+
+    def setUp(self) -> None:
+        self.sb_config = SBConfig(experiment_indentifier="sb_unittest")
+        self.sb_config.data = EgoConfig(as_image=False, batch_size=5, full_adjacency=False)
+        self.sb_config.model = BackRateMLPConfig(time_embed_dim=12)
+        self.sb_config.stein = SteinSpinEstimatorConfig(stein_sample_size=5)
+        self.sb_config.sampler = ParametrizedSamplerConfig(num_steps=5)
+
+        #if torch.cuda.is_available():
+        #    self.device = torch.device("cuda:0")
+        #else:
+        self.device = torch.device("cpu")
+
+        self.sb = SB()
+        self.sb.create_new_from_config(self.sb_config, self.device)
+
+    #@unittest.skipIf(torch.cuda.is_available(),"Cuda Not Available")
+    @unittest.skip("Not Now")
+    def test_gpu(self):
+        print("Test GPU")
+        self.assertTrue(self.device == check_model_devices(self.ctdd.model))
+
+    def test_pipeline(self):
+        print("Test Pipeline")
+        x_end, times = self.sb.pipeline(None, 0, self.device, return_path=True)
+        self.assertIsInstance(x_end,torch.Tensor)
+        self.assertIsInstance(times,torch.Tensor)
+
+    def test_graph_generation(self):
+        number_of_graph_to_generate = 12
+        graph_list = self.sb.generate_graphs(number_of_graph_to_generate)
+        self.assertTrue(len(graph_list) == number_of_graph_to_generate)
+        self.assertIsInstance(graph_list[0],nx.Graph)
+
+if __name__ == '__main__':
+    unittest.main()
+

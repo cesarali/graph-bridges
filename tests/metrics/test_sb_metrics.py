@@ -5,49 +5,78 @@ from graph_bridges.models.generative_models.sb import SB
 from graph_bridges.models.backward_rates.backward_rate import GaussianTargetRateImageX0PredEMA
 from graph_bridges.models.backward_rates.backward_rate_config import GaussianTargetRateImageX0PredEMAConfig
 import networkx as nx
+from graph_bridges.models.metrics.sb_metrics import graph_metrics_and_paths_histograms, paths_marginal_histograms
+from graph_bridges.configs.graphs.config_sb import TrainerConfig
+from graph_bridges.data.graph_dataloaders_config import EgoConfig, CommunityConfig, CommunitySmallConfig
+from graph_bridges.models.backward_rates.backward_rate_config import BackRateMLPConfig
+from graph_bridges.configs.graphs.config_sb import SBConfig, ParametrizedSamplerConfig, SteinSpinEstimatorConfig
+from graph_bridges.models.backward_rates.backward_rate_config import GaussianTargetRateImageX0PredEMAConfig
 
-if __name__=="__main__":
-    from graph_bridges.configs.graphs.config_sb import TrainerConfig
-    from graph_bridges.data.graph_dataloaders_config import EgoConfig,CommunityConfig,CommunitySmallConfig
-    from graph_bridges.models.backward_rates.backward_rate_config import BackRateMLPConfig
-    from graph_bridges.configs.graphs.config_sb import SBConfig, ParametrizedSamplerConfig, SteinSpinEstimatorConfig
-    from graph_bridges.models.backward_rates.backward_rate_config import GaussianTargetRateImageX0PredEMAConfig
 
-    config = SBConfig(delete=True,experiment_indentifier="testing")
+import os
+import torch
+import unittest
+import numpy as np
+import pandas as pd
+import networkx as nx
+from pprint import pprint
+from dataclasses import asdict
 
-    #config.data = EgoConfig(as_image=False, batch_size=32, full_adjacency=False)
+from graph_bridges.models.generative_models.sb import SB
+from graph_bridges.utils.test_utils import check_model_devices
+from graph_bridges.data.graph_dataloaders_config import EgoConfig
+from graph_bridges.models.backward_rates.backward_rate_config import BackRateMLPConfig
+from graph_bridges.configs.graphs.config_sb import SBConfig, ParametrizedSamplerConfig, SteinSpinEstimatorConfig
 
-    config.data = CommunityConfig(as_image=False, batch_size=32, full_adjacency=False)
-    #config.data = EgoConfig(as_image=False, batch_size=32, full_adjacency=False)
-    #config.data = CommunitySmallConfig(as_image=False, batch_size=32, full_adjacency=False)
-    config.model = GaussianTargetRateImageX0PredEMAConfig(time_embed_dim=12, fix_logistic=False)
 
-    #config.model = BackRateMLPConfig(time_embed_dim=14,hidden_layer=150)
-    config.stein = SteinSpinEstimatorConfig(stein_sample_size=100)
-    config.sampler = ParametrizedSamplerConfig(num_steps=10,step_type="TauLeaping")
-    config.trainer = TrainerConfig(learning_rate=1e-3,
-                                   num_epochs=200,
-                                   save_metric_epochs=20,
-                                   metrics=["graphs_plots",
-                                              "histograms"])
-    #read the model
-    device = torch.device("cpu")
-    sb = SB(config, device)
+class TestSB(unittest.TestCase):
+    """
+    Test the Schrödinger Bridge Generative Model with a super basic MLP as
 
-    #x = sb.pipeline(sb.model,sample_size=36)
-    #generated_graphs = sb.generate_graphs(100)
+    backward rate model
+    """
+    sb_config: SBConfig
+    sb: SB
 
-    from graph_bridges.models.metrics.sb_metrics import graph_metrics_and_paths_histograms,paths_marginal_histograms
+    def setUp(self) -> None:
+        self.sb_config = SBConfig(experiment_indentifier="sb_unittest")
+        self.sb_config.data = EgoConfig(as_image=False, batch_size=5, full_adjacency=False)
+        self.sb_config.model = BackRateMLPConfig(time_embed_dim=12)
+        self.sb_config.stein = SteinSpinEstimatorConfig(stein_sample_size=5)
+        self.sb_config.sampler = ParametrizedSamplerConfig(num_steps=5)
 
-    backward_histogram,forward_histogram,forward_time = paths_marginal_histograms(sb=sb,
-                                                                                  sinkhorn_iteration=0,
-                                                                                  device=device,
-                                                                                  current_model=sb.training_model,
-                                                                                  past_to_train_model=None)
+        self.device = torch.device("cpu")
 
-    graph_metrics_and_paths_histograms(sb=sb,
-                                       sinkhorn_iteration=0,
-                                       device=device,
-                                       current_model=sb.training_model,
-                                       past_to_train_model=None,
-                                       plot_path=None)
+        self.sb = SB()
+        self.sb.create_new_from_config(self.sb_config, self.device)
+        databatch = next(self.sb.data_dataloader.train().__iter__())
+        self.x_ajd = databatch[0]
+        self.x_features = databatch[1]
+
+
+    def test_paths_histograms(self):
+        backward_histogram, forward_histogram, forward_time = paths_marginal_histograms(sb=self.sb,
+                                                                                        sinkhorn_iteration=0,
+                                                                                        device=self.device,
+                                                                                        current_model=self.sb.training_model,
+                                                                                        past_to_train_model=None)
+        expected_size = torch.Size([self.sb_config.sampler.num_steps+1,
+                                    self.sb.data_dataloader.number_of_spins])
+        expected_time_size = torch.Size([self.sb_config.sampler.num_steps+1])
+
+        self.assertTrue(expected_size == backward_histogram.shape)
+        self.assertTrue(expected_size == forward_histogram.shape)
+        self.assertTrue(expected_time_size == forward_time.shape)
+
+
+    def test_graph_metrics_and_paths_histograms(self):
+        graph_metrics_and_paths_histograms(sb=self.sb,
+                                           sinkhorn_iteration=0,
+                                           device=self.device,
+                                           current_model=self.sb.training_model,
+                                           past_to_train_model=None,
+                                           plot_path="./histogram_test.png")
+
+
+if __name__ == '__main__':
+    unittest.main()
