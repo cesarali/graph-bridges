@@ -30,7 +30,6 @@ class TestDataDataloader(unittest.TestCase):
         self.assertTrue(samples[0].shape[0] == sample_size)
         self.assertTrue(samples[1].shape[0] == sample_size)
 
-    @unittest.skip
     def test_back_to_graph(self):
         databatch = next(self.dataloader.train().__iter__())
         x_adj_spins = databatch[0]

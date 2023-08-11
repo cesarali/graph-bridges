@@ -76,7 +76,21 @@ FlattenTransform = transforms.Lambda(lambda x: x.reshape(x.shape[0], -1))
 UnFlattenTransform = transforms.Lambda(lambda x: x.reshape(x.shape[0],
                                                            int(np.sqrt(x.shape[1])),
                                                            int(np.sqrt(x.shape[1]))))
-SpinsToBinaryTensor = transforms.Lambda(lambda spins: ((1. + spins) * .5).float())
+class SpinsToBinaryTensor:
+    def __call__(self, tensor):
+        """
+        Args:
+            tensor (Tensor): Tensor image of size (C, H, W) to be transformed.
+        Returns:
+            Tensor: Transformed tensor.
+        """
+        # Create a copy of the input tensor to avoid modifying the original tensor
+        transformed_tensor = tensor.clone()
+        # Replace -1. with 0. in the tensor
+        transformed_tensor[transformed_tensor == -1.] = 0.
+
+        return transformed_tensor
+
 BinaryTensorToSpinsTransform = transforms.Lambda(lambda binary_tensor: (-1.) ** (binary_tensor + 1))
 
 def get_transforms(config:GraphDataConfig):
@@ -114,6 +128,7 @@ def get_transforms(config:GraphDataConfig):
 
     if config.as_spins:
         transform_list.append(BinaryTensorToSpinsTransform)
+        inverse_transform_list.append(SpinsToBinaryTensor())
 
     return transform_list,inverse_transform_list
 
