@@ -65,14 +65,5 @@ class TestGaussianReference(unittest.TestCase):
         self.assertTrue(self.device == qt0_numer.device)
         self.assertTrue(self.device == forward_rates_.device)
 
-
-
-
-
 if __name__=="__main__":
     unittest.main()
-
-
-
-
-

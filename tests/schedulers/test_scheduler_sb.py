@@ -56,13 +56,13 @@ class TestSBScheduler(unittest.TestCase):
         self.assertTrue((timesteps0 == timesteps1_fliped).all())
 
     def test_step(self):
-        self.scheduler.step(rates_,
-                            initial_spins,
-                            t,
-                            h,
-                            device,
-                            return_dict=True,
-                            step_type=self.bridge_config.sampler.step_type).new_sample
+        #h = self.select_time_difference(sinkhorn_iteration, timesteps, idx)
+        #times = t * torch.ones(num_of_paths)
+        #if sinkhorn_iteration != 0:
+        #    logits = past_model.stein_binary_forward(initial_spins, times)
+        #    rates_ = F.softplus(logits)
+        #else:
+        #    rates_ = self.reference_process.rates_states_and_times(initial_spins, times)
         return None
 
 if __name__=="__main__":

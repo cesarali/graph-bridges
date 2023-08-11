@@ -183,7 +183,7 @@ class CTDDTrainer:
             #TRAINING
             training_loss = []
             for step, databatch in enumerate(self.ctdd.data_dataloader.train()):
-
+                databatch = self.preprocess_data(databatch)
                 # DATA
                 loss = self.train_step(training_model,
                                        databatch,
@@ -197,6 +197,7 @@ class CTDDTrainer:
             #VALIDATION
             validation_loss = []
             for step, databatch in enumerate(self.ctdd.data_dataloader.test()):
+                databatch = self.preprocess_data(databatch)
                 # DATA
                 loss = self.test_step(training_model,
                                       databatch,

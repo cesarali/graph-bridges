@@ -173,6 +173,26 @@ class SBPipeline(DiffusionPipeline):
                 data_iterator = self.target.test().__iter__()
         return data_iterator
 
+    def select_data_sampler(self,sinkhorn_iteration,train):
+        """
+
+        :param sinkhorn_iteration:
+        :param train:
+        :return: data_iterator
+        """
+        # Sample gaussian noise to begin loop
+        if sinkhorn_iteration % 2 == 0:
+            if train:
+                data_sampler = self.data
+            else:
+                data_sampler = self.data
+        else:
+            if train:
+                data_sampler = self.target
+            else:
+                data_sampler = self.target
+        return data_sampler
+
     def paths_iterator(self,
                        past_model: Union[BackwardRate,ReferenceProcess] = None,
                        sinkhorn_iteration = 0,
@@ -244,6 +264,7 @@ class SBPipeline(DiffusionPipeline):
         device :torch.device = None,
         initial_spins: torch.Tensor = None,
         train: bool =True,
+        sample_size: int = None,
         return_dict: bool = True,
         return_path:bool = True,
         return_path_shape:bool = False,
@@ -273,8 +294,10 @@ class SBPipeline(DiffusionPipeline):
         timesteps = self.scheduler.timesteps
         timesteps = timesteps.to(device)
         if initial_spins is None:
-            data_iterator = self.select_data_iterator(sinkhorn_iteration,train)
-            initial_spins = next(data_iterator)[0]
+            if sample_size is None:
+                sample_size = self.bridge_config.data.batch_size
+            data_sampler = self.select_data_sampler(sinkhorn_iteration,train)
+            initial_spins = data_sampler.sample(sample_size)[0]
 
         initial_spins = initial_spins.to(device)
         num_of_paths = initial_spins.shape[0]

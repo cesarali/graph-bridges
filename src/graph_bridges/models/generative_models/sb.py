@@ -68,15 +68,18 @@ class SB:
                 config.initialize_new_experiment()
         return None
 
-
-    def generate_graphs(self,number_of_graphs,generating_model=None,device=torch.device("cpu"))->List[nx.Graph]:
+    def generate_graphs(self,
+                        number_of_graphs,
+                        generating_model,
+                        type:str="data",device=torch.device("cpu"))->List[nx.Graph]:
         """
-
         :param number_of_graphs:
         :return:
         """
         if generating_model is None:
             generating_model = self.training_model
+
+
         ready = False
         graphs_ = []
         remaining_graphs = number_of_graphs

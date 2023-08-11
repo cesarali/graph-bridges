@@ -37,10 +37,12 @@ class BaseBackwardRateForSBTest(object):
                                         as_spins=False)
         self.sb_config.stein = SteinSpinEstimatorConfig(stein_sample_size=20)
         self.sb_config.sampler = ParametrizedSamplerConfig(num_steps=10)
+        self.device = torch.device("cpu")
 
     def basicSetUp(self):
         self.basicConfigSetUp()
-        self.sb = SB(self.sb_config,torch.device("cpu"))
+        self.sb = SB()
+        self.sb.create_new_from_config(self.sb_config,self.device)
 
     def test_loading(self):
         print("Testing Loading")

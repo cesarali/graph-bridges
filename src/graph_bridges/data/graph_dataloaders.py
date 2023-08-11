@@ -178,6 +178,34 @@ class BridgeGraphDataLoaders:
     def test(self):
         return self.test_dataloader_
 
+    def sample(self,sample_size=10,type="train"):
+        if type == "train":
+            data_iterator = self.train()
+        else:
+            data_iterator = self.test()
+
+        included = 0
+        x_adj_list = []
+        x_features_list = []
+        for databatch in data_iterator:
+            x_adj = databatch[0]
+            x_features = databatch[1]
+            x_adj_list.append(x_adj)
+            x_features_list.append(x_features)
+
+            current_batchsize = x_adj.shape[0]
+            included += current_batchsize
+            if included > sample_size:
+                break
+
+        if included < sample_size:
+            raise Exception("Sample Size Smaller Than Expected")
+
+        x_adj_list = torch.vstack(x_adj_list)
+        x_features_list = torch.vstack(x_features_list)
+
+        return [x_adj_list[:sample_size],x_features_list[:sample_size]]
+
     def create_dataloaders(self,x_tensor, adjs_tensor):
         train_ds = TensorDataset(x_tensor, adjs_tensor)
         train_dl = DataLoader(train_ds,

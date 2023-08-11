@@ -99,7 +99,6 @@ class TestSB(unittest.TestCase):
         print(x_end.shape)
         print(times.shape)
 
-
     # =============================================
     # WITH PARAMETRIC BACKWARD RATE PROCESS
     # =============================================
@@ -115,11 +114,13 @@ class TestSB(unittest.TestCase):
         number_of_states_1 = 0
         for spins_path_1, times_1 in self.sb.pipeline.paths_iterator(None,
                                                                      sinkhorn_iteration=0,
+                                                                     device=self.device,
                                                                      return_path_shape=True):
             number_of_states_1 += spins_path_1.shape[0]
 
         number_of_states_2 = 0
         for spins_path_2, times_2 in self.sb.pipeline.paths_iterator(self.sb.training_model,
+                                                                     device=self.device,
                                                                      sinkhorn_iteration=1,
                                                                      return_path_shape=True):
             number_of_states_2 += spins_path_2.shape[0]

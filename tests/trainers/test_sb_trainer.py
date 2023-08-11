@@ -45,16 +45,7 @@ class TestSBTrainer(unittest.TestCase):
 
     def test_sinkhorn_initialization(self):
         current_model = self.sb_trainer.sb.training_model
-        past_model = self.sb_trainer.sb.past_model
-
-        #h = self.select_time_difference(sinkhorn_iteration, timesteps, idx)
-        #times = t * torch.ones(num_of_paths)
-        #if sinkhorn_iteration != 0:
-        #    logits = past_model.stein_binary_forward(initial_spins, times)
-        #    rates_ = F.softplus(logits)
-        #else:
-        #    rates_ = self.reference_process.rates_states_and_times(initial_spins, times)
-
+        past_model = self.sb_trainer.sb.reference_process
         self.sb_trainer.initialize_sinkhorn(current_model,past_model,sinkhorn_iteration=0)
 
 

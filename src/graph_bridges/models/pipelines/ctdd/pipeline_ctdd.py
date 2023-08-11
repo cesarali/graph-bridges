@@ -169,8 +169,8 @@ class CTDDPipeline(DiffusionPipeline):
             num_of_paths = self.bridge_config.number_of_paths
         else:
             num_of_paths = sample_size
-        x = self.target.sample(num_of_paths, device)
-        x = x.float()
+        x = self.target.sample(num_of_paths, device)[0].float()
+
         # set step values
         self.scheduler.set_timesteps(self.bridge_config.sampler.num_steps,self.bridge_config.sampler.min_t)
         timesteps = self.scheduler.timesteps

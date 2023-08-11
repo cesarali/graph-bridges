@@ -31,11 +31,11 @@ class TestCTDDTrainer(unittest.TestCase):
                                                  device="cuda:0",
                                                  metrics=["graphs_plots",
                                                         "histograms"])
-
         self.ctdd_trainer = CTDDTrainer(self.ctdd_config)
 
     def test_trained(self):
         print("Test Initialization")
+        original_determinism = torch.use_deterministic_algorithms(False)
         self.ctdd_trainer.train_ctdd()
 
 if __name__ == '__main__':

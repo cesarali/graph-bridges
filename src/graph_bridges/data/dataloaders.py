@@ -25,7 +25,6 @@ from graph_bridges.configs.graphs.config_sb import SBConfig
 
 from graph_bridges.data.dataloaders_config import GraphSpinsDataLoaderConfig
 
-
 class BaseDataLoader(ABC):
 
     name_="base_data_loader"
@@ -362,15 +361,18 @@ class BridgeDataLoader:
             self.initial_dist_std = None
 
     @abstractmethod
-    def sample(self, num_of_paths:int, device=None) -> TensorType["num_of_paths","D"]:
+    def sample(self, num_of_paths:int, device=None) -> Tuple[TensorType["num_of_paths","D"],None]:
         return None
 
 class DoucetTargetData(BridgeDataLoader):
     doucet:bool = True
+
     def __init__(self,config:CTDDConfig,device,rank=None):
         BridgeDataLoader.__init__(self, config, device, rank)
 
     def sample(self, num_of_paths:int, device=None) -> TensorType["num_of_paths","D"]:
+        from graph_bridges.data.graph_dataloaders import BinaryTensorToSpinsTransform
+
         if device is None:
             device = self.device
 
@@ -387,10 +389,12 @@ class DoucetTargetData(BridgeDataLoader):
             )
             x = cat.sample((num_of_paths * self.D,)).view(num_of_paths, self.D)
             x = x.to(device)
+            if self.config.data.as_spins:
+                x = BinaryTensorToSpinsTransform(x.float())
         else:
             raise NotImplementedError('Unrecognized initial dist ' + self.initial_dist)
 
-        return x
+        return [x,None]
 
     def train(self):
         from graph_bridges.data.graph_dataloaders import BinaryTensorToSpinsTransform
@@ -399,12 +403,7 @@ class DoucetTargetData(BridgeDataLoader):
         batch_size =  self.config.data.batch_size
         number_of_batches = int(training_size / batch_size)
         for a in range(number_of_batches):
-            if self.config.data.as_spins:
-                x = [BinaryTensorToSpinsTransform(self.sample(batch_size).float())]
-            else:
-                x = [self.sample(batch_size)]
-
-
+            x = self.sample(batch_size)
             yield x
 
     def test(self):
@@ -412,25 +411,9 @@ class DoucetTargetData(BridgeDataLoader):
         batch_size =  self.config.data.batch_size
         number_of_batches = int(test_size / batch_size) + 1
         for a in range(number_of_batches):
-            x = [self.sample(batch_size)]
+            x = [self.sample(batch_size),None]
             yield x
 
 
 all_dataloaders = {"GraphSpinsDataLoader":GraphSpinsDataLoader,
                    "DoucetTargetData":DoucetTargetData}
-
-if __name__=="__main__":
-    from graph_bridges.configs.graphs.lobster.config_base import BridgeConfig
-    from graph_bridges.data.dataloaders_utils import create_dataloader
-    from graph_bridges.data.dataloaders_config import GraphSpinsDataLoaderConfig
-
-    config = BridgeConfig()
-    config.data = GraphSpinsDataLoaderConfig()
-
-    device = torch.device(config.device)
-
-    dataloader = create_dataloader(config,device,target=False)
-
-    #x = data.sample(num_of_paths=20,device=device)
-
-

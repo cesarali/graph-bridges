@@ -12,6 +12,8 @@ from graph_bridges.models.metrics.evaluation.stats import eval_graph_list
 from graph_bridges.models.metrics.data_metrics import SpinBernoulliMarginal
 
 from graph_bridges.data.graph_dataloaders import BinaryTensorToSpinsTransform, SpinsToBinaryTensor
+from graph_bridges.utils.test_utils import check_model_devices
+
 def graph_metrics_for_sb(sb,current_model,device):
     """
 
@@ -71,18 +73,20 @@ def paths_marginal_histograms(sb:SB,
     """
     total_number_of_steps = sb.config.sampler.num_steps + 1
     number_of_spins = sb.config.data.number_of_spins
+    assert device == check_model_devices(current_model)
 
-    histogram_path_1 = torch.zeros(total_number_of_steps, number_of_spins)
-    histogram_path_2 = torch.zeros(total_number_of_steps, number_of_spins)
+    histogram_path_1 = torch.zeros(total_number_of_steps, number_of_spins,device=device)
+    histogram_path_2 = torch.zeros(total_number_of_steps, number_of_spins,device=device)
 
     for spins_path_1, times_1 in sb.pipeline.paths_iterator(past_to_train_model,
                                                             sinkhorn_iteration=sinkhorn_iteration,
-                                                            return_path_shape=True):
+                                                            return_path_shape=True,
+                                                            device=device):
         end_of_path = spins_path_1[:, -1, :]
         spins_path_2, times_2 = sb.pipeline(current_model,
                                             sinkhorn_iteration + 1,
-                                            device,
-                                            end_of_path,
+                                            device=device,
+                                            initial_spins=end_of_path,
                                             return_path=True,
                                             return_path_shape=True)
         binary_path_1 = SpinsToBinaryTensor(spins_path_1)
@@ -136,11 +140,11 @@ def graph_metrics_and_paths_histograms(sb:SB,
 
         state_legends = [str(i) for i in range(backward_histogram.shape[-1])]
         sinkhorn_plot(sinkhorn_iteration,
-                      marginal_0,
-                      marginal_1,
-                      backward_histogram=backward_histogram,
-                      forward_histogram=forward_histogram,
-                      time_=forward_time,
+                      marginal_0.cpu(),
+                      marginal_1.cpu(),
+                      backward_histogram=backward_histogram.cpu(),
+                      forward_histogram=forward_histogram.cpu(),
+                      time_=forward_time.cpu(),
                       states_legends=state_legends,
                       save_path=plot_path)
 

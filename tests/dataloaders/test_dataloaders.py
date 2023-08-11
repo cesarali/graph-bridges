@@ -1,30 +1,56 @@
+import unittest
 import torch
 
 from graph_bridges.models.generative_models.sb import SB
 from graph_bridges.configs.graphs.config_sb import SBConfig
+from graph_bridges.data.dataloaders import DoucetTargetData
 from graph_bridges.data.dataloaders_utils import load_dataloader
-from graph_bridges.data.graph_dataloaders_config import EgoConfig,CommunityConfig
 from graph_bridges.data.graph_dataloaders import BridgeGraphDataLoaders
+
+from graph_bridges.data.graph_dataloaders_config import EgoConfig,CommunityConfig
+
+
+class TestDataDataloader(unittest.TestCase):
+    config:SBConfig
+    dataloader: BridgeGraphDataLoaders
+
+    def setUp(self) -> None:
+        self.config = SBConfig(delete=True,experiment_indentifier="testing")
+        self.config.data = CommunityConfig(as_image=False, batch_size=32, full_adjacency=False)
+        self.device = torch.device("cpu")
+        self.config.align_configurations()
+        self.dataloader = load_dataloader(self.config,"data",self.device)
+
+    def test_sample(self):
+        sample_size = 40
+        samples = self.dataloader.sample(sample_size=sample_size,type="train")
+        self.assertTrue(samples[0].shape[0] == sample_size)
+        self.assertTrue(samples[1].shape[0] == sample_size)
+
+    def test_databatch(self):
+        databatch = next(self.dataloader.train().__iter__())
+        self.assertTrue(len(databatch)==2)
+
+class TestTargetDataloader(unittest.TestCase):
+    config:SBConfig
+    dataloader:DoucetTargetData
+
+    def setUp(self) -> None:
+        self.config = SBConfig(delete=True,experiment_indentifier="testing")
+        self.config.data = CommunityConfig(as_image=False, batch_size=32, full_adjacency=False)
+        device = torch.device("cpu")
+
+        self.config.align_configurations()
+        self.dataloader = load_dataloader(self.config,"target",device)
+
+    def test_sample(self):
+        sample_size = 40
+        databath = self.dataloader.sample(sample_size)
+        self.assertTrue(databath[0].shape[0]==sample_size)
 
 
 if __name__=="__main__":
-
-    config = SBConfig(delete=True,experiment_indentifier="testing")
-    config.data = CommunityConfig(as_image=False, batch_size=32, full_adjacency=False)
-    device = torch.device("cpu")
-    sb = SB(config, device)
-
-    config.align_configurations()
-    data_dataloader = load_dataloader(config,"data",device)
-    target_dataloader = load_dataloader(config,"target",device)
-
-    x_data_adj = next(data_dataloader.train().__iter__())[0]
-    x_target_adj = next(target_dataloader.train().__iter__())[0]
-
-    print(x_data_adj[0,:3])
-    print(x_target_adj[0,:3])
-
-
+    unittest.main()
 
     """
     #================================
