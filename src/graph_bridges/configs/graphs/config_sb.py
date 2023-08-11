@@ -6,6 +6,7 @@ import os
 import subprocess
 import json
 import torch
+from pathlib import Path
 
 from graph_bridges.data.graph_dataloaders_config import TargetConfig, CommunityConfig, GraphDataConfig
 from graph_bridges.data.graph_dataloaders_config import all_dataloaders_configs
@@ -78,7 +79,7 @@ class SBPipelineConfig:
     name : str = 'SBPipeline'
 
 @dataclass
-class TrainerConfig:
+class SBTrainerConfig:
     device:str = "cuda:0"
     number_of_paths : int = 10
     number_of_sinkhorn : int = 1
@@ -127,16 +128,13 @@ class SBConfig:
 
     scheduler : SBSchedulerConfig =  SBSchedulerConfig()
     pipeline : SBPipelineConfig =  SBPipelineConfig()
-    trainer : TrainerConfig =  TrainerConfig()
+    trainer : SBTrainerConfig =  SBTrainerConfig()
     experiment_files: SBExperimentsFiles = None
 
     number_of_paths : int = 10
     number_of_sinkhorn : int = 1
 
     # devices and parallelization ----------------------------------------------
-    device = 'cpu'
-    training_device = 'cpu'
-    device_paths = 'cpu'
     distributed = False
     num_gpus = 0
 
@@ -163,7 +161,11 @@ class SBConfig:
         if isinstance(self.pipeline,dict):
             self.pipeline = SBPipelineConfig(**self.pipeline)
         if isinstance(self.trainer, dict):
-            self.trainer = TrainerConfig(**self.trainer)
+            self.trainer = SBTrainerConfig(**self.trainer)
+        if isinstance(self.loss,dict):
+            self.loss = BackwardEstimatorConfig(**self.loss)
+        if isinstance(self.stein,dict):
+            self.stein = SteinSpinEstimatorConfig(**self.stein)
 
         self.experiment_files.data_stats = os.path.join(self.data.preprocess_datapath, "data_stats.json")
 
@@ -212,14 +214,27 @@ class SBConfig:
         with open(self.experiment_files.config_path, "w") as file:
             json.dump(config_as_dict, file)
 
+def get_sb_config_from_file(experiment_name, experiment_type, experiment_indentifier)->SBConfig:
+    from graph_bridges import results_path
+
+    experiment_dir = os.path.join(results_path, experiment_name)
+    experiment_type_dir = os.path.join(experiment_dir, experiment_type)
+    results_dir = os.path.join(experiment_type_dir, experiment_indentifier)
+    results_dir_path = Path(results_dir)
+    if results_dir_path.exists():
+        config_path = os.path.join(results_dir, "config.json")
+        config_path_json = json.load(open(config_path,"r"))
+        config_path_json["delete"] = False
+        config = SBConfig(**config_path_json)
+        return config
+    else:
+        raise Exception("Folder Does Not Exist")
+
+
 if __name__=="__main__":
-    from pprint import pprint
-    from graph_bridges.data.graph_dataloaders_config import EgoConfig, GraphSpinsDataLoaderConfig, TargetConfig
-    from graph_bridges.models.backward_rates.backward_rate_config import BackRateMLPConfig, GaussianTargetRateImageX0PredEMAConfig
-
-    device = torch.device("cpu")
-
-    config = SBConfig()
-    config.data = EgoConfig(as_image=False, batch_size=32, full_adjacency=False)
-    config.model = GaussianTargetRateImageX0PredEMAConfig(time_embed_dim=32, fix_logistic=False)
-    config.initialize_new_experiment()
+    experiment_indentifier = "tutorial_sb_trainer"
+    experiment_name = "graph"
+    config = get_sb_config_from_file(experiment_name=experiment_name,
+                                     experiment_type="sb",
+                                     experiment_indentifier=experiment_indentifier)
+    pprint(config.__dict__)

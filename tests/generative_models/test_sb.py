@@ -17,7 +17,6 @@ from graph_bridges.configs.graphs.config_sb import SBConfig, ParametrizedSampler
 class TestSB(unittest.TestCase):
     """
     Test the Schrödinger Bridge Generative Model with a super basic MLP as
-
     backward rate model
     """
     sb_config: SBConfig

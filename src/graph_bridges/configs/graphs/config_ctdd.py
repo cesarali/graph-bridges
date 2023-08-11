@@ -54,7 +54,7 @@ class CTDDPipelineConfig:
     name : str = 'CTDDPipeline'
 
 @dataclass
-class TrainerConfig:
+class CTDDTrainerConfig:
     device: str = "cuda:0"
     number_of_paths : int = 10
     num_epochs :int = 200
@@ -89,7 +89,7 @@ class CTDDConfig:
     loss : CTDDLossConfig =  CTDDLossConfig()
     scheduler : CTDDSchedulerConfig = CTDDSchedulerConfig()
     pipeline : CTDDPipelineConfig = CTDDPipelineConfig()
-    trainer : TrainerConfig = TrainerConfig()
+    trainer : CTDDTrainerConfig = CTDDTrainerConfig()
     experiment_files: ExperimentFiles = None
 
     number_of_paths : int = 10
@@ -126,7 +126,7 @@ class CTDDConfig:
         if isinstance(self.pipeline,dict):
             self.pipeline = CTDDPipelineConfig(**self.pipeline)
         if isinstance(self.trainer, dict):
-            self.trainer = TrainerConfig(**self.trainer)
+            self.trainer = CTDDTrainerConfig(**self.trainer)
 
     def initialize_new_experiment(self,
                                   experiment_name: str = None,

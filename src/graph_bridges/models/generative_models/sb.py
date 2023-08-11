@@ -8,7 +8,7 @@ from graph_bridges.models.pipelines.sb.pipeline_sb import SBPipeline
 from graph_bridges.models.schedulers.scheduling_sb import SBScheduler
 from dataclasses import dataclass
 from graph_bridges.models.losses.estimators import BackwardRatioSteinEstimator
-from graph_bridges.configs.graphs.config_sb import SBConfig
+from graph_bridges.configs.graphs.config_sb import SBConfig,get_sb_config_from_file
 from pathlib import Path
 import torch
 import networkx as nx
@@ -40,33 +40,56 @@ class SB:
     pipeline: SBPipeline=None
     config: SBConfig = None
 
-    def create_new_from_config(self, config:SBConfig, device):
-        self.config = config
-        self.config.initialize_new_experiment()
+    def set_classes_from_config(self,config,device):
         self.data_dataloader = load_dataloader(config, type="data", device=device)
         self.target_dataloader = load_dataloader(config, type="target", device=device)
-        self.training_model = load_backward_rates(config, device)
-        self.past_model = load_backward_rates(config, device)
 
         self.reference_process = GaussianTargetRate(config, device)
         self.backward_ratio_stein_estimator = BackwardRatioSteinEstimator(config, device)
         self.scheduler = SBScheduler(config, device)
-
         self.pipeline = SBPipeline(config,
                                    self.reference_process,
                                    self.data_dataloader,
                                    self.target_dataloader,
                                    self.scheduler)
-
         self.config = config
 
-    def create_from_existing_config(self,config):
-        if isinstance(config, SBConfig):
-            if config.config_path == "":
-                config.initialize_new_experiment()
-            if not Path(config.config_path).exists():
-                config.initialize_new_experiment()
-        return None
+    def create_new_from_config(self, config:SBConfig, device):
+        self.config = config
+        self.config.initialize_new_experiment()
+        self.set_classes_from_config(self.config,device)
+
+        self.training_model = load_backward_rates(config, device)
+        self.past_model = load_backward_rates(config, device)
+
+    def load_from_results_folder(self,experiment_name="graph",
+                                 experiment_type="sb",
+                                 experiment_indentifier="tutorial_sb_trainer",
+                                 sinkhorn_iteration_to_load=0,
+                                 checkpoint=None,
+                                 device=torch.device("cpu")):
+        config_ready:SBConfig
+        config_ready = get_sb_config_from_file(experiment_name=experiment_name,
+                                               experiment_type=experiment_type,
+                                               experiment_indentifier=experiment_indentifier)
+        if checkpoint is None:
+            best_model_to_load_path = Path(config_ready.experiment_files.best_model_path.format(sinkhorn_iteration_to_load))
+            if best_model_to_load_path.exists():
+                results_ = torch.load(best_model_to_load_path)
+        else:
+            check_point_to_load_path = Path(config_ready.experiment_files.best_model_path_checkpoint.format(checkpoint, sinkhorn_iteration_to_load))
+            if check_point_to_load_path.exists():
+                results_ = torch.load(check_point_to_load_path)
+
+        config_ready.align_configurations()
+        self.set_classes_from_config(config_ready, device)
+
+        if sinkhorn_iteration_to_load == 0:
+            self.training_model = results_['current_model']
+            self.past_model = load_backward_rates(config=config_ready,device=device)
+        else:
+            self.training_model = results_['current_model']
+            self.past_model = results_["past_model"]
 
     def generate_graphs(self,
                         number_of_graphs,
@@ -78,7 +101,6 @@ class SB:
         """
         if generating_model is None:
             generating_model = self.training_model
-
         try:
             device = check_model_devices(generating_model)
         except:

@@ -2,7 +2,7 @@ import torch
 import unittest
 
 from graph_bridges.models.generative_models.sb import SB
-from graph_bridges.configs.graphs.config_sb import TrainerConfig
+from graph_bridges.configs.graphs.config_sb import SBTrainerConfig
 from graph_bridges.models.backward_rates.backward_rate_config import BackRateMLPConfig
 from graph_bridges.configs.graphs.config_sb import SBConfig, ParametrizedSamplerConfig, SteinSpinEstimatorConfig
 
@@ -21,11 +21,11 @@ class TestSBScheduler(unittest.TestCase):
         self.sb_config.model = BackRateMLPConfig(time_embed_dim=14, hidden_layer=150)
         self.sb_config.stein = SteinSpinEstimatorConfig(stein_sample_size=10)
         self.sb_config.sampler = ParametrizedSamplerConfig(num_steps=5)
-        self.sb_config.trainer = TrainerConfig(learning_rate=1e-3,
-                                               num_epochs=6,
-                                               save_metric_epochs=2,
-                                               device="cuda:0",
-                                               metrics=["graphs_plots",
+        self.sb_config.trainer = SBTrainerConfig(learning_rate=1e-3,
+                                                 num_epochs=6,
+                                                 save_metric_epochs=2,
+                                                 device="cuda:0",
+                                                 metrics=["graphs_plots",
                                                         "histograms"])
         self.sb_config.initialize_new_experiment()
 

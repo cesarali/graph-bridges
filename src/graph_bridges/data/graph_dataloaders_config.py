@@ -256,7 +256,8 @@ class GraphSpinsDataLoaderConfig:
 
 
 all_dataloaders_configs = {"ego_small":EgoConfig,
-                           "community_small":CommunityConfig,
+                           "community_small":CommunitySmallConfig,
+                           "community":CommunityConfig,
                            "grid":GridConfig,
                            "ENZYMES":EnzymesConfig,
                            "QM9":QM9Config,

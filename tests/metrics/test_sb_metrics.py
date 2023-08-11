@@ -6,7 +6,7 @@ from graph_bridges.models.backward_rates.backward_rate import GaussianTargetRate
 from graph_bridges.models.backward_rates.backward_rate_config import GaussianTargetRateImageX0PredEMAConfig
 import networkx as nx
 from graph_bridges.models.metrics.sb_metrics import marginal_paths_histograms_plots, paths_marginal_histograms
-from graph_bridges.configs.graphs.config_sb import TrainerConfig
+from graph_bridges.configs.graphs.config_sb import SBTrainerConfig
 from graph_bridges.data.graph_dataloaders_config import EgoConfig, CommunityConfig, CommunitySmallConfig
 from graph_bridges.models.backward_rates.backward_rate_config import BackRateMLPConfig
 from graph_bridges.configs.graphs.config_sb import SBConfig, ParametrizedSamplerConfig, SteinSpinEstimatorConfig

@@ -11,7 +11,7 @@ from graph_bridges.data.graph_dataloaders_config import EgoConfig
 from graph_bridges.models.backward_rates.backward_rate_config import BackRateMLPConfig
 
 from graph_bridges.models.generative_models.sb import SB
-from graph_bridges.configs.graphs.config_sb import TrainerConfig
+from graph_bridges.configs.graphs.config_sb import SBTrainerConfig
 from graph_bridges.models.backward_rates.backward_rate_config import BackRateMLPConfig
 from graph_bridges.data.graph_dataloaders_config import EgoConfig, CommunityConfig, CommunitySmallConfig
 from graph_bridges.configs.graphs.config_sb import SBConfig, ParametrizedSamplerConfig, SteinSpinEstimatorConfig
@@ -27,20 +27,32 @@ class TestSBTrainer(unittest.TestCase):
     sb_trainer:SBTrainer
 
     def setUp(self) -> None:
-        self.sb_config = SBConfig(delete=True,experiment_indentifier="unittest_sb_trainer")
+        self.sb_config = SBConfig(delete=True,
+                                  experiment_name="graph",
+                                  experiment_type="sb",
+                                  experiment_indentifier="unittest_sb_trainer")
         self.sb_config.model = BackRateMLPConfig(time_embed_dim=14, hidden_layer=150)
         self.sb_config.stein = SteinSpinEstimatorConfig(stein_sample_size=10)
         self.sb_config.sampler = ParametrizedSamplerConfig(num_steps=5)
-        self.sb_config.trainer = TrainerConfig(learning_rate=1e-3,
-                                               num_epochs=6,
-                                               save_metric_epochs=2,
-                                               device="cuda:0",
-                                               metrics=["graphs_plots","histograms"])
-
+        self.sb_config.trainer = SBTrainerConfig(learning_rate=1e-3,
+                                                 num_epochs=4,
+                                                 save_metric_epochs=2,
+                                                 save_model_epochs=2,
+                                                 save_image_epochs=2,
+                                                 device="cuda:0",
+                                                 metrics=["graphs_plots","histograms"])
         self.sb_trainer = SBTrainer(self.sb_config)
 
     def test_training(self):
         self.sb_trainer.train_schrodinger()
+        sb = SB()
+        sb.load_from_results_folder(experiment_name="graph",
+                                    experiment_type="sb",
+                                    experiment_indentifier="unittest_sb_trainer",
+                                    sinkhorn_iteration_to_load=0)
+        x_end = sb.pipeline(None,0,torch.device("cpu"),sample_size=32,return_path=False)
+        x_adj = sb.data_dataloader.transform_to_graph(x_end)
+        print(x_adj.min())
 
     def test_sinkhorn_initialization(self):
         current_model = self.sb_trainer.sb.training_model
