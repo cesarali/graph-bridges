@@ -383,16 +383,16 @@ class SchedulerCommonTest(unittest.TestCase):
             assert all(c is not None for c in scheduler.compatibles)
 
             for comp_scheduler_cls in scheduler.compatibles:
-                comp_scheduler = comp_scheduler_cls.from_config(scheduler.config)
+                comp_scheduler = comp_scheduler_cls.from_config(scheduler.sb_config)
                 assert comp_scheduler is not None
 
-            new_scheduler = scheduler_class.from_config(comp_scheduler.config)
+            new_scheduler = scheduler_class.from_config(comp_scheduler.sb_config)
 
-            new_scheduler_config = {k: v for k, v in new_scheduler.config.items() if k in scheduler.config}
-            scheduler_diff = {k: v for k, v in new_scheduler.config.items() if k not in scheduler.config}
+            new_scheduler_config = {k: v for k, v in new_scheduler.sb_config.items() if k in scheduler.sb_config}
+            scheduler_diff = {k: v for k, v in new_scheduler.sb_config.items() if k not in scheduler.sb_config}
 
             # make sure that configs are essentially identical
-            assert new_scheduler_config == dict(scheduler.config)
+            assert new_scheduler_config == dict(scheduler.sb_config)
 
             # make sure that only differences are for configs that are not in init
             init_keys = inspect.signature(scheduler_class.__init__).parameters.keys()
@@ -408,7 +408,7 @@ class SchedulerCommonTest(unittest.TestCase):
                 scheduler.save_pretrained(tmpdirname)
                 new_scheduler = scheduler_class.from_pretrained(tmpdirname)
 
-            assert scheduler.config == new_scheduler.config
+            assert scheduler.sb_config == new_scheduler.sb_config
 
     def test_step_shape(self):
         kwargs = dict(self.forward_default_kwargs)

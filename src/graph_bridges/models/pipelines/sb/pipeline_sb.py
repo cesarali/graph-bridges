@@ -67,15 +67,15 @@ class DDPMPipeline(DiffusionPipeline):
             True, otherwise a `tuple. When returning a tuple, the first element is a list with the generated images.
         """
         # Sample gaussian noise to begin loop
-        if isinstance(self.unet.config.sample_size, int):
+        if isinstance(self.unet.sb_config.sample_size, int):
             image_shape = (
                 batch_size,
-                self.unet.config.in_channels,
-                self.unet.config.sample_size,
-                self.unet.config.sample_size,
+                self.unet.sb_config.in_channels,
+                self.unet.sb_config.sample_size,
+                self.unet.sb_config.sample_size,
             )
         else:
-            image_shape = (batch_size, self.unet.config.in_channels, *self.unet.config.sample_size)
+            image_shape = (batch_size, self.unet.sb_config.in_channels, *self.unet.sb_config.sample_size)
 
         if self.device.type == "mps":
             # randn does not work reproducibly on mps
@@ -145,6 +145,7 @@ class SBPipeline(DiffusionPipeline):
         self.bridge_config = config
         self.D = self.bridge_config.data.D
 
+
     def select_time_difference(self,sinkhorn_iteration,timesteps,idx):
         if sinkhorn_iteration % 2 == 0:
             h = timesteps[idx + 1] - timesteps[idx]
@@ -197,14 +198,14 @@ class SBPipeline(DiffusionPipeline):
         for databatch in data_iterator:
             spins = databatch[0]
             num_of_paths = spins.shape[0]
-
+            spins = spins.to(device)
             if return_path:
                 full_path = [spins.unsqueeze(1)]
 
             for idx, t in tqdm(enumerate(timesteps_[0:-1])):
 
                 h = self.select_time_difference(sinkhorn_iteration,timesteps_,idx)
-                times_ = t * torch.ones(num_of_paths)
+                times_ = t * torch.ones(num_of_paths,device=device)
 
                 if sinkhorn_iteration != 0:
                     logits = past_model.stein_binary_forward(spins,times_)
@@ -212,7 +213,7 @@ class SBPipeline(DiffusionPipeline):
                 else:
                     rates_ = self.reference_process.rates_states_and_times(spins,times_)
 
-                spins_new = self.scheduler.step(rates_,spins,t,h,device,return_dict=True,step_type="Poisson").new_sample
+                spins_new = self.scheduler.step(rates_,spins,t,h,device=device,return_dict=True,step_type="Poisson").new_sample
                 spins = spins_new
 
                 if return_path:
@@ -270,11 +271,12 @@ class SBPipeline(DiffusionPipeline):
                                      self.bridge_config.sampler.min_t,
                                      sinkhorn_iteration=sinkhorn_iteration)
         timesteps = self.scheduler.timesteps
-
+        timesteps = timesteps.to(device)
         if initial_spins is None:
             data_iterator = self.select_data_iterator(sinkhorn_iteration,train)
             initial_spins = next(data_iterator)[0]
 
+        initial_spins = initial_spins.to(device)
         num_of_paths = initial_spins.shape[0]
         if return_path:
             full_path = [initial_spins.unsqueeze(1)]
@@ -282,7 +284,7 @@ class SBPipeline(DiffusionPipeline):
         for idx, t in tqdm(enumerate(timesteps[0:-1])):
 
             h = self.select_time_difference(sinkhorn_iteration, timesteps, idx)
-            times = t * torch.ones(num_of_paths)
+            times = t * torch.ones(num_of_paths,device=device)
 
             if sinkhorn_iteration != 0:
                 logits = past_model.stein_binary_forward(initial_spins, times)

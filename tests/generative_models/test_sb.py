@@ -30,19 +30,14 @@ class TestSB(unittest.TestCase):
         self.sb_config.stein = SteinSpinEstimatorConfig(stein_sample_size=5)
         self.sb_config.sampler = ParametrizedSamplerConfig(num_steps=5)
 
-        #if torch.cuda.is_available():
-        #    self.device = torch.device("cuda:0")
-        #else:
         self.device = torch.device("cpu")
-
         self.sb = SB()
         self.sb.create_new_from_config(self.sb_config, self.device)
 
-    #@unittest.skipIf(torch.cuda.is_available(),"Cuda Not Available")
-    @unittest.skip("Not Now")
     def test_gpu(self):
         print("Test GPU")
-        self.assertTrue(self.device == check_model_devices(self.ctdd.model))
+        self.assertTrue(self.device == check_model_devices(self.sb.training_model))
+        self.assertTrue(self.device == check_model_devices(self.sb.past_model))
 
     def test_pipeline(self):
         print("Test Pipeline")

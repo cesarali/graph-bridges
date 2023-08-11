@@ -69,15 +69,15 @@ class DDPMPipeline(DiffusionPipeline):
             True, otherwise a `tuple. When returning a tuple, the first element is a list with the generated images.
         """
         # Sample gaussian noise to begin loop
-        if isinstance(self.unet.config.sample_size, int):
+        if isinstance(self.unet.sb_config.sample_size, int):
             image_shape = (
                 batch_size,
-                self.unet.config.in_channels,
-                self.unet.config.sample_size,
-                self.unet.config.sample_size,
+                self.unet.sb_config.in_channels,
+                self.unet.sb_config.sample_size,
+                self.unet.sb_config.sample_size,
             )
         else:
-            image_shape = (batch_size, self.unet.config.in_channels, *self.unet.config.sample_size)
+            image_shape = (batch_size, self.unet.sb_config.in_channels, *self.unet.sb_config.sample_size)
 
         if self.device.type == "mps":
             # randn does not work reproducibly on mps

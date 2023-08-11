@@ -79,7 +79,7 @@ class SBPipelineConfig:
 
 @dataclass
 class TrainerConfig:
-    device = "cpu"
+    device:str = "cuda:0"
     number_of_paths : int = 10
     number_of_sinkhorn : int = 1
     starting_sinkhorn: int = 0

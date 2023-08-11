@@ -1,7 +1,8 @@
 from graph_bridges.models.backward_rates.backward_rate import GaussianTargetRateImageX0PredEMA
 from graph_bridges.models.reference_process.reference_process_utils import create_reference
-from graph_bridges.data.dataloaders import GraphSpinsDataLoader
 from graph_bridges.models.reference_process.ctdd_reference import ReferenceProcess
+from graph_bridges.data.dataloaders import GraphSpinsDataLoader
+
 
 from graph_bridges.models.pipelines.sb.pipeline_sb import SBPipeline
 from graph_bridges.models.schedulers.scheduling_sb import SBScheduler
@@ -40,13 +41,8 @@ class SB:
     config: SBConfig = None
 
     def create_new_from_config(self, config:SBConfig, device):
-        if isinstance(config, SBConfig):
-            if config.config_path == "":
-                config.initialize_new_experiment()
-            if not Path(config.config_path).exists():
-                config.initialize_new_experiment()
-
         self.config = config
+        self.config.initialize_new_experiment()
         self.data_dataloader = load_dataloader(config, type="data", device=device)
         self.target_dataloader = load_dataloader(config, type="target", device=device)
         self.training_model = load_backward_rates(config, device)
@@ -61,7 +57,17 @@ class SB:
                                    self.data_dataloader,
                                    self.target_dataloader,
                                    self.scheduler)
+
         self.config = config
+
+    def create_from_existing_config(self,config):
+        if isinstance(config, SBConfig):
+            if config.config_path == "":
+                config.initialize_new_experiment()
+            if not Path(config.config_path).exists():
+                config.initialize_new_experiment()
+        return None
+
 
     def generate_graphs(self,number_of_graphs,generating_model=None,device=torch.device("cpu"))->List[nx.Graph]:
         """

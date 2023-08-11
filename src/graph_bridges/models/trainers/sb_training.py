@@ -24,17 +24,16 @@ def copy_models(model_to, model_from):
 
 check_model_devices = lambda x: x.parameters().__next__().device
 
-
 class SBTrainer:
     """
     This trainer is intended to obtain a backward process of a markov jump via
     a ratio estimator with a stein estimator
     """
-    config:SBConfig
+    sb:SB
+    sb_config:SBConfig
     name_ = "schrodinger_bridge"
     def __init__(self,
-                 sb:SB=None,
-                 **kwargs):
+                 config:SBConfig=None):
         """
         :param paths_dataloader: contains a data distribution and a target distribution (also possibly data)
         :param backward_estimator:
@@ -45,20 +44,20 @@ class SBTrainer:
              the paths_dataloader is a part of the
         """
 
-        self.sb = sb
-        self.config = self.sb.config
-        self.config.initialize_new_experiment()
+        # select device
+        self.sb_config = config
+        self.device = torch.device(self.sb_config.trainer.device)
 
-        self.starting_sinkhorn = self.config.trainer.starting_sinkhorn
-        self.number_of_sinkhorn = self.config.trainer.number_of_sinkhorn
-        self.number_of_epochs = self.config.trainer.num_epochs
+        self.sb = SB()
+        self.sb.create_new_from_config(self.sb_config,self.device)
+
+        self.starting_sinkhorn = self.sb_config.trainer.starting_sinkhorn
+        self.number_of_sinkhorn = self.sb_config.trainer.number_of_sinkhorn
+        self.number_of_epochs = self.sb_config.trainer.num_epochs
 
         # METRICS
         self.metrics = None
         self.metrics_kwargs = None
-
-        # select device
-        self.device = torch.device(self.config.trainer.device)
 
     def parameters_info(self, sinkhorn_iteration=0):
         print("# ==================================================")
@@ -66,17 +65,17 @@ class SBTrainer:
         print("# ==================================================")
         if sinkhorn_iteration == 0:
             print("# Current Model ************************************")
-            pprint(self.config.model.__dict__)
+            pprint(self.sb_config.model.__dict__)
             print("# Reference Parameters **********************************")
-            pprint(self.config.reference.__dict__)
+            pprint(self.sb_config.reference.__dict__)
             print("# Trainer Parameters")
-            pprint(self.config.trainer.__dict__)
+            pprint(self.sb_config.trainer.__dict__)
 
         print("# ==================================================")
         print("# Number of Epochs {0}".format(self.number_of_epochs))
         print("# ==================================================")
 
-    def initialize(self, current_model, past_to_train_model, sinkhorn_iteration=0):
+    def initialize_sinkhorn(self, current_model, past_to_train_model, sinkhorn_iteration=0):
         """
         Obtains initial loss to know when to save, restart the optimizer
 
@@ -90,7 +89,7 @@ class SBTrainer:
             print(past_to_train_model.parameters().__next__().device)
 
         from torch.utils.tensorboard import SummaryWriter
-        self.writer = SummaryWriter(self.config.experiment_files.tensorboard_path)
+        self.writer = SummaryWriter(self.sb_config.experiment_files.tensorboard_path)
 
         # CHECK DATA
         spins_path, times = self.sb.pipeline(None, 0, self.device,return_path=True,return_path_shape=True)
@@ -106,7 +105,7 @@ class SBTrainer:
         assert torch.isinf(initial_loss).any() == False
 
         #DEFINE OPTIMIZERS
-        self.optimizer = Adam(current_model.parameters(), lr=self.config.trainer.learning_rate)
+        self.optimizer = Adam(current_model.parameters(), lr=self.sb_config.trainer.learning_rate)
         # histogram_path_plot_path = self.config.experiment_files.plot_path.format("initial_plot")
 
         # METRICS
@@ -150,7 +149,6 @@ class SBTrainer:
         :param past_model:
         :return:
         """
-        # SET GPUS
         training_model = self.sb.training_model
         past_model = self.sb.past_model
 
@@ -159,8 +157,7 @@ class SBTrainer:
         else:
             past_loss = past_model
 
-        training_model = training_model.to(self.device)
-        self.sb.pipeline.bridge_config.sampler.num_steps = 20
+        assert check_model_devices(training_model) == self.device
         self.sb.backward_ratio_stein_estimator.set_device(self.device)
 
         for sinkhorn_iteration in range(self.starting_sinkhorn,self.number_of_sinkhorn):
@@ -169,12 +166,14 @@ class SBTrainer:
             else:
                 past_model = self.sb.past_model
 
+            #=====================================================================================
+            # SINKHORN TRAINING
+            #=====================================================================================
 
             # INITIATE LOSS
-            initial_loss = self.initialize(training_model, past_model, sinkhorn_iteration)
+            initial_loss = self.initialize_sinkhorn(training_model, past_model, sinkhorn_iteration)
 
             best_loss = initial_loss
-
             LOSS = []
             number_of_test_step = 0
             number_of_training_step = 0
@@ -225,7 +224,7 @@ class SBTrainer:
                 if epoch % 10 == 0:
                     print("Epoch: {}, Loss: {}".format(epoch + 1, training_loss_average))
 
-                if (epoch + 1) % self.config.trainer.save_model_epochs == 0:
+                if (epoch + 1) % self.sb_config.trainer.save_model_epochs == 0:
                     self.save_results(current_model=training_model,
                                       past_model=past_model,
                                       initial_loss=initial_loss,
@@ -236,12 +235,12 @@ class SBTrainer:
                                       sinkhorn_iteration=sinkhorn_iteration,
                                       checkpoint=True)
 
-                if (epoch + 1) % self.config.trainer.save_metric_epochs == 0:
+                if (epoch + 1) % self.sb_config.trainer.save_metric_epochs == 0:
                     self.log_metrics(current_model=training_model,
                                      past_to_train_model=past_model,
                                      sinkhorn_iteration=sinkhorn_iteration,
                                      epoch=epoch+1,
-                                     device=device)
+                                     device=self.device)
 
             self.time1 = datetime.now()
             #=====================================================
@@ -251,19 +250,25 @@ class SBTrainer:
 
         return best_loss
 
+    def end_of_sinkhorn(self):
+        """
+        :return:
+        """
+        return None
+
     def log_metrics(self, current_model, past_to_train_model, sinkhorn_iteration, epoch, device):
         """
         After the training procedure is done, the model is updated
 
         :return:
         """
-        config = self.config
+        config = self.sb_config
 
         #HISTOGRAMS
         if "histograms" in config.trainer.metrics:
             histograms_plot_path_ = config.experiment_files.plot_path.format("sinkhorn_{0}_{1}".format(sinkhorn_iteration,
                                                                                                                   epoch))
-            graph_metrics_and_paths_histograms(sb,
+            graph_metrics_and_paths_histograms(self.sb,
                                                sinkhorn_iteration,
                                                device,
                                                current_model,
@@ -284,7 +289,6 @@ class SBTrainer:
             generated_graphs = self.sb.generate_graphs(20)
             plot_graphs_list2(generated_graphs,title="Generated 0",save_dir=graph_plot_path_)
 
-
     def save_results(self,
                      current_model,
                      past_model,
@@ -303,39 +307,9 @@ class SBTrainer:
                    "training_loss": training_loss_average,
                    "sinkhorn_iteration":sinkhorn_iteration}
         if checkpoint:
-            best_model_path_checkpoint = self.config.experiment_files.best_model_path_checkpoint.format(epoch, sinkhorn_iteration)
+            best_model_path_checkpoint = self.sb_config.experiment_files.best_model_path_checkpoint.format(epoch, sinkhorn_iteration)
             torch.save(RESULTS,best_model_path_checkpoint)
         else:
-            torch.save(RESULTS, self.config.experiment_files.best_model_path.format(sinkhorn_iteration))
+            torch.save(RESULTS, self.sb_config.experiment_files.best_model_path.format(sinkhorn_iteration))
 
-
-if __name__=="__main__":
-    from graph_bridges.configs.graphs.config_sb import TrainerConfig
-    from graph_bridges.data.graph_dataloaders_config import EgoConfig,CommunityConfig,CommunitySmallConfig
-    from graph_bridges.models.backward_rates.backward_rate_config import BackRateMLPConfig
-    from graph_bridges.configs.graphs.config_sb import SBConfig, ParametrizedSamplerConfig, SteinSpinEstimatorConfig
-    from graph_bridges.models.backward_rates.backward_rate_config import GaussianTargetRateImageX0PredEMAConfig
-
-    config = SBConfig(delete=True,experiment_indentifier="mlp_architecture_community_1000")
-
-    #config.data = EgoConfig(as_image=False, batch_size=32, full_adjacency=False)
-
-    config.data = CommunityConfig(as_image=False, batch_size=32, full_adjacency=False)
-    #config.data = CommunitySmallConfig(as_image=False, batch_size=32, full_adjacency=False)
-    #config.model = GaussianTargetRateImageX0PredEMAConfig(time_embed_dim=12, fix_logistic=False)
-
-    config.model = BackRateMLPConfig(time_embed_dim=14,hidden_layer=150)
-    config.stein = SteinSpinEstimatorConfig(stein_sample_size=100)
-    config.sampler = ParametrizedSamplerConfig(num_steps=10)
-    config.trainer = TrainerConfig(learning_rate=1e-3,
-                                   num_epochs=1000,
-                                   save_metric_epochs=20,
-                                   metrics=["graphs_plots",
-                                              "histograms"])
-
-    #read the model
-    device = torch.device("cpu")
-    sb = SB(config, device)
-    sb_trainer = SBTrainer(sb)
-    sb_trainer.train_schrodinger()
 

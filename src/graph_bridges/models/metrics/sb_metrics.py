@@ -21,7 +21,7 @@ def graph_metrics_for_sb(sb,current_model,device):
     :return:  generated_graph_list,test_graph_list
     """
     # GET GRAPH FROM GENERATIVE MODEL
-    remaining = sb.config.data.test_size
+    remaining = sb.sb_config.data.test_size
     generated_graph_list = []
     for spins_path in sb.pipeline.paths_iterator(current_model,
                                                  sinkhorn_iteration=1,

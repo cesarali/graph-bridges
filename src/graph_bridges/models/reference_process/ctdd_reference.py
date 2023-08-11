@@ -20,7 +20,9 @@ class ReferenceProcess:
         self.eps_ratio = config.sampler.eps_ratio
         self.device = device
 
-    def forward_rates(self, x, t, device):
+    def forward_rates(self, x, t, device=None):
+        if device is None:
+            device == self.device
         num_of_paths = x.shape[0]
         rate = self.rate(t * torch.ones((num_of_paths,), device=device))  # (N, S, S)
 
@@ -61,6 +63,8 @@ class ReferenceProcess:
         return forward_rates,qt0_denom,qt0_numer
 
     def backward_rates_from_probability(self, p0t, x, t, device):
+        if device is None:
+            device == self.device
         num_of_paths = x.shape[0]
         forward_rates,qt0_denom,qt0_numer = self.forward_rates_and_probabilities(x, t, device)
         inner_sum = (p0t / qt0_denom) @ qt0_numer  # (N, D, S)
@@ -91,7 +95,9 @@ class ReferenceProcess:
                    ) -> TensorType["B", "S", "S"]:
         return None
 
-    def spins_on_times(self,start_spins,times):
+    def spins_on_times(self,start_spins,times,device=None):
+        if device is None:
+            device == self.device
         assert len(start_spins.shape) == 2
         batch_size, number_of_spins = start_spins.shape
 
@@ -107,13 +113,15 @@ class ReferenceProcess:
 
         return flipped_spin, times
 
-    def rates_states_and_times(self,states,times):
+    def rates_states_and_times(self,states,times,device=None):
         """
 
         :param states:
         :param times:
         :return:
         """
+        if device is None:
+            device == self.device
         assert len(states.shape) == 2
         number_of_spins = states.shape[-1]
         rate = self.rate(times)  # (B, S, S)

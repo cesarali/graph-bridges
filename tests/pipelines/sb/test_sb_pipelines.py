@@ -28,16 +28,45 @@ class TestSB(unittest.TestCase):
         self.sb_config.data = EgoConfig(as_image=False, batch_size=5, full_adjacency=False)
         self.sb_config.model = BackRateMLPConfig(time_embed_dim=12)
         self.sb_config.stein = SteinSpinEstimatorConfig(stein_sample_size=5)
-        #self.sb_config.sampler = ParametrizedSamplerConfig(num_steps=5)
         self.sb_config.sampler = ParametrizedSamplerConfig(num_steps=5, step_type="TauLeaping")
 
-        self.device = torch.device("cpu")
+        if torch.cuda.is_available():
+            self.device = torch.device("cuda:0")
+        else:
+            self.device = torch.device("cpu")
 
         self.sb = SB()
         self.sb.create_new_from_config(self.sb_config, self.device)
+
         databatch = next(self.sb.data_dataloader.train().__iter__())
-        self.x_ajd = databatch[0]
-        self.x_features = databatch[1]
+        self.x_ajd = databatch[0].to(self.device)
+        self.x_features = databatch[1].to(self.device)
+
+    #=============================================
+    #devices
+    #=============================================
+    def test_pipeline_device(self):
+        x_end,time = self.sb.pipeline(None, 0, self.device, return_path=True)
+        self.assertTrue(self.device == x_end.device)
+
+        x_end,time = self.sb.pipeline(self.sb.training_model, 1, self.device, return_path=True)
+        self.assertTrue(self.device == x_end.device)
+
+        # paths 1
+        for spins_path_1, times_1 in self.sb.pipeline.paths_iterator(None,
+                                                                     sinkhorn_iteration=0,
+                                                                     return_path_shape=True,
+                                                                     device=self.device):
+            break
+        self.assertTrue(self.device == spins_path_1.device)
+
+        # paths 2
+        for spins_path_2, times_2 in self.sb.pipeline.paths_iterator(self.sb.training_model,
+                                                                     sinkhorn_iteration=1,
+                                                                     return_path_shape=True,
+                                                                     device=self.device):
+            break
+        self.assertTrue(self.device == spins_path_2.device)
 
     #=============================================
     # WITH REFERENCE PROCESS

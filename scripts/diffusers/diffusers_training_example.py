@@ -229,7 +229,7 @@ def train_loop(config, model, noise_scheduler, optimizer, train_dataloader, lr_s
 
             # Sample a random timestep for each image
             timesteps = torch.randint(
-                0, noise_scheduler.config.num_train_timesteps, (bs,), device=clean_images.device
+                0, noise_scheduler.sb_config.num_train_timesteps, (bs,), device=clean_images.device
             ).long()
 
             # Add noise to the clean images according to the noise magnitude at each timestep
