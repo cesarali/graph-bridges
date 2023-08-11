@@ -89,8 +89,9 @@ def paths_marginal_histograms(sb:SB,
                                             initial_spins=end_of_path,
                                             return_path=True,
                                             return_path_shape=True)
-        binary_path_1 = SpinsToBinaryTensor(spins_path_1)
-        binary_path_2 = SpinsToBinaryTensor(spins_path_2)
+        spinsToBinaryTensor = SpinsToBinaryTensor()
+        binary_path_1 = spinsToBinaryTensor(spins_path_1)
+        binary_path_2 = spinsToBinaryTensor(spins_path_2)
 
         current_sum_1 = binary_path_1.sum(axis=0)
         current_sum_2 = binary_path_2.sum(axis=0)

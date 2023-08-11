@@ -154,7 +154,8 @@ class SBScheduler(SchedulerMixin, ConfigMixin):
         """
         """
         assert spins.min() == -1. #make sure that we receive spins
-        x = SpinsToBinaryTensor(spins)
+        transforms = SpinsToBinaryTensor()
+        x = transforms(spins)
         num_of_paths = x.shape[0]
         diffs = torch.arange(self.S, device=device).view(1, 1, self.S) - x.view(num_of_paths, self.D, 1)
         rates_ = rates_[:, :, None].repeat(1, 1, 2) # here the rates to flip per spins are the same
