@@ -1,8 +1,5 @@
 from graph_bridges.models.backward_rates.backward_rate import GaussianTargetRateImageX0PredEMA
-from graph_bridges.models.reference_process.reference_process_utils import create_reference
 from graph_bridges.models.reference_process.ctdd_reference import ReferenceProcess
-from graph_bridges.data.dataloaders import GraphSpinsDataLoader
-
 
 from graph_bridges.models.pipelines.sb.pipeline_sb import SBPipeline
 from graph_bridges.models.schedulers.scheduling_sb import SBScheduler
@@ -14,7 +11,7 @@ import torch
 import networkx as nx
 from typing import List
 
-from graph_bridges.data.dataloaders import DoucetTargetData
+from graph_bridges.data.graph_dataloaders import DoucetTargetData
 from graph_bridges.data.dataloaders_utils import load_dataloader
 from graph_bridges.data.graph_dataloaders import BridgeGraphDataLoaders
 from graph_bridges.models.reference_process.ctdd_reference import GaussianTargetRate

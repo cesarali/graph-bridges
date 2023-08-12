@@ -1,6 +1,5 @@
 import torch
 from torch import nn
-from torch.nn import functional as F
 
 from graph_bridges.models.losses.loss_utils import register_loss
 
@@ -256,23 +255,3 @@ class GenericAux():
         loss = neg_elbo + self.nll_weight * nll
 
         return loss, sig_mean, reg_mean
-
-
-if __name__=="__main__":
-    from graph_bridges.models.backward_rates.backward_rate import GaussianTargetRateImageX0PredEMA
-
-    from graph_bridges.data.dataloaders_utils import create_dataloader
-    from graph_bridges.models.samplers.sampling import ReferenceProcess
-    from graph_bridges.configs.graphs.lobster.config_base import BridgeConfig
-    from graph_bridges.models.backward_rates.backward_rate_utils import create_model
-    from graph_bridges.models.reference_process.reference_process_utils import create_reference
-    from graph_bridges.data.dataloaders import DoucetTargetData
-
-    config = BridgeConfig()
-    device = torch.device(config.device)
-
-    data_dataloader: DoucetTargetData
-    data_dataloader = create_dataloader(config,device)
-    model = create_model(config,device)
-    reference_process = create_reference(config,device)
-

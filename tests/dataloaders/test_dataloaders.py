@@ -1,13 +1,12 @@
 import unittest
 import torch
 
-from graph_bridges.models.generative_models.sb import SB
 from graph_bridges.configs.graphs.config_sb import SBConfig
-from graph_bridges.data.dataloaders import DoucetTargetData
+from graph_bridges.data.graph_dataloaders import DoucetTargetData
 from graph_bridges.data.dataloaders_utils import load_dataloader
 from graph_bridges.data.graph_dataloaders import BridgeGraphDataLoaders
 
-from graph_bridges.data.graph_dataloaders_config import EgoConfig,CommunityConfig
+from graph_bridges.data.graph_dataloaders_config import CommunityConfig
 
 
 class TestDataDataloader(unittest.TestCase):
@@ -40,22 +39,53 @@ class TestDataDataloader(unittest.TestCase):
         databatch = next(self.dataloader.train().__iter__())
         self.assertTrue(len(databatch)==2)
 
+
+
 class TestTargetDataloader(unittest.TestCase):
     config:SBConfig
     dataloader:DoucetTargetData
 
-    def setUp(self) -> None:
-        self.config = SBConfig(delete=True,experiment_indentifier="testing")
-        self.config.data = CommunityConfig(as_image=False, batch_size=32, full_adjacency=False)
+    def test_loader(self) -> None:
+        config = SBConfig(delete=True,experiment_indentifier="testing")
+        config.data = CommunityConfig(as_image=False, batch_size=32, full_adjacency=False)
         device = torch.device("cpu")
-
-        self.config.align_configurations()
-        self.dataloader = load_dataloader(self.config,"target",device)
+        config.align_configurations()
+        dataloader = load_dataloader(config,"target",device)
+        self.assertIsNotNone(dataloader)
 
     def test_sample(self):
+        config = SBConfig(delete=True,experiment_indentifier="testing")
+        config.data = CommunityConfig(as_image=False, batch_size=32, full_adjacency=False)
+        device = torch.device("cpu")
+        config.align_configurations()
+        dataloader = load_dataloader(config,"target",device)
         sample_size = 40
-        databath = self.dataloader.sample(sample_size)
+        databath = dataloader.sample(sample_size)
         self.assertTrue(databath[0].shape[0]==sample_size)
+
+    def test_doucet_variable(self):
+        as_spins = True
+        device = torch.device("cpu")
+        config = SBConfig(delete=True,experiment_indentifier="testing")
+        config.data = CommunityConfig(as_spins=as_spins, batch_size=32, full_adjacency=False)
+        config.align_configurations()
+        dataloader = load_dataloader(config,"target",device=device)
+        x_adj = next(dataloader.train().__iter__())[0]
+        self.assertTrue(x_adj.min() >= -1.)
+        self.assertTrue(as_spins == (not dataloader.doucet))
+
+
+@unittest.skip
+class TestPepperMNIST(unittest.TestCase):
+
+    def test_loader(self) -> None:
+        from graph_bridges.data.graph_dataloaders_config import PepperMNISTDataConfig
+        config = SBConfig(delete=True,experiment_indentifier="testing")
+        config.data = PepperMNISTDataConfig(as_image=False, batch_size=32, full_adjacency=False)
+        device = torch.device("cpu")
+        config.align_configurations()
+        dataloader = load_dataloader(config,"data",device)
+        self.assertIsNotNone(dataloader)
 
 
 if __name__=="__main__":

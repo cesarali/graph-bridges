@@ -10,7 +10,9 @@ from torchtyping import TensorType
 from graph_bridges.data.graph_dataloaders_config import CommunityConfig, GraphDataConfig
 import torchvision.transforms as transforms
 from torchvision.datasets import MNIST, CIFAR10
-
+from abc import abstractmethod
+from graph_bridges.configs.graphs.config_ctdd import CTDDConfig
+from graph_bridges.configs.graphs.config_sb import SBConfig
 
 def from_networkx_to_spins(graph_,upper_diagonal_indices,full_adjacency=False):
     adjacency_ = nx.to_numpy_array(graph_)
@@ -157,30 +159,41 @@ class BridgeGraphDataLoaders:
         self.composed_transform = transforms.Compose(transform_list)
         self.transform_to_graph = transforms.Compose(inverse_transform_list)
 
-        if self.graph_data_config.data == "MNIST" :
-            train_graph_list, test_graph_list = self.read_pepperized_image_lists(self.graph_data_config.data )
-        elif self.graph_data_config.data == "CIFAR":
-            train_graph_list, test_graph_list = self.read_pepperized_image_lists(self.graph_data_config.data )
+        if self.graph_data_config.data == "PEPPER-MNIST" :
+            train_image_dataset, test_image_dataset = self.read_pepperized_image_lists(self.graph_data_config.data)
+            self.training_data_size = len(train_image_dataset)
+            self.test_data_size = len(test_image_dataset)
+            self.total_data_size = self.training_data_size + self.test_data_size
+        elif self.graph_data_config.data == "PEPPER-CIFAR":
+            train_image_dataset, test_image_dataset = self.read_pepperized_image_lists(self.graph_data_config.data )
+            self.training_data_size = len(train_image_dataset)
+            self.test_data_size = len(test_image_dataset)
+            self.total_data_size = self.training_data_size + self.test_data_size
         else:
-            train_graph_list, test_graph_list = self.read_graph_lists() 
+            train_graph_list, test_graph_list = self.read_graph_lists()
+            self.training_data_size = len(train_graph_list)
+            self.test_data_size = len(test_graph_list)
+            self.total_data_size = self.training_data_size + self.test_data_size
 
-        self.training_data_size = len(train_graph_list)
-        self.test_data_size = len(test_graph_list)
-        self.total_data_size = self.training_data_size + self.test_data_size
+        if self.graph_data_config.data not in  ["PEPPER-MNIST","PEPPER-CIFAR"]:
+            train_adjs_tensor,train_x_tensor = self.graph_to_tensor_and_features(train_graph_list,
+                                                                                 self.graph_data_config.init,
+                                                                                 self.graph_data_config.max_node_num,
+                                                                                 self.graph_data_config.max_feat_num)
+            test_adjs_tensor, test_x_tensor = self.graph_to_tensor_and_features(test_graph_list,
+                                                                                self.graph_data_config.init,
+                                                                                self.graph_data_config.max_node_num,
+                                                                                self.graph_data_config.max_feat_num)
 
-        train_adjs_tensor,train_x_tensor = self.graph_to_tensor_and_features(train_graph_list,
-                                                                             self.graph_data_config.init,
-                                                                             self.graph_data_config.max_node_num,
-                                                                             self.graph_data_config.max_feat_num)
+        else:
+            train_adjs_tensor, train_x_tensor = self.mnist_dataset_to_adj_and_features(train_image_dataset)
+            test_adjs_tensor, test_x_tensor = self.mnist_dataset_to_adj_and_features(test_image_dataset)
 
         train_adjs_tensor = self.composed_transform(train_adjs_tensor)
 
         self.train_dataloader_ = self.create_dataloaders(train_adjs_tensor,train_x_tensor)
 
-        test_adjs_tensor,test_x_tensor = self.graph_to_tensor_and_features(test_graph_list,
-                                                                           self.graph_data_config.init,
-                                                                           self.graph_data_config.max_node_num,
-                                                                           self.graph_data_config.max_feat_num)
+
 
         test_adjs_tensor = self.composed_transform(test_adjs_tensor)
 
@@ -260,21 +273,115 @@ class BridgeGraphDataLoaders:
 
         return train_graph_list, test_graph_list
 
-    def read_pepperized_image_lists(self, image_set="MNIST"):
+    def read_pepperized_image_lists(self, image_set="PEPPER-MNIST"):
         data_dir = self.graph_data_config.dir
         threshold = self.graph_data_config.pepper_threshold
         pepperize = transforms.Compose([ transforms.ToTensor(),
                                         transforms.Lambda(lambda x: (x > threshold).float())
                                         ])
-        if image_set=="MNIST":
+        if image_set=="PEPPER-MNIST":
             dataset = MNIST(root=data_dir, train=True, download=True, transform=pepperize)
-        elif image_set=="CIFAR":
+        elif image_set=="PEPPER-CIFAR":
             dataset = CIFAR10(root=data_dir, train=True, download=True, transform=pepperize)
         test_size = int(self.graph_data_config.test_split * len(dataset))
         train_size = len(dataset) - test_size
         train_dataset, test_dataset = torch.utils.data.random_split(dataset, [train_size, test_size])
         return train_dataset.dataset, test_dataset.dataset
 
+    def mnist_dataset_to_adj_and_features(self,dataset):
+        """
+
+        :param train_adjs_tensor:
+        :param train_x_tensor:
+        :return: train_adjs_tensor, train_x_tensor
+        """
+        x_adj = [image[0] for image in dataset]
+        x_adj = torch.cat(x_adj, axis=0)
+
+        x_features = [torch.Tensor([image[1]]).float().unsqueeze(0) for image in dataset]
+        x_features = torch.cat(x_features, axis=0)
+
+        return x_adj, x_features
+
+
+class BridgeDataLoader:
+
+    config : SBConfig
+    doucet: bool = True
+
+    def __init__(self,config:SBConfig,device,rank=None):
+        self.config = config
+        self.device = device
+        self.doucet = self.config.data.doucet
+        self.as_spins = self.config.data.as_spins
+
+        C,H,W = self.config.data.shape
+
+        self.D = C*H*W
+        self.number_of_spins = self.D
+
+        self.S = self.config.data.S
+        sampler_config = self.config.sampler
+
+        self.initial_dist = sampler_config.initial_dist
+        if self.initial_dist == 'gaussian':
+            self.initial_dist_std  = self.config.model.Q_sigma
+        else:
+            self.initial_dist_std = None
+
+    @abstractmethod
+    def sample(self, num_of_paths:int, device=None) -> Tuple[TensorType["num_of_paths","D"],None]:
+        return None
+
+
+class DoucetTargetData(BridgeDataLoader):
+    doucet:bool = True
+
+    def __init__(self,config:CTDDConfig,device,rank=None):
+        BridgeDataLoader.__init__(self, config, device, rank)
+
+    def sample(self, num_of_paths:int, device=None) -> TensorType["num_of_paths","D"]:
+        from graph_bridges.data.graph_dataloaders import BinaryTensorToSpinsTransform
+
+        if device is None:
+            device = self.device
+
+        if self.initial_dist == 'uniform':
+            x = torch.randint(low=0, high=self.S, size=(num_of_paths, self.D), device=device)
+        elif self.initial_dist == 'gaussian':
+            target = np.exp(
+                - ((np.arange(1, self.S + 1) - self.S // 2) ** 2) / (2 * self.initial_dist_std ** 2)
+            )
+            target = target / np.sum(target)
+
+            cat = torch.distributions.categorical.Categorical(
+                torch.from_numpy(target)
+            )
+            x = cat.sample((num_of_paths * self.D,)).view(num_of_paths, self.D)
+            x = x.to(device)
+            if self.config.data.as_spins:
+                x = BinaryTensorToSpinsTransform(x.float())
+        else:
+            raise NotImplementedError('Unrecognized initial dist ' + self.initial_dist)
+
+        return [x,None]
+
+    def train(self):
+        #from graph_bridges.data.graph_dataloaders import BinaryTensorToSpinsTransform
+        training_size = int(self.config.data.total_data_size*self.config.data.training_proportion)
+        batch_size =  self.config.data.batch_size
+        number_of_batches = int(training_size / batch_size)
+        for a in range(number_of_batches):
+            x = self.sample(batch_size)
+            yield x
+
+    def test(self):
+        test_size = self.config.data.total_data_size - int(self.config.data.total_data_size*self.config.data.training_proportion)
+        batch_size =  self.config.data.batch_size
+        number_of_batches = int(test_size / batch_size) + 1
+        for a in range(number_of_batches):
+            x = self.sample(batch_size)
+            yield x
 
 # delete below?
 

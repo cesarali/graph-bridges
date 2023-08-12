@@ -1,6 +1,7 @@
 import os
 import json
 import torch
+import shutil
 from graph_bridges.models.generative_models.sb import SB
 from graph_bridges.models.backward_rates.backward_rate import GaussianTargetRateImageX0PredEMA
 from graph_bridges.models.backward_rates.backward_rate_config import GaussianTargetRateImageX0PredEMAConfig
@@ -21,6 +22,7 @@ import pandas as pd
 import networkx as nx
 from pprint import pprint
 from dataclasses import asdict
+from pathlib import Path
 
 from graph_bridges.models.generative_models.sb import SB
 from graph_bridges.utils.test_utils import check_model_devices
@@ -70,12 +72,29 @@ class TestSB(unittest.TestCase):
 
 
     def test_graph_metrics_and_paths_histograms(self):
-        marginal_paths_histograms_plots(sb=self.sb,
-                                        sinkhorn_iteration=0,
-                                        device=self.device,
-                                        current_model=self.sb.training_model,
-                                        past_to_train_model=None,
-                                        plot_path="./histogram_test.png")
+        plots_paths = "./histogram_test.png"
+        plots_paths = Path(plots_paths)
+        expected_path_histogram_size = torch.Size([self.sb_config.sampler.num_steps+1,
+                                                   self.sb_config.data.number_of_spins])
+        if plots_paths.exists():
+            os.remove(plots_paths)
+        stast_ = marginal_paths_histograms_plots(sb=self.sb,
+                                                 sinkhorn_iteration=0,
+                                                 device=self.device,
+                                                 current_model=self.sb.training_model,
+                                                 past_to_train_model=None,
+                                                 plot_path=plots_paths)
+        marginal_0, marginal_1, backward_histogram, forward_histogram, forward_time = stast_
+        self.assertTrue(marginal_0.min() >= 0.)
+        self.assertTrue(marginal_1.min() >= 0.)
+        self.assertTrue((backward_histogram.min() >= 0.).all())
+        self.assertTrue((forward_histogram.min() >= 0.).all())
+        self.assertTrue(backward_histogram.shape == expected_path_histogram_size)
+        self.assertTrue(forward_histogram.shape == expected_path_histogram_size)
+        # check plot was performed
+        self.assertTrue(plots_paths.exists())
+
+
 
 
 if __name__ == '__main__':

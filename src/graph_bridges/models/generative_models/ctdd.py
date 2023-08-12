@@ -1,12 +1,10 @@
-import torch
-
 from graph_bridges.models.backward_rates.backward_rate import GaussianTargetRateImageX0PredEMA
 
 from graph_bridges.data.dataloaders_utils import load_dataloader
 from graph_bridges.models.backward_rates.backward_rate_utils import load_backward_rates
 
 from graph_bridges.models.schedulers.scheduling_ctdd import CTDDScheduler
-from graph_bridges.data.dataloaders import GraphSpinsDataLoader, DoucetTargetData
+from graph_bridges.data.graph_dataloaders import DoucetTargetData
 from graph_bridges.data.graph_dataloaders import BridgeGraphDataLoaders
 from graph_bridges.models.losses.ctdd_losses import GenericAux
 from graph_bridges.models.pipelines.ctdd.pipeline_ctdd import CTDDPipeline
@@ -15,8 +13,7 @@ from graph_bridges.configs.graphs.config_ctdd import CTDDConfig
 import networkx as nx
 
 from typing import List
-from pprint import pprint
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 
 
 @dataclass

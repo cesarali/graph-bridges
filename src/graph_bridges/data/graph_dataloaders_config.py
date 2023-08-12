@@ -1,4 +1,5 @@
 from graph_bridges import data_path
+
 from dataclasses import dataclass
 from pathlib import Path
 from dataclasses import dataclass,asdict,field
@@ -198,6 +199,7 @@ class TargetConfig:
     random_flips : int = True
 
     # discrete diffusion variables
+    as_spins: bool = False
     type : str = "doucet" #one of [doucet, spins]
     full_adjacency : bool = False
     preprocess_datapath :str = "lobster_graphs_upper"
@@ -210,6 +212,13 @@ class TargetConfig:
     def __post_init__(self):
         self.C, self.H, self.W = self.shape[0], self.shape[1], self.shape[2]
         self.D = self.C * self.H * self.W
+        if self.as_spins:
+            self.type = "spins"
+            self.doucet = False
+        else:
+            self.type = "doucet"
+            self.doucet = True
+
 
 @dataclass
 class GraphSpinsDataLoaderConfig:
@@ -254,11 +263,39 @@ class GraphSpinsDataLoaderConfig:
                                      'p1': [0.7],
                                      'p2': [0.5]}
 
+data_path = Path(data_path)
+image_data_path = data_path / "raw"
+
+@dataclass
+class PepperMNISTDataConfig(GraphDataConfig):
+    data: str =  "PEPPER-MNIST"
+    dir: Path = image_data_path
+    pepper_threshold: float = 0.5
+    batch_size: int = 128
+    test_split: float = 0.2
+    max_node_num: int = 28
+    max_feat_num: int = 28
+    total_data_size: int = 60000
+    init: str = "deg"
+
+@dataclass
+class PepperCIFARDataConfig(GraphDataConfig):
+    data: str =  "PEPPER-CIFAR"
+    dir: Path = image_data_path
+    pepper_threshold: float = 0.5
+    batch_size: int = 128
+    test_split: float = 0.2
+    # max_node_num: int = 28
+    # max_feat_num: int = 28
+    # total_data_size: int = 60000
+    # init: str = "deg"
+
 
 all_dataloaders_configs = {"ego_small":EgoConfig,
                            "community_small":CommunitySmallConfig,
                            "community":CommunityConfig,
                            "grid":GridConfig,
+                           "PEPPER-MNIST":PepperMNISTDataConfig,
                            "ENZYMES":EnzymesConfig,
                            "QM9":QM9Config,
                            "ZINC250k":ZincConfig,

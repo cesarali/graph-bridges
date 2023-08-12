@@ -11,20 +11,18 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from typing import List, Optional, Tuple, Union
+from typing import Optional, Tuple, Union
 import torch
 
 from diffusers.pipelines.pipeline_utils import DiffusionPipeline, ImagePipelineOutput
 from graph_bridges.configs.graphs.config_sb import SBConfig
-from diffusers.utils import randn_tensor
 import torch.nn.functional as F
 from tqdm import tqdm
 from graph_bridges.models.pipelines.pipelines_utils import register_pipeline
 from graph_bridges.models.schedulers.scheduling_sb import SBScheduler
-from graph_bridges.data.dataloaders import BridgeDataLoader, SpinsDataLoader
 from graph_bridges.models.reference_process.ctdd_reference import ReferenceProcess
 from graph_bridges.models.backward_rates.backward_rate import BackwardRate
-
+from graph_bridges.data.graph_dataloaders import BridgeGraphDataLoaders
 
 @register_pipeline
 class SBPipeline(DiffusionPipeline):
@@ -41,15 +39,15 @@ class SBPipeline(DiffusionPipeline):
     config : SBConfig
     model: BackwardRate
     reference_process: ReferenceProcess
-    data: SpinsDataLoader
-    target: BridgeDataLoader
+    data: BridgeGraphDataLoaders
+    target: BridgeGraphDataLoaders
     scheduler: SBScheduler
 
     def __init__(self,
                  config:SBConfig,
                  reference_process:ReferenceProcess,
-                 data:SpinsDataLoader,
-                 target:BridgeDataLoader,
+                 data:BridgeGraphDataLoaders,
+                 target:BridgeGraphDataLoaders,
                  scheduler:SBScheduler):
 
         super().__init__()
@@ -137,7 +135,7 @@ class SBPipeline(DiffusionPipeline):
             if return_path:
                 full_path = [spins.unsqueeze(1)]
 
-            for idx, t in tqdm(enumerate(timesteps_[0:-1])):
+            for idx, t in enumerate(timesteps_[0:-1]):
 
                 h = self.select_time_difference(sinkhorn_iteration,timesteps_,idx)
                 times_ = t * torch.ones(num_of_paths,device=device)

@@ -1,8 +1,8 @@
 from graph_bridges.configs.graphs.lobster.config_base import BridgeConfig
 from graph_bridges.models.backward_rates.backward_rate import BackwardRate
+from graph_bridges.data.graph_dataloaders import BridgeGraphDataLoaders
+
 from graph_bridges.models.schedulers.scheduling_sb import SBScheduler
-from graph_bridges.data.dataloaders import BridgeDataLoader
-from pprint import pprint
 from graph_bridges.models.reference_process.ctdd_reference import ReferenceProcess, GaussianTargetRate
 
 import numpy as np
@@ -13,7 +13,6 @@ from torch.distributions.poisson import Poisson
 import torch.nn.functional as F
 
 from tqdm import tqdm
-from typing import Tuple
 from torchtyping import TensorType
 
 def copy_models(model_to, model_from):
@@ -104,11 +103,10 @@ class TauLeaping:
     def sample(self,
                model,
                reference_process: ReferenceProcess,
-               data: BridgeDataLoader,
+               data: BridgeGraphDataLoaders,
                num_of_paths: int,
                num_intermediates: int):
         t = 1.0
-
         device = model.device
         with torch.no_grad():
             x = data.sample(num_of_paths,device)

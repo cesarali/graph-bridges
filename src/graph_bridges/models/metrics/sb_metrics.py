@@ -124,27 +124,23 @@ def marginal_paths_histograms_plots(sb:SB,
     """
 
     :param sb:
-    :return:
+    :return: marginal_0,marginal_1,backward_histogram,forward_histogram,forward_time
     """
     # CHECK DATA METRICS
+    from graph_bridges.models.metrics.data_metrics import SpinBernoulliMarginal
 
-    data_stats_path = Path(sb.config.experiment_files.data_stats)
-    if data_stats_path.exists():
-        data_stats = json.load(open(data_stats_path, "rb"))
-    else:
-        from graph_bridges.models.metrics.data_metrics import SpinBernoulliMarginal
+    marginal_0 = SpinBernoulliMarginal(spin_dataloader=sb.data_dataloader)()
+    marginal_1 = SpinBernoulliMarginal(spin_dataloader=sb.target_dataloader)()
 
-        marginal_0 = SpinBernoulliMarginal(spin_dataloader=sb.data_dataloader)()
-        marginal_1 = SpinBernoulliMarginal(spin_dataloader=sb.target_dataloader)()
+    backward_histogram,forward_histogram,forward_time = paths_marginal_histograms(sb,sinkhorn_iteration,device,current_model,past_to_train_model)
 
-        backward_histogram,forward_histogram,forward_time = paths_marginal_histograms(sb,sinkhorn_iteration,device,current_model,past_to_train_model)
-
-        state_legends = [str(i) for i in range(backward_histogram.shape[-1])]
-        sinkhorn_plot(sinkhorn_iteration,
-                      marginal_0.cpu(),
-                      marginal_1.cpu(),
-                      backward_histogram=backward_histogram.cpu(),
-                      forward_histogram=forward_histogram.cpu(),
-                      time_=forward_time.cpu(),
-                      states_legends=state_legends,
-                      save_path=plot_path)
+    state_legends = [str(i) for i in range(backward_histogram.shape[-1])]
+    sinkhorn_plot(sinkhorn_iteration,
+                  marginal_0.cpu(),
+                  marginal_1.cpu(),
+                  backward_histogram=backward_histogram.cpu(),
+                  forward_histogram=forward_histogram.cpu(),
+                  time_=forward_time.cpu(),
+                  states_legends=state_legends,
+                  save_path=plot_path)
+    return marginal_0,marginal_1,backward_histogram,forward_histogram,forward_time

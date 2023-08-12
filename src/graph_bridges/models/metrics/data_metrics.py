@@ -4,9 +4,8 @@ the aim is to aggregate metrics when we only have access to different batches
 
 """
 from torch.distributions import Bernoulli
-
+from graph_bridges.data.graph_dataloaders import BridgeGraphDataLoaders
 from graph_bridges.models.ising.spin_states import SpinStatesStatistics
-from graph_bridges.data.dataloaders import BridgeDataLoader
 from abc import ABC, abstractmethod
 import torch
 from torch.distributions.kl import kl_divergence
@@ -123,12 +122,13 @@ class SpinDataloaderMetric(ABC):
     """
     name_ = "abstract_spins_metric"
     def __init__(self,
-                 spin_dataloader:BridgeDataLoader=None,
+                 spin_dataloader:BridgeGraphDataLoaders=None,
                  device=torch.device("cpu"),
                  **kwargs):
         self.spin_dataloader = spin_dataloader
         self.doucet = spin_dataloader.doucet
         self.device = device
+
 
     @abstractmethod
     def metric_on_pathbatch(self,batch,aggregation):
@@ -211,9 +211,6 @@ class SpinBernoulliMarginal(SpinDataloaderMetric):
 
 
 if __name__=="__main__":
-    from graph_bridges.data.dataloaders_config import GraphSpinsDataLoaderConfig
-    from graph_bridges.configs.graphs.config_sb import SBConfig
-    from graph_bridges.data.dataloaders import GraphSpinsDataLoader
     from graph_bridges.configs.graphs.config_ctdd import CTDDConfig
     from graph_bridges.data.graph_dataloaders_config import EgoConfig
 

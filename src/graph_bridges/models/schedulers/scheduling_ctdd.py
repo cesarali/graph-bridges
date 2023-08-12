@@ -18,8 +18,6 @@ from dataclasses import dataclass
 from typing import List, Optional, Tuple, Union
 import numpy as np
 import torch
-import torch.functional as F
-
 
 from diffusers.utils import BaseOutput
 from diffusers.configuration_utils import ConfigMixin, register_to_config
@@ -27,10 +25,7 @@ from diffusers.schedulers.scheduling_utils import KarrasDiffusionSchedulers, Sch
 
 from graph_bridges.models.schedulers.scheduling_utils import register_scheduler
 from graph_bridges.configs.graphs.config_sb import SBConfig
-from graph_bridges.models.backward_rates.backward_rate import GaussianTargetRateImageX0PredEMA
-from graph_bridges.data.dataloaders import GraphSpinsDataLoader
 from graph_bridges.models.reference_process.ctdd_reference import ReferenceProcess
-from graph_bridges.models.losses.ctdd_losses import GenericAux
 
 
 @dataclass

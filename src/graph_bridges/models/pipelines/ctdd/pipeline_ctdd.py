@@ -20,7 +20,7 @@ from tqdm import tqdm
 
 from typing import List, Optional, Tuple, Union
 import torch
-from graph_bridges.utils.test_utils import check_model_devices
+
 
 class DDPMPipeline(DiffusionPipeline):
     r"""
@@ -108,7 +108,7 @@ class DDPMPipeline(DiffusionPipeline):
 
 from graph_bridges.models.pipelines.pipelines_utils import register_pipeline
 from graph_bridges.models.schedulers.scheduling_ctdd import CTDDScheduler
-from graph_bridges.data.dataloaders import BridgeDataLoader, SpinsDataLoader
+from graph_bridges.data.graph_dataloaders import DoucetTargetData,BridgeGraphDataLoaders
 from graph_bridges.models.reference_process.ctdd_reference import ReferenceProcess
 from graph_bridges.models.backward_rates.backward_rate import BackwardRate
 
@@ -128,15 +128,15 @@ class CTDDPipeline(DiffusionPipeline):
     config : BridgeConfig
     model: BackwardRate
     reference_process: ReferenceProcess
-    data: SpinsDataLoader
-    target: BridgeDataLoader
+    data: BridgeGraphDataLoaders
+    target: DoucetTargetData
     scheduler: CTDDScheduler
 
     def __init__(self,
                  config:BridgeConfig,
                  reference_process:ReferenceProcess,
-                 data:SpinsDataLoader,
-                 target:BridgeDataLoader,
+                 data:BridgeGraphDataLoaders,
+                 target:DoucetTargetData,
                  scheduler:CTDDScheduler):
 
         super().__init__()

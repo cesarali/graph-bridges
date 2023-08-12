@@ -1,10 +1,7 @@
-import math
 import torch
-import numpy as np
 from torch import nn
 import torch.nn.functional as F
 from torch.nn.parallel import DistributedDataParallel as DDP
-from dataclasses import dataclass,asdict,field
 
 from abc import ABC,abstractmethod
 from graph_bridges.models.networks_arquitectures import networks
@@ -12,10 +9,8 @@ from graph_bridges.configs.graphs.config_sb import SBConfig
 
 from torchtyping import TensorType
 from graph_bridges.models.networks_arquitectures.network_utils import transformer_timestep_embedding
-from torch.nn.functional import softplus,softmax
 from graph_bridges.models.reference_process.ctdd_reference import GaussianTargetRate
-from typing import Tuple, Union
-from typing import List, Union, Optional, Tuple
+from typing import Union, Tuple
 
 
 from dataclasses import dataclass
@@ -386,42 +381,3 @@ class GaussianTargetRateImageX0PredEMA(EMA,ImageX0PredBase,GaussianTargetRate):
 all_backward_rates = {"BackRateConstant":BackRateConstant,
                       "BackRateMLP":BackRateMLP,
                       "GaussianTargetRateImageX0PredEMA":GaussianTargetRateImageX0PredEMA}
-
-if __name__=="__main__":
-    from graph_bridges.configs.graphs.lobster.config_base import BridgeConfig as GaussianBridgeConfig
-    from graph_bridges.configs.graphs.lobster.config_mlp import BridgeMLPConfig
-
-    from graph_bridges.data.dataloaders_utils import create_dataloader
-    from graph_bridges.data.dataloaders import BridgeDataLoader
-
-    # test gaussian
-    gaussian_config = GaussianBridgeConfig()
-    device = torch.device("cpu")
-
-    dataloader:BridgeDataLoader
-    dataloader = create_dataloader(gaussian_config,device)
-    sample_ = dataloader.sample(gaussian_config.data.batch_size,device)
-
-    gaussian_model : GaussianTargetRateImageX0PredEMA
-    gaussian_model = GaussianTargetRateImageX0PredEMA(gaussian_config,device)
-
-    time = torch.full((gaussian_config.data.batch_size,),
-                      gaussian_config.sampler.min_t)
-    forward = gaussian_model(sample_,time)
-    print(sample_)
-    print(forward.mean())
-
-    #test mlp
-    mlp_config = BridgeMLPConfig()
-    device = torch.device("cpu")
-
-    dataloader:BridgeDataLoader
-    dataloader = create_dataloader(mlp_config,device)
-    sample_ = dataloader.sample(mlp_config.data.batch_size,device)
-
-    mlp_model = BackRateMLP(config=mlp_config,device=device)
-    time = torch.full((mlp_config.data.batch_size,),
-                      mlp_config.sampler.min_t)
-    forward = mlp_model(sample_,time)
-    print(sample_.shape)
-    print(forward.mean())
