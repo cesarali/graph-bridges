@@ -18,24 +18,21 @@ class BaseBackwardRateForSBTest(object):
     """
 
     """
-
     data_loader: BridgeGraphDataLoaders
     sb_config: SBConfig
     sb: SB
 
     def backwardRateSetConfig(self):
         self.backward_rate_config = None  # To be overridden by subclasses
+        self.data_config = EgoConfig(as_image=False,batch_size=5,full_adjacency=False,as_spins=False)
 
     def basicConfigSetUp(self):
         self.sb_config = SBConfig(experiment_indentifier="backward_rates_unittest",delete=True)
         self.backwardRateSetConfig()
 
         self.sb_config.model = self.backward_rate_config
-        self.sb_config.data = EgoConfig(as_image=False,
-                                        batch_size=5,
-                                        full_adjacency=False,
-                                        as_spins=False)
-        self.sb_config.stein = SteinSpinEstimatorConfig(stein_sample_size=20)
+        self.sb_config.data = self.data_config
+        self.sb_config.stein = SteinSpinEstimatorConfig(stein_sample_size=2)
         self.sb_config.sampler = ParametrizedSamplerConfig(num_steps=10)
         self.device = torch.device("cpu")
 
@@ -89,16 +86,22 @@ class BaseBackwardRateForSBTest(object):
 
         self.assertTrue(forward_stein.device == device)
         self.assertTrue(forward_.device == device)
+
 class TestBackRateMLP(BaseBackwardRateForSBTest,unittest.TestCase):
 
     def backwardRateSetConfig(self):
         from graph_bridges.models.backward_rates.backward_rate_config import BackRateMLPConfig
+        self.data_config = EgoConfig(as_image=False,batch_size=2,full_adjacency=False,as_spins=False)
         self.backward_rate_config = BackRateMLPConfig()  # To be overridden by subclasses
 
 class TestBackRateDoucetArchitecture(BaseBackwardRateForSBTest,unittest.TestCase):
 
     def backwardRateSetConfig(self):
         from graph_bridges.models.backward_rates.backward_rate_config import GaussianTargetRateImageX0PredEMAConfig
+        from graph_bridges.data.graph_dataloaders_config import PepperMNISTDataConfig
+
+        self.data_config = EgoConfig(as_image=False,batch_size=5,full_adjacency=False)
+        #self.data_config =  PepperMNISTDataConfig(as_image=False, batch_size=2, full_adjacency=False)
         self.backward_rate_config = GaussianTargetRateImageX0PredEMAConfig()  # To be overridden by subclasses
 
 
