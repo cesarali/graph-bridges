@@ -1,11 +1,13 @@
 import os
+import time
 import shutil
-from dataclasses import dataclass, asdict
+import subprocess
 from pathlib import Path
 from typing import Union,Tuple,List
-import subprocess
-import time
+from dataclasses import dataclass, asdict
+
 from graph_bridges import results_path
+
 
 def get_git_revisions_hash():
     hashes = []
@@ -26,7 +28,6 @@ class ExperimentFiles:
 
     def __post_init__(self):
         self.results_path = str(results_path)
-
         self.current_git_commit = str(get_git_revisions_hash()[0])
         if self.experiment_indentifier is None:
             self.experiment_indentifier = str(int(time.time()))

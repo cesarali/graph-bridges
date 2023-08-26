@@ -5,9 +5,7 @@ from graph_bridges.configs.graphs.config_sb import SBConfig
 from graph_bridges.data.graph_dataloaders import DoucetTargetData
 from graph_bridges.data.dataloaders_utils import load_dataloader
 from graph_bridges.data.graph_dataloaders import BridgeGraphDataLoaders
-
 from graph_bridges.data.graph_dataloaders_config import CommunityConfig
-
 
 class TestDataDataloader(unittest.TestCase):
     config:SBConfig
@@ -38,8 +36,6 @@ class TestDataDataloader(unittest.TestCase):
     def test_databatch(self):
         databatch = next(self.dataloader.train().__iter__())
         self.assertTrue(len(databatch)==2)
-
-
 
 class TestTargetDataloader(unittest.TestCase):
     config:SBConfig

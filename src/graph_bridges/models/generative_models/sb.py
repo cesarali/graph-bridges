@@ -1,12 +1,13 @@
 from graph_bridges.models.backward_rates.backward_rate import GaussianTargetRateImageX0PredEMA
 from graph_bridges.models.reference_process.ctdd_reference import ReferenceProcess
 
+from dataclasses import dataclass
 from graph_bridges.models.pipelines.sb.pipeline_sb import SBPipeline
 from graph_bridges.models.schedulers.scheduling_sb import SBScheduler
-from dataclasses import dataclass
 from graph_bridges.models.losses.estimators import BackwardRatioSteinEstimator
 from graph_bridges.configs.graphs.config_sb import SBConfig,get_sb_config_from_file
 from pathlib import Path
+
 import torch
 import networkx as nx
 from typing import List

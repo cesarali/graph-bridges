@@ -50,7 +50,6 @@ class CTDD:
         self.reference_process = GaussianTargetRate(config, device)
         self.loss = GenericAux(config,device)
         self.scheduler = CTDDScheduler(config,device)
-
         self.pipeline = CTDDPipeline(config,
                                      self.reference_process,
                                      self.data_dataloader,

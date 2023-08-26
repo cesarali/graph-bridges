@@ -99,7 +99,6 @@ class GraphDataConfig:
         if self.doucet:
             self.type = "doucet"
 
-
         self.training_proportion = 1. - self.test_split
         self.training_size = int(self.training_proportion*self.total_data_size)
         self.test_size = int(self.test_split*self.total_data_size)

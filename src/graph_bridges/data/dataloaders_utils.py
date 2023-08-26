@@ -1,7 +1,7 @@
 import torch
 
 from graph_bridges.data.graph_dataloaders import BridgeGraphDataLoaders,DoucetTargetData
-
+from graph_bridges.data.image_dataloaders import DiscreteCIFAR10Dataloader
 
 def load_dataloader(config,type:str="data",device:torch.device=torch.device("cpu"),rank=None):
     if type == "data":
@@ -9,6 +9,8 @@ def load_dataloader(config,type:str="data",device:torch.device=torch.device("cpu
             dataloader = BridgeGraphDataLoaders(config,device)
         elif config.data.data in ['PEPPER-MNIST']:
             dataloader = BridgeGraphDataLoaders(config, device)
+        elif config.data.data in ["Cifar10"]:
+            dataloader = DiscreteCIFAR10Dataloader(config, device)
         elif config.data.data == "DoucetTargetData":
             dataloader = DoucetTargetData(config,device)
         else:
@@ -16,7 +18,7 @@ def load_dataloader(config,type:str="data",device:torch.device=torch.device("cpu
     elif type == "target":
         if config.target.data in ['grid','community','community_small',"ego_small",'ENZYMES','QM9','ZINC250k']:
             dataloader = BridgeGraphDataLoaders(config,device)
-        elif config.data.data in ['MNIST']:
+        elif config.target.data in ['MNIST']:
             dataloader = BridgeGraphDataLoaders(config, device)
         elif config.target.data == "DoucetTargetData":
             dataloader = DoucetTargetData(config,device)
