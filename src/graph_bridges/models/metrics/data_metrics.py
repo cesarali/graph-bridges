@@ -190,6 +190,8 @@ class SpinBernoulliMarginal(SpinDataloaderMetric):
             batch = batch.squeeze()
 
         number_of_paths += batch.shape[0]
+        if len(batch.shape) >= 2:
+            batch = batch.reshape(batch.shape[0],-1)
         histogram_of_spins += batch.to("cpu").sum(axis=0)
 
         return (histogram_of_spins,number_of_paths)

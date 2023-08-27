@@ -114,23 +114,15 @@ class TestBackwardRateForCifar10(unittest.TestCase):
         from graph_bridges.configs.images.cifar10_config_ctdd import CTDDConfig
         from graph_bridges.models.generative_models.ctdd import CTDD
         from graph_bridges.models.backward_rates.backward_rate_utils import load_backward_rates
+
+        batch_size = 23
         config = CTDDConfig()
-        config.data = DiscreteCIFAR10Config()
         config.trainer.device = "cpu"
 
         #device
         device = torch.device(config.trainer.device)
+        x = torch.randint(255,(batch_size,3,32,32))
 
-        #dataloader
-        #dataloader = load_dataloader(config,device=torch.device("cpu"))
-        #databath = next(dataloader.train().__iter__())
-        #x = databath[0]
-
-        x = torch.randint(255,(128,3,32,32))
-
-        #model
-        #ctdd = CTDD()
-        #ctdd.create_new_from_config(config, device)
         config.target.S = config.data.S
         config.target.D = config.data.D
 

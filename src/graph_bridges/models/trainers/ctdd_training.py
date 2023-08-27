@@ -158,8 +158,8 @@ class CTDDTrainer:
         return loss_
 
     def preprocess_data(self, databatch):
-        return [databatch[0].to(self.device),
-                databatch[1].to(self.device)]
+        return [databatch[0].float().to(self.device),
+                databatch[1].float().to(self.device)]
 
     def train_ctdd(self):
         """

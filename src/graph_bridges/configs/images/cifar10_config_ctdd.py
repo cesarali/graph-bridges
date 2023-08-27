@@ -72,7 +72,7 @@ class CTDDTrainerConfig:
     save_model_epochs :int = 50
     save_model_global_iter :int = 1000
 
-    metrics:List[str] = field(default_factory=lambda: ["histograms"])
+    metrics:List[str] = field(default_factory=lambda: [])
 
 @dataclass
 class CTDDConfig:

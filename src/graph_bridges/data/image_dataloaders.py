@@ -57,6 +57,9 @@ class DiscreteCIFAR10Dataloader():
         train_dataset = DiscreteCIFAR10(data_root=cfg.data.dir,train=True)
         test_dataset =  DiscreteCIFAR10(data_root=cfg.data.dir,train=True)
 
+        self.doucet = cfg.data.doucet
+        self.number_of_spins = cfg.data.D
+
         self.train_dataloader = torch.utils.data.DataLoader(train_dataset,
                                                             batch_size=cfg.data.batch_size,
                                                             shuffle=True)
