@@ -18,14 +18,15 @@ class DiscreteCIFAR10Config:
     D: int = None
 
     shape: list = None
-    random_flips = False
+    random_flips = True
     preprocess_datapath:str = "graphs"
+    doucet:bool = True
+    as_spins:bool = False
 
     def __post_init__(self):
 
         self.shape = [3,32,32]
         self.shape_ = self.shape
         self.D = self.C * self.H * self.W
-
-        self.S = 2
-        self.data_min_max = [0,256]
+        self.S = 256
+        self.data_min_max = [0,255]

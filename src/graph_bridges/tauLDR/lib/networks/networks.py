@@ -2,9 +2,11 @@ import torch
 import torch.nn as nn
 import math
 from torchtyping import TensorType, patch_typeguard
+import lib.networks.network_utils as network_utils
 import torch.nn.functional as F
 import numpy as np
 
+#patch_typeguard()
 
 
 # Code modified from https://github.com/yang-song/score_sde_pytorch
@@ -167,11 +169,10 @@ class Downsample(nn.Module):
     def forward(self, x: TensorType["batch", "ch", "inH", "inW"]
         ) -> TensorType["batch", "ch", "outH", "outW"]:
         B, C, H, W = x.shape
-        x = nn.functional.pad(x, (0, 1, 2, 1))
-        #x = nn.functional.pad(x, (0, 1, 0, 1))
+        x = nn.functional.pad(x, (0, 1, 0, 1))
         x= self.conv(x)
 
-        #assert x.shape == (B, C, H // 2, W // 2)
+        assert x.shape == (B, C, H // 2, W // 2)
         return x
 
 class Upsample(nn.Module):
@@ -237,8 +238,10 @@ class UNet(nn.Module):
             for res_count in range(self.num_res_blocks):
                 out_ch = self.ch * self.ch_mult[scale_count]
                 self.downsampling_modules.append(
-                    ResBlock(in_ch, out_ch, temb_dim=self.expanded_time_dim,
-                        dropout=dropout, skip_rescale=self.skip_rescale)
+                    ResBlock(in_ch, out_ch,
+                             temb_dim=self.expanded_time_dim,
+                             dropout=dropout,
+                             skip_rescale=self.skip_rescale)
                 )
                 in_ch = out_ch
                 h_cs.append(in_ch)
@@ -405,7 +408,6 @@ class UNet(nn.Module):
         timesteps: TensorType["B"]=None
     ) -> TensorType["B", "twoC", "H", "W"]:
 
-        B,C,H,W = x.shape
         h = self._center_data(x)
         centered_x_in = h
 
@@ -413,13 +415,11 @@ class UNet(nn.Module):
 
         h, hs = self._do_input_conv(h)
 
-        if H != 1:
-            h, hs = self._do_downsampling(h, hs, temb)
+        h, hs = self._do_downsampling(h, hs, temb)
 
         h = self._do_middle(h, temb)
 
-        if H != 1:
-            h = self._do_upsampling(h, hs, temb)
+        h = self._do_upsampling(h, hs, temb)
 
         h = self._do_output(h)
 

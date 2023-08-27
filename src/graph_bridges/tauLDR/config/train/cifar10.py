@@ -1,8 +1,13 @@
+import os
 import ml_collections
+from graph_bridges import data_path
+from graph_bridges import results_path
 
 def get_config():
-    save_directory = 'C:/Users/cesar/Desktop/Projects/DiffusiveGenerativeModelling/Codes/discrete-diffusion/results/tauLDR'
-    datasets_folder = 'C:/Users/cesar/Desktop/Projects/DiffusiveGenerativeModelling/Codes/discrete-diffusion/data/raw/cifar10/cifar10'
+    save_directory = os.path.join(results_path,"tauLDR")
+    datasets_folder = os.path.join(data_path,"raw")
+
+
 
     config = ml_collections.ConfigDict()
     config.experiment_name = 'cifar10'
@@ -60,6 +65,7 @@ def get_config():
     model.Q_sigma = 512.0
     model.time_exponential = 100.0
     model.time_base = 3.0
+
 
     config.optimizer = optimizer = ml_collections.ConfigDict()
     optimizer.name = 'Adam'

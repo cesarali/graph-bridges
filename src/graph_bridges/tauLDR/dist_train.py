@@ -46,7 +46,7 @@ def main(rank, world_size, cfg, unique_num, custom_name=None):
     # or ddp_store file
     # ideally in the range 0 - 10
 
-    print("Training with configs", cfg.experiment_name)
+    print("Training with config", cfg.experiment_name)
     print(f"Rank: {rank}/{world_size}")
 
 
@@ -186,7 +186,7 @@ def main(rank, world_size, cfg, unique_num, custom_name=None):
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('configs')
+    parser.add_argument('config')
     args, unknown_args = parser.parse_known_args()
     if args.config == 'cifar10':
         from config.train.cifar10_distributed import get_config

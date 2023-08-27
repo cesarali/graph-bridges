@@ -34,7 +34,7 @@ def create_inner_experiment_folders(path):
     checkpoint_archive_dir = checkpoint_dir.joinpath('archive')
     checkpoint_archive_dir.mkdir(exist_ok=True)
 
-    config_dir = path.joinpath('configs')
+    config_dir = path.joinpath('config')
     config_dir.mkdir(exist_ok=True)
 
     return checkpoint_dir, config_dir
@@ -123,7 +123,7 @@ def setup_eval_folders(experiment_path, eval_name, job_id=0, task_id=0):
     eval_folder_name_string = today_date + '_' + now_time + '_' + 'IvI' + eval_name + 'IvI' + f'_{job_id}_{task_id}'
     eval_named_folder = eval_folder.joinpath(eval_folder_name_string)
     eval_named_folder.mkdir(exist_ok=False)
-    eval_named_folder_configs = eval_named_folder.joinpath('configs')
+    eval_named_folder_configs = eval_named_folder.joinpath('config')
     eval_named_folder_configs.mkdir(exist_ok=False)
 
     return eval_folder, eval_named_folder, eval_named_folder_configs
@@ -233,7 +233,7 @@ def check_for_preempted_run(save_location, start_date, cfg,
     print("Bookkeeping: checking for preempted run")
 
     # checks the runs in the start_date folder for ones which have the same 
-    # configs and also were preemppted. Then picks the most recent one or none
+    # config and also were preemppted. Then picks the most recent one or none
     check_dir = Path(save_location).joinpath(start_date)
     inner_run_paths = sorted(glob.glob(check_dir.as_posix() + '/*'))
     for inner_run_path in reversed(inner_run_paths):
@@ -251,9 +251,9 @@ def check_for_preempted_run(save_location, start_date, cfg,
             continue
         
         # its confusing if there's changes in configs going on as well
-        assert not os.path.isfile(inner_run_path.joinpath('configs').joinpath('config_002.yaml'))
+        assert not os.path.isfile(inner_run_path.joinpath('config').joinpath('config_002.yaml')) 
 
-        run_config = load_ml_collections(inner_run_path.joinpath('configs').joinpath('config_001.yaml'))
+        run_config = load_ml_collections(inner_run_path.joinpath('config').joinpath('config_001.yaml'))
         if not run_config == cfg:
             continue
 

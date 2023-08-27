@@ -9,5 +9,5 @@ def register_optimizer(function):
 
 
 def get_optimizer(model_parameters, cfg):
-    return _OPTIMIZERS[cfg.trainer.name](model_parameters, cfg)
+    return _OPTIMIZERS[cfg.optimizer.name](model_parameters, cfg)
 

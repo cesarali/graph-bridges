@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from diffusers.pipelines.pipeline_utils import DiffusionPipeline, ImagePipelineOutput
-from graph_bridges.configs.graphs.lobster.config_base import BridgeConfig
+from graph_bridges.configs.graphs.config_ctdd import CTDDConfig
 from diffusers.utils import randn_tensor
 import torch.nn.functional as F
 from tqdm import tqdm
@@ -125,7 +125,7 @@ class CTDDPipeline(DiffusionPipeline):
             A scheduler to be used in combination with `unet` to denoise the encoded image. Can be one of
             [`DDPMScheduler`], or [`DDIMScheduler`].
     """
-    config : BridgeConfig
+    config : CTDDConfig
     model: BackwardRate
     reference_process: ReferenceProcess
     data: BridgeGraphDataLoaders
@@ -133,7 +133,7 @@ class CTDDPipeline(DiffusionPipeline):
     scheduler: CTDDScheduler
 
     def __init__(self,
-                 config:BridgeConfig,
+                 config:CTDDConfig,
                  reference_process:ReferenceProcess,
                  data:BridgeGraphDataLoaders,
                  target:DoucetTargetData,
@@ -144,8 +144,8 @@ class CTDDPipeline(DiffusionPipeline):
                               data=data,
                               target=target,
                               scheduler=scheduler)
-        self.bridge_config = config
-        self.D = self.bridge_config.data.D
+        self.ctdd_config = config
+        self.D = self.ctdd_config.data.D
 
 
     @torch.no_grad()
@@ -166,23 +166,23 @@ class CTDDPipeline(DiffusionPipeline):
         """
         # Sample gaussian noise to begin loop
         if sample_size is None:
-            num_of_paths = self.bridge_config.number_of_paths
+            num_of_paths = self.ctdd_config.number_of_paths
         else:
             num_of_paths = sample_size
         x = self.target.sample(num_of_paths, device)[0].float()
 
         # set step values
-        self.scheduler.set_timesteps(self.bridge_config.sampler.num_steps,self.bridge_config.sampler.min_t)
+        self.scheduler.set_timesteps(self.ctdd_config.sampler.num_steps,
+                                     self.ctdd_config.sampler.min_t)
         timesteps = self.scheduler.timesteps
         timesteps = timesteps.to(x.device)
-
 
         for idx, t in tqdm(enumerate(timesteps[0:-1])):
             h = timesteps[idx] - timesteps[idx + 1]
             # h = h.to(x.device)
             # t = t.to(x.device)
             t = t*torch.ones((num_of_paths,), device=x.device)
-            logits = model(x, t )
+            logits = model(x, t)
             p0t = F.softmax(logits,dim=2)  # (N, D, S)
             rates_ = self.reference_process.backward_rates_from_probability(p0t, x, t, device)
 

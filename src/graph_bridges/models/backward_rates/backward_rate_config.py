@@ -32,7 +32,7 @@ class GaussianTargetRateImageX0PredEMAConfig:
     data_min_max :List[int] = field(default_factory=lambda:[0, 1]) # CHECK THIS for CIFAR 255
     dropout :float= 0.1
     skip_rescale :bool = True
-    time_embed_dim : int = 28
+    time_embed_dim : int = 128
     time_scale_factor :int = 1000
     fix_logistic :bool = False
 

@@ -14,7 +14,7 @@ def flatten_dict(dd, separator ='*', prefix =''):
 
 def set_in_nested_dict(nested_dict, keys, new_val):
     """
-        Sets a value in a nested dictionary (or ml_collections configs)
+        Sets a value in a nested dictionary (or ml_collections config)
         e.g.
         nested_dict = \
         {

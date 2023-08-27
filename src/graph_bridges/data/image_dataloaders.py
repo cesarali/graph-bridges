@@ -5,7 +5,7 @@ import torchvision.datasets
 import torchvision.transforms
 import os
 from graph_bridges.data.image_dataloader_config import DiscreteCIFAR10Config
-from graph_bridges.configs.images.config_ctdd import CTDDConfig
+from graph_bridges.configs.images.cifar10_config_ctdd import CTDDConfig
 class DiscreteCIFAR10(torchvision.datasets.CIFAR10):
     def __init__(self, data_root,train=True,download=True,random_flips=False):
         super().__init__(root=data_root,
@@ -46,7 +46,7 @@ class DiscreteCIFAR10(torchvision.datasets.CIFAR10):
         if self.random_flips:
             img = self.flip(img)
 
-        return img
+        return img,target
 
 class DiscreteCIFAR10Dataloader():
     """

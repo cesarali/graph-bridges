@@ -18,6 +18,8 @@ class GenericAux():
         self.one_forward_pass = cfg.loss.one_forward_pass
         self.cross_ent = nn.CrossEntropyLoss()
 
+
+
     def calc_loss(self, minibatch, state, writer):
         model = state['model']
         S = self.cfg.data.S

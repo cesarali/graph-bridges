@@ -9,7 +9,7 @@ import torch
 from graph_bridges.data.image_dataloader_config import DiscreteCIFAR10Config
 from graph_bridges.data.graph_dataloaders_config import TargetConfig, CommunityConfig, GraphDataConfig
 from graph_bridges.data.graph_dataloaders_config import all_dataloaders_configs
-from graph_bridges.models.backward_rates.backward_rate_config import BackRateMLPConfig
+from graph_bridges.models.backward_rates.backward_rate_config import GaussianTargetRateImageX0PredEMAConfig
 from graph_bridges.models.backward_rates.backward_rate_config import all_backward_rates_configs
 from graph_bridges.models.reference_process.reference_process_config import GaussianTargetRateConfig
 from graph_bridges.models.reference_process.reference_process_config import all_reference_process_configs
@@ -72,14 +72,16 @@ class CTDDTrainerConfig:
     save_model_epochs :int = 50
     save_model_global_iter :int = 1000
 
-    metrics:List[str] = field(default_factory=lambda: ["graphs", "graphs_plots", "histograms"])
+    metrics:List[str] = field(default_factory=lambda: ["histograms"])
 
 @dataclass
 class CTDDConfig:
 
     config_path : str = ""
     # different elements configurations------------------------------------------
-    model : BackRateMLPConfig = BackRateMLPConfig()
+    model : GaussianTargetRateImageX0PredEMAConfig = GaussianTargetRateImageX0PredEMAConfig(input_channels=3,
+                                                                                            ch_mult=[1, 2, 2, 2],
+                                                                                            data_min_max=[0,255])
     data : DiscreteCIFAR10Config = DiscreteCIFAR10Config() # corresponds to the distributions at start time
     target : TargetConfig = TargetConfig() # corresponds to the distribution at final time
 
@@ -94,10 +96,9 @@ class CTDDConfig:
 
     number_of_paths : int = 10
 
-
     # files, directories and naming ---------------------------------------------
     delete :bool = False
-    experiment_name :str = 'graph'
+    experiment_name :str = 'cifar10'
     experiment_type :str = 'ctdd'
     experiment_indentifier :str  = 'testing'
     init_model_path = None
@@ -153,7 +154,7 @@ class CTDDConfig:
 
     def align_configurations(self):
         #dataloaders for training
-        self.data.as_image = False
+        self.data.as_image = True
         self.data.as_spins = False
 
         # data distributions matches at the end

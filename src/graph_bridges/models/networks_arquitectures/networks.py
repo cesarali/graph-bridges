@@ -169,11 +169,11 @@ class Downsample(nn.Module):
     def forward(self, x: TensorType["batch", "ch", "inH", "inW"]
         ) -> TensorType["batch", "ch", "outH", "outW"]:
         B, C, H, W = x.shape
-        x = nn.functional.pad(x, (0, 1, 2, 1))
-        #x = nn.functional.pad(x, (0, 1, 0, 1))
+        #x = nn.functional.pad(x, (0, 1, 2, 1))
+        x = nn.functional.pad(x, (0, 1, 0, 1))
         x= self.conv(x)
 
-        #assert x.shape == (B, C, H // 2, W // 2)
+        assert x.shape == (B, C, H // 2, W // 2)
         return x
 
 class Upsample(nn.Module):
@@ -230,7 +230,6 @@ class UNet(nn.Module):
 
         h_cs = [self.ch]
         in_ch = self.ch
-
 
         # Downsampling
         self.downsampling_modules = []

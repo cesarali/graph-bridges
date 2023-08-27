@@ -105,6 +105,42 @@ class TestBackRateDoucetArchitecture(BaseBackwardRateForSBTest,unittest.TestCase
         self.backward_rate_config = GaussianTargetRateImageX0PredEMAConfig()  # To be overridden by subclasses
 
 
+
+class TestBackwardRateForCifar10(unittest.TestCase):
+
+    def test_cifar10(self):
+        from graph_bridges.models.backward_rates.backward_rate_config import GaussianTargetRateImageX0PredEMAConfig
+        from graph_bridges.data.image_dataloader_config import DiscreteCIFAR10Config
+        from graph_bridges.configs.images.cifar10_config_ctdd import CTDDConfig
+        from graph_bridges.models.generative_models.ctdd import CTDD
+        from graph_bridges.models.backward_rates.backward_rate_utils import load_backward_rates
+        config = CTDDConfig()
+        config.data = DiscreteCIFAR10Config()
+        config.trainer.device = "cpu"
+
+        #device
+        device = torch.device(config.trainer.device)
+
+        #dataloader
+        #dataloader = load_dataloader(config,device=torch.device("cpu"))
+        #databath = next(dataloader.train().__iter__())
+        #x = databath[0]
+
+        x = torch.randint(255,(128,3,32,32))
+
+        #model
+        #ctdd = CTDD()
+        #ctdd.create_new_from_config(config, device)
+        config.target.S = config.data.S
+        config.target.D = config.data.D
+
+        model = load_backward_rates(config,device)
+        fake_time = torch.rand(x.shape[0])
+
+        forward_pass = model(x,fake_time)
+        self.assertIsNotNone(forward_pass)
+
+
 if __name__ == '__main__':
     unittest.main()
 

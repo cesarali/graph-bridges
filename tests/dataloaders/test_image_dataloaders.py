@@ -1,8 +1,9 @@
 import torch
 import unittest
 from graph_bridges.data.image_dataloader_config import DiscreteCIFAR10Config
-from graph_bridges.configs.images.config_ctdd import CTDDConfig
+from graph_bridges.configs.images.cifar10_config_ctdd import CTDDConfig
 from graph_bridges.data.dataloaders_utils import load_dataloader
+
 class TestCIFAR10(unittest.TestCase):
 
     def test_cifar10(self):

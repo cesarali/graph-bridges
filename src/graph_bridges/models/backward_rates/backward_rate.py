@@ -72,8 +72,7 @@ class BackwardRate(nn.Module,ABC):
         if x_tilde is not None:
             return self.ctdd(x,x_tilde,times,return_dict)
         else:
-            h = x
-            x_logits = self._forward(h, times)
+            x_logits = self._forward(x, times)
             if not return_dict:
                 return x_logits
             else:
@@ -147,6 +146,10 @@ class ImageX0PredBase(BackwardRate):
         """
             Returns logits over state space for each pixel
         """
+        if len(x.shape) == 4:
+            B, C, H, W = x.shape
+            x = x.view(B, C*H*W)
+
         B, D = x.shape
         C,H,W = self.data_shape
         S = self.S

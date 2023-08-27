@@ -4,7 +4,7 @@ def get_config():
 
     datasets_folder = 'path/to/datasets'
     model_location = 'path/to/cifar10/checkpoints/ckpt_0001999999.pt'
-    model_config_location = 'path/to/cifar10/configs/config_001.yaml'
+    model_config_location = 'path/to/cifar10/config/config_001.yaml'
 
     config = ml_collections.ConfigDict()
     config.eval_name = 'CIFAR10'

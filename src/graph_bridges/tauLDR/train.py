@@ -24,10 +24,9 @@ import lib.optimizers.optimizers_utils as optimizers_utils
 import lib.loggers.loggers as loggers
 import lib.loggers.logger_utils as logger_utils
 
-from discrete_diffusion.data.spins_dataloaders import GraphSpinsDataLoader
 
 def main(cfg, custom_name=None):
-    print("Training with configs", cfg.experiment_name)
+    print("Training with config", cfg.experiment_name)
 
     preempted_path = Path("null")
     if cfg.saving.enable_preemption_recovery:
@@ -55,30 +54,16 @@ def main(cfg, custom_name=None):
         checkpoint_dir, config_dir = bookkeeping.create_inner_experiment_folders(save_dir)
 
     writer = bookkeeping.setup_tensorboard(save_dir, 0)
+
     device = torch.device(cfg.device)
 
     model = model_utils.create_model(cfg, device)
     print("number of parameters: ", sum([p.numel() for p in model.parameters()]))
 
-    if cfg.data.name == "lobster":
-        graph_dataloader_parameters = GraphSpinsDataLoader.get_parameters()
-        graph_dataloader_parameters.update({"doucet": True,
-                                            "remove": False,
-                                            "full_adjacency": False,
-                                            "batch_size": cfg.data.batch_size,
-                                            "data_path": "lobster_graphs_upper",
-                                            "length": 500,
-                                            "max_node": 10,
-                                            "min_node": 10})
-
-
-        dataset = None
-        dataloader = GraphSpinsDataLoader(**graph_dataloader_parameters).train()
-    else:
-        dataset = dataset_utils.get_dataset(cfg, device)
-        dataloader = torch.utils.data.DataLoader(dataset,
-            batch_size=cfg.data.batch_size,
-            shuffle=cfg.data.shuffle)
+    dataset = dataset_utils.get_dataset(cfg, device)
+    dataloader = torch.utils.data.DataLoader(dataset,
+        batch_size=cfg.data.batch_size,
+        shuffle=cfg.data.shuffle)
 
     loss = losses_utils.get_loss(cfg)
 
@@ -109,8 +94,7 @@ def main(cfg, custom_name=None):
 
     while True:
         for minibatch in tqdm(dataloader):
-            if cfg.data.name == "lobster":
-                minibatch = minibatch[0]
+
             training_step.step(state, minibatch, loss, writer)
 
             if state['n_iter'] % cfg.saving.checkpoint_freq == 0 or state['n_iter'] == cfg.training.n_iters-1:
@@ -138,14 +122,12 @@ def main(cfg, custom_name=None):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('configs')
+    parser.add_argument('config')
     args, unknown_args = parser.parse_known_args()
     if args.config == 'cifar10':
         from config.train.cifar10 import get_config
     elif args.config == 'piano':
         from config.train.piano import get_config
-    elif args.config == 'lobster':
-        from config.train.graphs import get_config
     else:
         raise NotImplementedError
 
