@@ -9,11 +9,11 @@ from dataclasses import asdict
 
 from graph_bridges.models.generative_models.ctdd import CTDD
 from graph_bridges.utils.test_utils import check_model_devices
-from graph_bridges.configs.graphs.config_ctdd import CTDDConfig
+from graph_bridges.configs.graphs.graph_config_ctdd import CTDDConfig
 from graph_bridges.data.graph_dataloaders_config import EgoConfig
 
 from graph_bridges.models.metrics.ctdd_metrics import graph_metrics_for_ctdd,marginal_histograms_for_ctdd
-from graph_bridges.models.backward_rates.backward_rate_config import GaussianTargetRateImageX0PredEMAConfig
+from graph_bridges.models.backward_rates.ctdd_backward_rate_config import GaussianTargetRateImageX0PredEMAConfig
 
 
 class TestCTDDMetrics(unittest.TestCase):

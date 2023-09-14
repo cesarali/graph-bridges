@@ -1,6 +1,6 @@
 import torch
 
-from graph_bridges.models.backward_rates.backward_rate import BackRateMLP, GaussianTargetRateImageX0PredEMA
+from graph_bridges.models.backward_rates.ctdd_backward_rate import BackRateMLP, GaussianTargetRateImageX0PredEMA, BackwardRateTemporalHollowTransformer
 from typing import Union
 
 
@@ -9,7 +9,8 @@ def load_backward_rates(config,device:torch.device):
         backward_rate = BackRateMLP(config,device)
     elif config.model.name == "GaussianTargetRateImageX0PredEMA":
         backward_rate = GaussianTargetRateImageX0PredEMA(config,device)
-        
+    elif config.model.name == "BackwardRateTemporalHollowTransformer":
+        backward_rate = BackwardRateTemporalHollowTransformer(config,device)
     else:
         raise Exception("{0} backward rate not implemented".format(config.model.name))
 

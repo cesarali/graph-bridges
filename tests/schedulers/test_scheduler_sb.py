@@ -2,9 +2,9 @@ import torch
 import unittest
 
 from graph_bridges.models.generative_models.sb import SB
-from graph_bridges.configs.graphs.config_sb import SBTrainerConfig
-from graph_bridges.models.backward_rates.backward_rate_config import BackRateMLPConfig
-from graph_bridges.configs.graphs.config_sb import SBConfig, ParametrizedSamplerConfig, SteinSpinEstimatorConfig
+from graph_bridges.configs.graphs.graph_config_sb import SBTrainerConfig
+from graph_bridges.models.backward_rates.ctdd_backward_rate_config import BackRateMLPConfig
+from graph_bridges.configs.graphs.graph_config_sb import SBConfig, ParametrizedSamplerConfig, SteinSpinEstimatorConfig
 
 from graph_bridges.models.trainers.sb_training import SBTrainer
 from graph_bridges.models.schedulers.scheduling_sb import SBScheduler

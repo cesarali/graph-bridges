@@ -43,7 +43,7 @@ from diffusers.schedulers.scheduling_utils import KarrasDiffusionSchedulers, Sch
 
 from graph_bridges.models.schedulers.scheduling_utils import register_scheduler
 from graph_bridges.configs.graphs.lobster.config_base import BridgeConfig
-from graph_bridges.models.backward_rates.backward_rate import BackwardRate
+from graph_bridges.models.backward_rates.ctdd_backward_rate import BackwardRate
 from graph_bridges.models.reference_process.ctdd_reference import ReferenceProcess
 from torch.distributions.poisson import Poisson
 from graph_bridges.data.graph_dataloaders import SpinsToBinaryTensor

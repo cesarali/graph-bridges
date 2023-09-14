@@ -2,15 +2,15 @@ from graph_bridges.models.trainers.sb_training import SBTrainer
 
 if __name__=="__main__":
     # CONFIGURATIONS IMPORT
-    from graph_bridges.configs.graphs.config_sb import SBConfig, SBTrainerConfig
-    from graph_bridges.configs.graphs.config_sb import SteinSpinEstimatorConfig
-    from graph_bridges.configs.graphs.config_sb import ParametrizedSamplerConfig
-    from graph_bridges.configs.graphs.config_sb import get_sb_config_from_file
+    from graph_bridges.configs.graphs.graph_config_sb import SBConfig, SBTrainerConfig
+    from graph_bridges.configs.graphs.graph_config_sb import SteinSpinEstimatorConfig
+    from graph_bridges.configs.graphs.graph_config_sb import ParametrizedSamplerConfig
+    from graph_bridges.configs.graphs.graph_config_sb import get_sb_config_from_file
 
     # DATA CONFIGS
     from graph_bridges.data.graph_dataloaders_config import CommunitySmallConfig, EgoConfig
     # BACKWARD RATES CONFIGS
-    from graph_bridges.models.backward_rates.backward_rate_config import BackRateMLPConfig, \
+    from graph_bridges.models.backward_rates.ctdd_backward_rate_config import BackRateMLPConfig, \
         GaussianTargetRateImageX0PredEMAConfig
 
     # ===========================================

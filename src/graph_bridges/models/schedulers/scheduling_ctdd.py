@@ -24,7 +24,7 @@ from diffusers.configuration_utils import ConfigMixin, register_to_config
 from diffusers.schedulers.scheduling_utils import KarrasDiffusionSchedulers, SchedulerMixin
 
 from graph_bridges.models.schedulers.scheduling_utils import register_scheduler
-from graph_bridges.configs.graphs.config_sb import SBConfig
+from graph_bridges.configs.graphs.graph_config_sb import SBConfig
 from graph_bridges.models.reference_process.ctdd_reference import ReferenceProcess
 
 

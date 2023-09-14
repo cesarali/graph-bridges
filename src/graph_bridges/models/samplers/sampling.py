@@ -1,5 +1,5 @@
 from graph_bridges.configs.graphs.lobster.config_base import BridgeConfig
-from graph_bridges.models.backward_rates.backward_rate import BackwardRate
+from graph_bridges.models.backward_rates.ctdd_backward_rate import BackwardRate
 from graph_bridges.data.graph_dataloaders import BridgeGraphDataLoaders
 
 from graph_bridges.models.schedulers.scheduling_sb import SBScheduler
@@ -166,7 +166,7 @@ class DoucetForward:
 
 
 if __name__=="__main__":
-    from graph_bridges.models.backward_rates.backward_rate import GaussianTargetRateImageX0PredEMA
+    from graph_bridges.models.backward_rates.ctdd_backward_rate import GaussianTargetRateImageX0PredEMA
     from graph_bridges.data.dataloaders_utils import create_dataloader
 
     config = BridgeConfig()

@@ -11,7 +11,7 @@ from torch.distributions import Bernoulli, Categorical, Multinomial
 
 from graph_bridges.models.pipelines.sb.pipeline_sb import SBGBPipeline
 from graph_bridges.models.metrics.data_metrics import SpinStatesStatistics
-from graph_bridges.models.backward_rates.backward_rate import BackwardRate
+from graph_bridges.models.backward_rates.ctdd_backward_rate import BackwardRate
 from graph_bridges.models.metrics.data_metrics import SpinBernoulliMarginal
 
 def wasserstein_between_paths_histograms(histogram_backward,histogram_forward):

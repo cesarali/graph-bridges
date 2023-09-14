@@ -3,18 +3,18 @@ import sys
 import torch
 from pathlib import Path
 from graph_bridges import results_path
-from graph_bridges.models.backward_rates.backward_rate import BackRateConstant
-from graph_bridges.models.backward_rates.backward_rate import GaussianTargetRateImageX0PredEMA
-from graph_bridges.models.backward_rates.backward_rate_config import GaussianTargetRateImageX0PredEMAConfig
+from graph_bridges.models.backward_rates.ctdd_backward_rate import BackRateConstant
+from graph_bridges.models.backward_rates.ctdd_backward_rate import GaussianTargetRateImageX0PredEMA
+from graph_bridges.models.backward_rates.ctdd_backward_rate_config import GaussianTargetRateImageX0PredEMAConfig
 from graph_bridges.models.generative_models.sb import SB
 
 results_path = Path(results_path)
 loss_study_path = results_path / "graph" / "lobster" / "contant_past_model_loss.json"
 
 if __name__=="__main__":
-    from graph_bridges.configs.graphs.config_sb import SBConfig
+    from graph_bridges.configs.graphs.graph_config_sb import SBConfig
     from graph_bridges.data.graph_dataloaders_config import EgoConfig
-    from graph_bridges.models.backward_rates.backward_rate_config import BackRateMLPConfig
+    from graph_bridges.models.backward_rates.ctdd_backward_rate_config import BackRateMLPConfig
 
     config = SBConfig(experiment_indentifier="debug")
     config.data = EgoConfig(as_image=False, batch_size=32, full_adjacency=False)

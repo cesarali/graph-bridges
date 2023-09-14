@@ -10,9 +10,9 @@ if __name__=="__main__":
     from graph_bridges.models.backward_rates.backward_rate_utils import load_backward_rates
 
     from graph_bridges.models.generative_models.ctdd import CTDD
-    from graph_bridges.configs.graphs.config_ctdd import CTDDConfig
+    from graph_bridges.configs.graphs.graph_config_ctdd import CTDDConfig
     from graph_bridges.data.graph_dataloaders_config import EgoConfig, GraphSpinsDataLoaderConfig, TargetConfig
-    from graph_bridges.models.backward_rates.backward_rate_config import BackRateMLPConfig, GaussianTargetRateImageX0PredEMAConfig
+    from graph_bridges.models.backward_rates.ctdd_backward_rate_config import BackRateMLPConfig, GaussianTargetRateImageX0PredEMAConfig
 
     device = torch.device("cpu")
 

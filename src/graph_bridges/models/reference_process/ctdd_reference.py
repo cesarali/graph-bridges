@@ -1,11 +1,11 @@
-from graph_bridges.configs.graphs.config_sb import SBConfig
-from graph_bridges.models.reference_process.reference_process_utils import register_reference
-import torch
 import math
+import torch
+from graph_bridges.configs.graphs.graph_config_sb import SBConfig
+from graph_bridges.models.reference_process.reference_process_utils import register_reference
 
+import numpy as np
 from typing import Tuple,Union
 from torchtyping import TensorType
-import numpy as np
 from torch.distributions import Exponential, Bernoulli
 
 class ReferenceProcess:

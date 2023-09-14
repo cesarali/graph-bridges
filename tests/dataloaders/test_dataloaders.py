@@ -1,9 +1,9 @@
 import unittest
 import torch
 
-from graph_bridges.configs.graphs.config_sb import SBConfig
-from graph_bridges.data.graph_dataloaders import DoucetTargetData
 from graph_bridges.data.dataloaders_utils import load_dataloader
+from graph_bridges.configs.graphs.graph_config_sb import SBConfig
+from graph_bridges.data.graph_dataloaders import DoucetTargetData
 from graph_bridges.data.graph_dataloaders import BridgeGraphDataLoaders
 from graph_bridges.data.graph_dataloaders_config import CommunityConfig
 

@@ -7,7 +7,7 @@ from tqdm import tqdm
 
 import numpy as np
 from graph_bridges.models.generative_models.sb import SB
-from graph_bridges.configs.graphs.config_sb import SBConfig
+from graph_bridges.configs.graphs.graph_config_sb import SBConfig
 from graph_bridges.utils.plots.sb_plots import sinkhorn_plot
 
 from pathlib import Path
@@ -15,7 +15,7 @@ from pathlib import Path
 from torch.optim import Adam
 
 from typing import Optional
-from graph_bridges.configs.graphs.config_sb import SBConfig
+from graph_bridges.configs.graphs.graph_config_sb import SBConfig
 from graph_bridges.models.metrics.sb_metrics import marginal_paths_histograms_plots, graph_metrics_for_sb
 from graph_bridges.utils.plots.graph_plots import plot_graphs_list2
 
@@ -317,15 +317,15 @@ class SBTrainer:
 
 if __name__=="__main__":
     # CONFIGURATIONS IMPORT
-    from graph_bridges.configs.graphs.config_sb import SBConfig, SBTrainerConfig
-    from graph_bridges.configs.graphs.config_sb import SteinSpinEstimatorConfig
-    from graph_bridges.configs.graphs.config_sb import ParametrizedSamplerConfig
-    from graph_bridges.configs.graphs.config_sb import get_sb_config_from_file
+    from graph_bridges.configs.graphs.graph_config_sb import SBConfig, SBTrainerConfig
+    from graph_bridges.configs.graphs.graph_config_sb import SteinSpinEstimatorConfig
+    from graph_bridges.configs.graphs.graph_config_sb import ParametrizedSamplerConfig
+    from graph_bridges.configs.graphs.graph_config_sb import get_sb_config_from_file
 
     # DATA CONFIGS
     from graph_bridges.data.graph_dataloaders_config import CommunitySmallConfig, EgoConfig
     # BACKWARD RATES CONFIGS
-    from graph_bridges.models.backward_rates.backward_rate_config import BackRateMLPConfig, \
+    from graph_bridges.models.backward_rates.ctdd_backward_rate_config import BackRateMLPConfig, \
         GaussianTargetRateImageX0PredEMAConfig
 
     # ===========================================

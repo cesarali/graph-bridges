@@ -1,6 +1,6 @@
 import torch
 import numpy as np
-from graph_bridges.models.networks_arquitectures.graphs_networks.edp_gnn import EdgeDensePredictionGraphScoreNetwork
+from graph_bridges.models.networks.graphs_networks.edp_gnn import EdgeDensePredictionGraphScoreNetwork
 
 class GraphScorePerTime:
     """

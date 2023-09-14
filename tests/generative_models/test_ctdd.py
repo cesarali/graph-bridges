@@ -9,9 +9,9 @@ from dataclasses import asdict
 
 from graph_bridges.models.generative_models.ctdd import CTDD
 from graph_bridges.utils.test_utils import check_model_devices
-from graph_bridges.configs.graphs.config_ctdd import CTDDConfig
+from graph_bridges.configs.graphs.graph_config_ctdd import CTDDConfig
 from graph_bridges.data.graph_dataloaders_config import EgoConfig
-from graph_bridges.models.backward_rates.backward_rate_config import GaussianTargetRateImageX0PredEMAConfig
+from graph_bridges.models.backward_rates.ctdd_backward_rate_config import GaussianTargetRateImageX0PredEMAConfig
 
 
 class TestCTDD(unittest.TestCase):
@@ -22,7 +22,7 @@ class TestCTDD(unittest.TestCase):
     def setUp(self) -> None:
         self.ctdd_config = CTDDConfig(experiment_indentifier="ctdd_unittest",delete=True)
         self.ctdd_config.data = EgoConfig(as_image=False, batch_size=32, full_adjacency=False)
-        self.ctdd_config.model = GaussianTargetRateImageX0PredEMAConfig(time_embed_dim=32, fix_logistic=False)
+        self.ctdd_config.model = GaussianTargetRateImageX0PredEMAConfig()
         self.ctdd_config.initialize_new_experiment()
 
         if torch.cuda.is_available():
@@ -56,7 +56,7 @@ class TestCTDDCifar10(unittest.TestCase):
     ctdd: CTDD
 
     def setUp(self) -> None:
-        from graph_bridges.models.backward_rates.backward_rate_config import GaussianTargetRateImageX0PredEMAConfig
+        from graph_bridges.models.backward_rates.ctdd_backward_rate_config import GaussianTargetRateImageX0PredEMAConfig
         from graph_bridges.data.image_dataloader_config import DiscreteCIFAR10Config
         from graph_bridges.configs.images.cifar10_config_ctdd import CTDDConfig
         from graph_bridges.models.generative_models.ctdd import CTDD

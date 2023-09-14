@@ -1,20 +1,22 @@
 import torch
+import torch
 from torch import nn
 import torch.nn.functional as F
 from torch.nn.parallel import DistributedDataParallel as DDP
 
 from abc import ABC,abstractmethod
-from graph_bridges.models.networks_arquitectures import networks
-from graph_bridges.configs.graphs.config_sb import SBConfig
+from graph_bridges.configs.graphs.graph_config_sb import SBConfig
 
-from torchtyping import TensorType
-from graph_bridges.models.networks_arquitectures.network_utils import transformer_timestep_embedding
-from graph_bridges.models.reference_process.ctdd_reference import GaussianTargetRate
 from typing import Union, Tuple
+from torchtyping import TensorType
+from graph_bridges.models.networks import networks_tau
+from graph_bridges.models.reference_process.ctdd_reference import GaussianTargetRate
 
 
 from dataclasses import dataclass
 from diffusers.utils import BaseOutput
+
+from graph_bridges.configs.images.cifar10_config_ctdd import CTDDConfig
 
 @dataclass
 class BackwardRateOutput(BaseOutput):
@@ -30,7 +32,7 @@ class BackwardRateOutput(BaseOutput):
 class BackwardRate(nn.Module,ABC):
 
     def __init__(self,
-                 config:SBConfig,
+                 config:CTDDConfig,
                  device,
                  rank,
                  **kwargs):
@@ -45,7 +47,7 @@ class BackwardRate(nn.Module,ABC):
         self.data_min_max = config.data.data_min_max
 
         # TIME
-        self.time_embed_dim = config.model.time_embed_dim
+        self.time_embed_dim = config.temp_network.time_embed_dim
         self.act = nn.functional.silu
 
     def init_parameters(self):
@@ -68,7 +70,6 @@ class BackwardRate(nn.Module,ABC):
                 x_tilde: TensorType["batch_size", "dimension"] = None,
                 return_dict: bool = False,
                 )-> Union[BackwardRateOutput, torch.FloatTensor, Tuple]:
-        #if self.data_type == "doucet":
         if x_tilde is not None:
             return self.ctdd(x,x_tilde,times,return_dict)
         else:
@@ -97,7 +98,6 @@ class BackwardRate(nn.Module,ABC):
         else:
             return self._forward(x_t, times)  # (B, D, S)
 
-
     def stein_binary_forward(self,
                 x: TensorType["batch_size", "dimension"],
                 times: TensorType["batch_size"]
@@ -105,282 +105,83 @@ class BackwardRate(nn.Module,ABC):
         forward_logits = self.forward(x,times)
         return forward_logits[:,:,0]
 
-class ImageX0PredBase(BackwardRate):
-    def __init__(self, cfg, device, rank=None):
-        BackwardRate.__init__(self,cfg,device,rank)
+class BackwardRateOneBack(BackwardRate,GaussianTargetRate):
+    """
+    This estimator is expected to work for one sinkhorn iteration
+    i.e. a simple diffussion model were we are able to sample from
+    the target distribution
 
-        self.fix_logistic = cfg.model.fix_logistic
-        ch = cfg.model.ch
-        num_res_blocks = cfg.model.num_res_blocks
-        num_scales = cfg.model.num_scales
-        ch_mult = cfg.model.ch_mult
-        input_channels = cfg.model.input_channels
-        output_channels = cfg.model.input_channels * cfg.data.S
-        scale_count_to_put_attn = cfg.model.scale_count_to_put_attn
-        data_min_max = cfg.model.data_min_max
-        dropout = cfg.model.dropout
-        skip_rescale = cfg.model.skip_rescale
-        do_time_embed = True
-        time_scale_factor = cfg.model.time_scale_factor
-        time_embed_dim = cfg.model.time_embed_dim
+    """
+    name_ = "one_back_per_time"
 
-        tmp_net = networks.UNet(
-                ch, num_res_blocks, num_scales, ch_mult, input_channels,
-                output_channels, scale_count_to_put_attn, data_min_max,
-                dropout, skip_rescale, do_time_embed, time_scale_factor,
-                time_embed_dim
-        ).to(device)
-        if cfg.distributed:
-            self.net = DDP(tmp_net, device_ids=[rank])
-        else:
-            self.net = tmp_net
+    def __init__(self,**kwargs):
+        super(BackwardRateOneBack,self).__init__(**kwargs)
 
-        self.S = cfg.data.S
-        self.data_shape = cfg.data.shape
-        self.device = device
+        #=====================================
+        # TRANSFORMATIONS
+        #=====================================
+        self.number_of_spins = kwargs.get("number_of_spins")
+        self.hidden_1 = kwargs.get("hidden_1")
+        self.time_embedding_dim = kwargs.get("time_embedding_dim",9)
 
-    def _forward(self,
-        x: TensorType["B", "D"],
-        times: TensorType["B"]
-    ) -> TensorType["B", "D", "S"]:
+        self.f1 = nn.Linear(self.number_of_spins,self.hidden_1)
+        self.f2 = nn.Linear(self.hidden_1+self.time_embedding_dim,self.number_of_spins)
+
+        #=====================================
+        # PROCESS
+        #=====================================
+        self.reference_parameters = kwargs.get("reference_process_parameters")
+        self.reference_process_name = self.reference_parameters.get("reference_process_name")
+
+        reference_process_factory = ReferenceProcessFactory()
+        self.reference_process = reference_process_factory.create(self.reference_process_name,
+                                                                   **self.reference_parameters)
+
+    def parameters_of_linear_function(self,times):
+        integral_ = self.reference_process.integral_rate(times)
+        u_t = torch.exp(-2.*integral_)
+        A = (1./(1.+u_t)) + (1./(1.-u_t))
+        B = (1./(1.+u_t)) - (1./(1.-u_t))
+        return A, B
+
+    def forward_states_and_times(self, states, times):
         """
-            Returns logits over state space for each pixel
+
+        :param states:
+        :param times:
+        :return:
         """
-        if len(x.shape) == 4:
-            B, C, H, W = x.shape
-            x = x.view(B, C*H*W)
+        A, B = self.parameters_of_linear_function(times)
+        X_0_hat = self.one_back_regression(states,times)
+        ratio = A + states*B*X_0_hat - 1.
+        return softplus(ratio)
 
-        B, D = x.shape
-        C,H,W = self.data_shape
-        S = self.S
-        x = x.view(B, C, H, W)
-
-        net_out = self.net(x, times) # (B, 2*C, H, W)
-
-        # Truncated logistic output from https://arxiv.org/pdf/2107.03006.pdf
-
-
-        mu = net_out[:, 0:C, :, :].unsqueeze(-1)
-        log_scale = net_out[:, C:, :, :].unsqueeze(-1)
-
-        inv_scale = torch.exp(- (log_scale - 2))
-
-        bin_width = 2. / self.S
-        bin_centers = torch.linspace(start=-1. + bin_width/2,
-            end=1. - bin_width/2,
-            steps=self.S,
-            device=self.device).view(1, 1, 1, 1, self.S)
-
-        sig_in_left = (bin_centers - bin_width/2 - mu) * inv_scale
-        bin_left_logcdf = F.logsigmoid(sig_in_left)
-        sig_in_right = (bin_centers + bin_width/2 - mu) * inv_scale
-        bin_right_logcdf = F.logsigmoid(sig_in_right)
-
-        logits_1 = self._log_minus_exp(bin_right_logcdf, bin_left_logcdf)
-        logits_2 = self._log_minus_exp(-sig_in_left + bin_left_logcdf, -sig_in_right + bin_right_logcdf)
-        if self.fix_logistic:
-            logits = torch.min(logits_1, logits_2)
-        else:
-            logits = logits_1
-
-        logits = logits.view(B,D,S)
-
-        return logits
-
-    def _log_minus_exp(self, a, b, eps=1e-6):
-        """
-            Compute log (exp(a) - exp(b)) for (b<a)
-            From https://arxiv.org/pdf/2107.03006.pdf
-        """
-        return a + torch.log1p(-torch.exp(b-a) + eps)
-
-class EMA():
-    def __init__(self, cfg):
-        self.decay = cfg.model.ema_decay
-        if self.decay < 0.0 or self.decay > 1.0:
-            raise ValueError('Decay must be between 0 and 1')
-        self.shadow_params = []
-        self.collected_params = []
-        self.num_updates = 0
-
-    def init_ema(self):
-        self.shadow_params = [p.clone().detach()
-                            for p in self.parameters() if p.requires_grad]
-
-    def update_ema(self):
-
-        if len(self.shadow_params) == 0:
-            raise ValueError("Shadow params not initialized before first ema update!")
-
-        decay = self.decay
-        self.num_updates += 1
-        decay = min(decay, (1 + self.num_updates) / (10 + self.num_updates))
-        one_minus_decay = 1.0 - decay
-        with torch.no_grad():
-            parameters = [p for p in self.parameters() if p.requires_grad]
-            for s_param, param in zip(self.shadow_params, parameters):
-                s_param.sub_(one_minus_decay * (s_param - param))
-
-    def state_dict(self):
-        sd = nn.Module.state_dict(self)
-        sd['ema_decay'] = self.decay
-        sd['ema_num_updates'] = self.num_updates
-        sd['ema_shadow_params'] = self.shadow_params
-
-        return sd
-
-    def move_shadow_params_to_model_params(self):
-        parameters = [p for p in self.parameters() if p.requires_grad]
-        for s_param, param in zip(self.shadow_params, parameters):
-            if param.requires_grad:
-                param.data.copy_(s_param.data)
-
-    def move_model_params_to_collected_params(self):
-        self.collected_params = [param.clone() for param in self.parameters()]
-
-    def move_collected_params_to_model_params(self):
-        for c_param, param in zip(self.collected_params, self.parameters()):
-            param.data.copy_(c_param.data)
-
-    def load_state_dict(self, state_dict):
-        missing_keys, unexpected_keys = nn.Module.load_state_dict(self, state_dict, strict=False)
-
-        # print("state dict keys")
-        # for key in state_dict.keys():
-        #     print(key)
-
-        if len(missing_keys) > 0:
-            print("Missing keys: ", missing_keys)
-            raise ValueError
-        if not (len(unexpected_keys) == 3 and \
-            'ema_decay' in unexpected_keys and \
-            'ema_num_updates' in unexpected_keys and \
-            'ema_shadow_params' in unexpected_keys):
-            print("Unexpected keys: ", unexpected_keys)
-            raise ValueError
-
-        self.decay = state_dict['ema_decay']
-        self.num_updates = state_dict['ema_num_updates']
-        self.shadow_params = state_dict['ema_shadow_params']
-
-    def train(self, mode=True):
-        if self.training == mode:
-            print("Dont call model.train() with the same mode twice! Otherwise EMA parameters may overwrite original parameters")
-            print("Current model training mode: ", self.training)
-            print("Requested training mode: ", mode)
-            raise ValueError
-
-        nn.Module.train(self, mode)
-        if mode:
-            if len(self.collected_params) > 0:
-                self.move_collected_params_to_model_params()
-            else:
-                print("model.train(True) called but no ema collected parameters!")
-        else:
-            self.move_model_params_to_collected_params()
-            self.move_shadow_params_to_model_params()
-
-
-class BackRateMLP(EMA,BackwardRate,GaussianTargetRate):
-
-    def __init__(self,config,device,rank=None):
-        EMA.__init__(self,config)
-        BackwardRate.__init__(self,config,device,rank)
-
-        self.hidden_layer = config.model.hidden_layer
-        self.define_deep_models()
-        #self.init_parameters()
-        self.init_ema()
-        self.to(device)
-
-    def define_deep_models(self):
-        # layers
-        self.f1 = nn.Linear(self.dimension, self.hidden_layer)
-        self.f2 = nn.Linear(self.hidden_layer + self.time_embed_dim,self.dimension*self.num_states)
-
-        # temporal encoding
-        #self.temb_modules = []
-        #self.temb_modules.append(nn.Linear(self.time_embed_dim, self.time_embed_dim * 4))
-        #nn.init.zeros_(self.temb_modules[-1].bias)
-        #self.temb_modules.append(nn.Linear(self.time_embed_dim * 4, self.time_embed_dim * 4))
-        #nn.init.zeros_(self.temb_modules[-1].bias)
-        #self.temb_modules = nn.ModuleList(self.temb_modules)
-
-        #self.expanded_time_dim = 4 * self.time_embed_dim if self.do_time_embed else None
-
-    def _forward(self,
-                x: TensorType["batch_size", "dimension"],
-                times: TensorType["batch_size"]
-                ) -> TensorType["batch_size", "dimension", "num_states"]:
-
-        if self.config.data.type == "doucet":
-            x = self._center_data(x)
-
-        batch_size = x.shape[0]
-        time_embbedings = transformer_timestep_embedding(times,
-                                                         embedding_dim=self.time_embed_dim)
-
-        step_one = self.f1(x)
+    def one_back_regression(self,states,times):
+        time_embbedings = get_timestep_embedding(times.squeeze(),
+                                                 time_embedding_dim=self.time_embedding_dim)
+        step_one = self.f1(states)
         step_two = torch.concat([step_one, time_embbedings], dim=1)
-        rate_logits = self.f2(step_two)
-        rate_logits = rate_logits.reshape(batch_size,self.dimension,self.num_states)
-        return rate_logits
+        ratio_estimator = self.f2(step_two)
+        return ratio_estimator
 
-    def init_parameters(self):
+    def init_weights(self):
         nn.init.xavier_uniform_(self.f1.weight)
         nn.init.xavier_uniform_(self.f2.weight)
 
-class BackRateConstant(EMA,BackwardRate,GaussianTargetRate):
-
-    def __init__(self,config,device,rank=None,constant=10.):
-        EMA.__init__(self,config)
-        BackwardRate.__init__(self,config,device,rank)
-        self.constant = constant
-        self.hidden_layer = config.model.hidden_layer
-        self.define_deep_models()
-        #self.init_parameters()
-        self.init_ema()
-
-    def define_deep_models(self):
-        # layers
-        self.f1 = nn.Linear(self.dimension, self.hidden_layer)
-        self.f2 = nn.Linear(self.hidden_layer + self.time_embed_dim,self.dimension*self.num_states)
-
-        # temporal encoding
-        #self.temb_modules = []
-        #self.temb_modules.append(nn.Linear(self.time_embed_dim, self.time_embed_dim * 4))
-        #nn.init.zeros_(self.temb_modules[-1].bias)
-        #self.temb_modules.append(nn.Linear(self.time_embed_dim * 4, self.time_embed_dim * 4))
-        #nn.init.zeros_(self.temb_modules[-1].bias)
-        #self.temb_modules = nn.ModuleList(self.temb_modules)
-
-        #self.expanded_time_dim = 4 * self.time_embed_dim if self.do_time_embed else None
-
-    def _forward(self,
-                x: TensorType["batch_size", "dimension"],
-                times: TensorType["batch_size"]
-                ) -> TensorType["batch_size", "dimension", "num_states"]:
-
-        if self.config.data.type == "doucet":
-            x = self._center_data(x)
-
-        batch_size = x.shape[0]
-
-        return torch.full(torch.Size([batch_size,self.dimension,self.num_states]),self.constant)
-
-    def init_parameters(self):
-        pass
-
-# make sure EMA inherited first, so it can override the state dict functions
-
-class GaussianTargetRateImageX0PredEMA(EMA,ImageX0PredBase,GaussianTargetRate):
-    def __init__(self, cfg, device, rank=None):
-        EMA.__init__(self, cfg)
-        ImageX0PredBase.__init__(self, cfg, device, rank)
-        GaussianTargetRate.__init__(self,cfg, device)
-        self.config = cfg
-        self.init_ema()
-
-all_backward_rates = {"BackRateConstant":BackRateConstant,
-                      "BackRateMLP":BackRateMLP,
-                      "GaussianTargetRateImageX0PredEMA":GaussianTargetRateImageX0PredEMA}
+    @classmethod
+    def get_parameters(self) -> dict:
+        Q_sigma = 512.
+        kwargs = super().get_parameters()
+        kwargs.update({"hidden_1":14})
+        reference_process_parameters = {
+            "reference_process_name": "efficient_diffusion",
+            "target": "gaussian",
+            "rate_sigma": 6.0,
+            "S": 2,
+            "Q_sigma": Q_sigma,
+            "time_exponential": 1.5,
+            "time_base": 1.0,
+            "device": torch.device("cpu")
+        }
+        kwargs.update({"reference_process_parameters":reference_process_parameters})
+        return kwargs

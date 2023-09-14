@@ -11,8 +11,8 @@ from graph_bridges.data.graph_dataloaders_config import CommunityConfig, GraphDa
 import torchvision.transforms as transforms
 from torchvision.datasets import MNIST, CIFAR10
 from abc import abstractmethod
-from graph_bridges.configs.graphs.config_ctdd import CTDDConfig
-from graph_bridges.configs.graphs.config_sb import SBConfig
+from graph_bridges.configs.graphs.graph_config_ctdd import CTDDConfig
+from graph_bridges.configs.graphs.graph_config_sb import SBConfig
 
 def from_networkx_to_spins(graph_,upper_diagonal_indices,full_adjacency=False):
     adjacency_ = nx.to_numpy_array(graph_)

@@ -1,4 +1,4 @@
-from graph_bridges.models.backward_rates.backward_rate import GaussianTargetRateImageX0PredEMA
+from graph_bridges.models.backward_rates.ctdd_backward_rate import GaussianTargetRateImageX0PredEMA
 
 from graph_bridges.data.dataloaders_utils import load_dataloader
 from graph_bridges.models.backward_rates.backward_rate_utils import load_backward_rates
@@ -9,7 +9,7 @@ from graph_bridges.data.graph_dataloaders import BridgeGraphDataLoaders
 from graph_bridges.models.losses.ctdd_losses import GenericAux
 from graph_bridges.models.pipelines.ctdd.pipeline_ctdd import CTDDPipeline
 from graph_bridges.models.reference_process.ctdd_reference import GaussianTargetRate
-from graph_bridges.configs.graphs.config_ctdd import CTDDConfig
+from graph_bridges.configs.graphs.graph_config_ctdd import CTDDConfig
 import networkx as nx
 
 from typing import List

@@ -1,9 +1,6 @@
 import torch
 from torch import nn
 
-from graph_bridges.models.losses.loss_utils import register_loss
-
-@register_loss
 class GenericAux():
     def __init__(self, cfg,device,rank=None):
         self.cfg = cfg
@@ -17,7 +14,6 @@ class GenericAux():
     def to(self,device):
         self.device = device
         return self
-
 
     def __call__(self, minibatch,x_tilde,qt0,rate,x_logits,reg_x,p0t_sig,p0t_reg,device):
         """

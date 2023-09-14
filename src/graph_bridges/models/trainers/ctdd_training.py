@@ -6,7 +6,7 @@ from torch.optim import Adam
 
 from pprint import pprint
 from graph_bridges.models.generative_models.ctdd import CTDD
-from graph_bridges.configs.graphs.config_ctdd import CTDDConfig
+from graph_bridges.configs.graphs.graph_config_ctdd import CTDDConfig
 from graph_bridges.models.metrics.ctdd_metrics import graph_metrics_for_ctdd
 from graph_bridges.models.metrics.ctdd_metrics import marginal_histograms_for_ctdd
 
@@ -123,24 +123,25 @@ class CTDDTrainer:
         return initial_loss
 
     def train_step(self, current_model, databatch, number_of_training_step):
-        databatch = self.preprocess_data(databatch)
-        x_adj, x_features = databatch[0],databatch[1]
-        B = x_adj.shape[0]
+        with torch.autograd.set_detect_anomaly(True):
+            databatch = self.preprocess_data(databatch)
+            x_adj, x_features = databatch[0],databatch[1]
+            B = x_adj.shape[0]
 
-        # Sample a random timestep for each image
-        ts = torch.rand((B,), device=self.device) * (1.0 - self.config.loss.min_time) + self.config.loss.min_time
+            # Sample a random timestep for each image
+            ts = torch.rand((B,), device=self.device) * (1.0 - self.config.loss.min_time) + self.config.loss.min_time
 
-        x_t, x_tilde, qt0, rate = self.ctdd.scheduler.add_noise(x_adj, self.ctdd.reference_process, ts, self.device, return_dict=False)
-        x_logits, p0t_reg, p0t_sig, reg_x = current_model(x_adj, ts, x_tilde)
+            x_t, x_tilde, qt0, rate = self.ctdd.scheduler.add_noise(x_adj, self.ctdd.reference_process, ts, self.device, return_dict=False)
+            x_logits, p0t_reg, p0t_sig, reg_x = current_model(x_adj, ts, x_tilde)
 
-        self.optimizer.zero_grad()
-        loss_ = self.ctdd.loss(x_adj, x_tilde, qt0, rate, x_logits, reg_x, p0t_sig, p0t_reg, self.device)
-        loss_.backward()
-        self.optimizer.step()
+            self.optimizer.zero_grad()
+            loss_ = self.ctdd.loss(x_adj, x_tilde, qt0, rate, x_logits, reg_x, p0t_sig, p0t_reg, self.device)
+            loss_.backward()
+            self.optimizer.step()
 
-        # SUMMARIES
-        self.writer.add_scalar('training loss', loss_.item(), number_of_training_step)
-        return loss_
+            # SUMMARIES
+            self.writer.add_scalar('training loss', loss_.item(), number_of_training_step)
+            return loss_
 
     def test_step(self, current_model, databatch, number_of_test_step):
         with torch.no_grad():
