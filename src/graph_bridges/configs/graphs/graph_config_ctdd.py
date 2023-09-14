@@ -1,4 +1,3 @@
-
 import os
 from pprint import pprint
 from dataclasses import asdict
@@ -31,7 +30,7 @@ class CTDDConfig(GeneralCTDDConfig):
                 self.data.as_image = True
                 self.data.flatten_adjacency = False
             elif isinstance(self.temp_network, UnetTauConfig):
-                raise Exception("UNet Network not implemented for Graphs (Yet)")
+                raise Exception("Unet Network not implemented for Graphs (Yet)")
         elif isinstance(self.model, BackwardRateTemporalHollowTransformerConfig):
             self.data.as_spins = False
             self.data.as_image = False

@@ -13,7 +13,7 @@ from graph_bridges.configs.graphs.graph_config_ctdd import CTDDConfig
 from graph_bridges.data.graph_dataloaders_config import EgoConfig
 
 from graph_bridges.models.metrics.ctdd_metrics import graph_metrics_for_ctdd,marginal_histograms_for_ctdd
-from graph_bridges.models.backward_rates.ctdd_backward_rate_config import GaussianTargetRateImageX0PredEMAConfig
+from graph_bridges.models.backward_rates.ctdd_backward_rate_config import BackRateMLPConfig
 
 
 class TestCTDDMetrics(unittest.TestCase):
@@ -24,7 +24,7 @@ class TestCTDDMetrics(unittest.TestCase):
     def setUp(self) -> None:
         self.ctdd_config = CTDDConfig(experiment_indentifier="ctdd_unittest",delete=True)
         self.ctdd_config.data = EgoConfig(as_image=False, batch_size=32, full_adjacency=False)
-        self.ctdd_config.model = GaussianTargetRateImageX0PredEMAConfig(time_embed_dim=32, fix_logistic=False)
+        self.ctdd_config.model = BackRateMLPConfig()
         self.ctdd_config.initialize_new_experiment()
 
         self.device = torch.device("cuda:0")

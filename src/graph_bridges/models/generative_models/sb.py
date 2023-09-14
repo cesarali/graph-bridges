@@ -5,7 +5,8 @@ from dataclasses import dataclass
 from graph_bridges.models.pipelines.sb.pipeline_sb import SBPipeline
 from graph_bridges.models.schedulers.scheduling_sb import SBScheduler
 from graph_bridges.models.losses.estimators import BackwardRatioSteinEstimator
-from graph_bridges.configs.graphs.graph_config_sb import SBConfig,get_sb_config_from_file
+from graph_bridges.configs.graphs.graph_config_sb import SBConfig
+from graph_bridges.configs.config_sb import get_sb_config_from_file
 from pathlib import Path
 
 import torch

@@ -34,7 +34,6 @@ class GaussianTargetRateImageX0PredEMAConfig:
     time_exponential :float = 3.
     time_base :float = 1.0
 
-
 @dataclass
 class BackwardRateTemporalHollowTransformerConfig:
     name :str  = 'BackwardRateTemporalHollowTransformer'

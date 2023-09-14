@@ -1,34 +1,20 @@
-import os
-import json
-import torch
-import shutil
-from graph_bridges.models.generative_models.sb import SB
-from graph_bridges.models.backward_rates.ctdd_backward_rate import GaussianTargetRateImageX0PredEMA
-from graph_bridges.models.backward_rates.ctdd_backward_rate_config import GaussianTargetRateImageX0PredEMAConfig
-import networkx as nx
+
 from graph_bridges.models.metrics.sb_metrics import marginal_paths_histograms_plots, paths_marginal_histograms
-from graph_bridges.configs.graphs.graph_config_sb import SBTrainerConfig
-from graph_bridges.data.graph_dataloaders_config import EgoConfig, CommunityConfig, CommunitySmallConfig
-from graph_bridges.models.backward_rates.ctdd_backward_rate_config import BackRateMLPConfig
-from graph_bridges.configs.graphs.graph_config_sb import SBConfig, ParametrizedSamplerConfig, SteinSpinEstimatorConfig
-from graph_bridges.models.backward_rates.ctdd_backward_rate_config import GaussianTargetRateImageX0PredEMAConfig
+
+from graph_bridges.configs.graphs.graph_config_sb import SBConfig
+
 
 
 import os
 import torch
 import unittest
-import numpy as np
-import pandas as pd
-import networkx as nx
-from pprint import pprint
-from dataclasses import asdict
+
 from pathlib import Path
 
 from graph_bridges.models.generative_models.sb import SB
-from graph_bridges.utils.test_utils import check_model_devices
 from graph_bridges.data.graph_dataloaders_config import EgoConfig
 from graph_bridges.models.backward_rates.ctdd_backward_rate_config import BackRateMLPConfig
-from graph_bridges.configs.graphs.graph_config_sb import SBConfig, ParametrizedSamplerConfig, SteinSpinEstimatorConfig
+from graph_bridges.configs.config_sb import  ParametrizedSamplerConfig, SteinSpinEstimatorConfig
 
 
 class TestSB(unittest.TestCase):
@@ -93,8 +79,6 @@ class TestSB(unittest.TestCase):
         self.assertTrue(forward_histogram.shape == expected_path_histogram_size)
         # check plot was performed
         self.assertTrue(plots_paths.exists())
-
-
 
 
 if __name__ == '__main__':

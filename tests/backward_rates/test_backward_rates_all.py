@@ -4,15 +4,17 @@ import torch.nn as nn
 
 from graph_bridges.configs.graphs.graph_config_sb import SBConfig
 from graph_bridges.data.graph_dataloaders_config import EgoConfig
-from graph_bridges.configs.graphs.graph_config_sb import SteinSpinEstimatorConfig,ParametrizedSamplerConfig
 
+from graph_bridges.configs.config_sb import SteinSpinEstimatorConfig,ParametrizedSamplerConfig
 from graph_bridges.models.backward_rates.backward_rate_utils import  load_backward_rates
 from graph_bridges.data.dataloaders_utils import load_dataloader
 
 
 from graph_bridges.models.generative_models.sb import SB
-from graph_bridges.data.graph_dataloaders import BridgeGraphDataLoaders
 from graph_bridges.utils.test_utils import check_model_devices
+from graph_bridges.data.graph_dataloaders import BridgeGraphDataLoaders
+from graph_bridges.models.networks.convnets.autoencoder import ConvNetAutoencoderConfig
+from graph_bridges.models.backward_rates.ctdd_backward_rate_config import GaussianTargetRateImageX0PredEMAConfig
 
 class BaseBackwardRateForSBTest(object):
     """
@@ -24,6 +26,7 @@ class BaseBackwardRateForSBTest(object):
 
     def backwardRateSetConfig(self):
         self.backward_rate_config = None  # To be overridden by subclasses
+        self.temp_net_config = None # To be overridden by subclasses
         self.data_config = EgoConfig(as_image=False,batch_size=5,full_adjacency=False,as_spins=False)
 
     def basicConfigSetUp(self):
@@ -31,6 +34,8 @@ class BaseBackwardRateForSBTest(object):
         self.backwardRateSetConfig()
 
         self.sb_config.model = self.backward_rate_config
+        self.sb_config.temp_network = self.temp_net_config
+
         self.sb_config.data = self.data_config
         self.sb_config.stein = SteinSpinEstimatorConfig(stein_sample_size=2)
         self.sb_config.sampler = ParametrizedSamplerConfig(num_steps=10)
@@ -91,8 +96,10 @@ class TestBackRateMLP(BaseBackwardRateForSBTest,unittest.TestCase):
 
     def backwardRateSetConfig(self):
         from graph_bridges.models.backward_rates.ctdd_backward_rate_config import BackRateMLPConfig
+
         self.data_config = EgoConfig(as_image=False,batch_size=2,full_adjacency=False,as_spins=False)
         self.backward_rate_config = BackRateMLPConfig()  # To be overridden by subclasses
+        self.temp_net_config = BackRateMLPConfig()  # To be overridden by subclasses
 
 class TestBackRateDoucetArchitecture(BaseBackwardRateForSBTest,unittest.TestCase):
 
@@ -100,37 +107,11 @@ class TestBackRateDoucetArchitecture(BaseBackwardRateForSBTest,unittest.TestCase
         from graph_bridges.models.backward_rates.ctdd_backward_rate_config import GaussianTargetRateImageX0PredEMAConfig
         from graph_bridges.data.graph_dataloaders_config import PepperMNISTDataConfig
 
-        self.data_config = EgoConfig(as_image=False,batch_size=5,full_adjacency=False)
+        self.data_config = EgoConfig(as_image=False,batch_size=5)
         #self.data_config =  PepperMNISTDataConfig(as_image=False, batch_size=2, full_adjacency=False)
+
         self.backward_rate_config = GaussianTargetRateImageX0PredEMAConfig()  # To be overridden by subclasses
-
-
-
-class TestBackwardRateForCifar10(unittest.TestCase):
-
-    def test_cifar10(self):
-        from graph_bridges.models.backward_rates.ctdd_backward_rate_config import GaussianTargetRateImageX0PredEMAConfig
-        from graph_bridges.data.image_dataloader_config import DiscreteCIFAR10Config
-        from graph_bridges.configs.images.cifar10_config_ctdd import CTDDConfig
-        from graph_bridges.models.generative_models.ctdd import CTDD
-        from graph_bridges.models.backward_rates.backward_rate_utils import load_backward_rates
-
-        batch_size = 23
-        config = CTDDConfig()
-        config.trainer.device = "cpu"
-
-        #device
-        device = torch.device(config.trainer.device)
-        x = torch.randint(255,(batch_size,3,32,32))
-
-        config.target.S = config.data.S
-        config.target.D = config.data.D
-
-        model = load_backward_rates(config,device)
-        fake_time = torch.rand(x.shape[0])
-
-        forward_pass = model(x,fake_time)
-        self.assertIsNotNone(forward_pass)
+        self.temp_net_config = ConvNetAutoencoderConfig()
 
 
 if __name__ == '__main__':

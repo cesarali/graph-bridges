@@ -43,13 +43,13 @@ class TestUnetGraph(unittest.TestCase):
     def test_unet_graph(self):
         from graph_bridges.configs.graphs.graph_config_ctdd import CTDDConfig
         from graph_bridges.data.graph_dataloaders_config import CommunitySmallConfig
+        from graph_bridges.models.networks.convnets.autoencoder import ConvNetAutoencoderConfig
         from graph_bridges.models.backward_rates.ctdd_backward_rate_config import GaussianTargetRateImageX0PredEMAConfig
-        from graph_bridges.models.backward_rates.ctdd_backward_rate_config import BackRateMLPConfig
 
         ctdd_config = CTDDConfig(experiment_indentifier="graph_wunet_test",experiment_name="graph",experiment_type="ctdd")
-        ctdd_config.data = CommunitySmallConfig(batch_size=24,full_adjacency=True,flatten_adjacency=False)
-        #ctdd_config.model = GaussianTargetRateImageX0PredEMAConfig()
-        ctdd_config.model = BackRateMLPConfig()
+        ctdd_config.data = CommunitySmallConfig(batch_size=24)
+        ctdd_config.model = GaussianTargetRateImageX0PredEMAConfig()
+        ctdd_config.temp_network = ConvNetAutoencoderConfig()
 
         ctdd_config.data.batch_size = 12
         device = torch.device(ctdd_config.device)

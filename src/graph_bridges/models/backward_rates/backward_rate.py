@@ -15,7 +15,6 @@ from graph_bridges.models.reference_process.ctdd_reference import GaussianTarget
 
 from dataclasses import dataclass
 from diffusers.utils import BaseOutput
-
 from graph_bridges.configs.images.cifar10_config_ctdd import CTDDConfig
 
 @dataclass

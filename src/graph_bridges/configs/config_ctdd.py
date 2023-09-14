@@ -71,7 +71,6 @@ class CTDDTrainerConfig:
 
     metrics:List[str] = field(default_factory=lambda: ["graphs", "graphs_plots", "histograms"])
 
-
 @dataclass
 class CTDDConfig:
 

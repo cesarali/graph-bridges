@@ -1,9 +1,10 @@
 import torch
 import unittest
-from graph_bridges.models.generative_models.ctdd import CTDD
 from dataclasses import asdict
-from pprint import pprint
+from graph_bridges.models.generative_models.ctdd import CTDD
+
 from graph_bridges.utils.tensor_padding import expand_with_zeros
+from pprint import pprint
 
 class TestUnetCifar10(unittest.TestCase):
 
@@ -102,7 +103,6 @@ class TestGraphs(unittest.TestCase):
         from graph_bridges.data.graph_dataloaders_config import CommunitySmallConfig
         from graph_bridges.models.backward_rates.backward_rate_utils import load_backward_rates
         from graph_bridges.models.backward_rates.ctdd_backward_rate_config import BackwardRateTemporalHollowTransformerConfig
-
         from graph_bridges.models.networks.transformers.temporal_hollow_transformers import  TemporalHollowTransformerConfig
 
         config = CTDDConfig()
@@ -114,6 +114,7 @@ class TestGraphs(unittest.TestCase):
                                                               ff_hidden_dim=64,
                                                               time_embed_dim=12,
                                                               time_scale_factor=10)
+
 
         device = torch.device(config.device)
         ctdd = CTDD()

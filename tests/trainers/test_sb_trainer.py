@@ -1,24 +1,18 @@
-import os
 import torch
 import unittest
-import numpy as np
-import pandas as pd
-from pprint import pprint
-from dataclasses import asdict
 
-from graph_bridges.utils.test_utils import check_model_devices
-from graph_bridges.data.graph_dataloaders_config import EgoConfig
-from graph_bridges.models.backward_rates.ctdd_backward_rate_config import BackRateMLPConfig
+from pprint import pprint
+
 
 from graph_bridges.models.generative_models.sb import SB
-from graph_bridges.configs.graphs.graph_config_sb import SBTrainerConfig
+from graph_bridges.configs.config_sb import SBTrainerConfig
 from graph_bridges.models.backward_rates.ctdd_backward_rate_config import BackRateMLPConfig
-from graph_bridges.data.graph_dataloaders_config import EgoConfig, CommunityConfig, CommunitySmallConfig
-from graph_bridges.configs.graphs.graph_config_sb import SBConfig, ParametrizedSamplerConfig, SteinSpinEstimatorConfig
-from graph_bridges.models.backward_rates.ctdd_backward_rate_config import GaussianTargetRateImageX0PredEMAConfig
-
+from graph_bridges.data.graph_dataloaders_config import EgoConfig
+from graph_bridges.configs.graphs.graph_config_sb import SBConfig
+from graph_bridges.configs.config_sb import  ParametrizedSamplerConfig, SteinSpinEstimatorConfig
+from graph_bridges.models.backward_rates.ctdd_backward_rate_config import BackwardRateTemporalHollowTransformerConfig
+from graph_bridges.models.networks.transformers.temporal_hollow_transformers import TemporalHollowTransformerConfig
 from graph_bridges.models.trainers.sb_training import SBTrainer
-from graph_bridges.utils.test_utils import check_model_devices
 
 class TestSBTrainer(unittest.TestCase):
 
@@ -32,7 +26,10 @@ class TestSBTrainer(unittest.TestCase):
                                   experiment_type="sb",
                                   experiment_indentifier="unittest_sb_trainer")
         self.sb_config.data = EgoConfig(as_image=False, batch_size=2, flatten_adjacency=True,full_adjacency=True)
-        self.sb_config.model = BackRateMLPConfig(time_embed_dim=14, hidden_layer=50)
+
+        self.sb_config.model = BackRateMLPConfig()
+        self.sb_config.temp_network = BackRateMLPConfig()
+
         self.sb_config.stein = SteinSpinEstimatorConfig(stein_sample_size=10)
         self.sb_config.sampler = ParametrizedSamplerConfig(num_steps=5)
         self.sb_config.trainer = SBTrainerConfig(learning_rate=1e-3,
@@ -40,8 +37,9 @@ class TestSBTrainer(unittest.TestCase):
                                                  save_metric_epochs=2,
                                                  save_model_epochs=2,
                                                  save_image_epochs=2,
-                                                 device="cuda:0",
+                                                 device="cpu",
                                                  metrics=["graphs_plots","histograms"])
+        self.sb_config.__post_init__()
         self.sb_trainer = SBTrainer(self.sb_config)
 
     def test_training(self):
