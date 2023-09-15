@@ -2,9 +2,9 @@ import torch
 import unittest
 
 from graph_bridges.data.dataloaders_utils import load_dataloader
-from graph_bridges.configs.graphs.config_ctdd import CTDDConfig
+from graph_bridges.configs.graphs.graph_config_ctdd import CTDDConfig
 from graph_bridges.data.graph_dataloaders_config import EgoConfig, GraphSpinsDataLoaderConfig, TargetConfig
-from graph_bridges.models.backward_rates.backward_rate_config import BackRateMLPConfig, GaussianTargetRateImageX0PredEMAConfig
+from graph_bridges.models.backward_rates.ctdd_backward_rate_config import BackRateMLPConfig, GaussianTargetRateImageX0PredEMAConfig
 from graph_bridges.models.reference_process.ctdd_reference import GaussianTargetRate
 
 class TestGaussianReference(unittest.TestCase):

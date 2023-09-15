@@ -123,7 +123,7 @@ class TauLeaping():
 
 
 if __name__=="__main__":
-    from graph_bridges.models.backward_rates.backward_rate import GaussianTargetRateImageX0PredEMA
+    from graph_bridges.models.backward_rates.ctdd_backward_rate import GaussianTargetRateImageX0PredEMA
     from graph_bridges.configs.graphs.lobster.config_base import BridgeConfig
 
     config = BridgeConfig()

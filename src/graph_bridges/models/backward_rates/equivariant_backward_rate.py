@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import numpy as np
+from graph_bridges.models.networks.graphs_networks.edp_gnn import EdgeDensePredictionGraphScoreNetwork
 
 from graph_bridges.models.backward_rates.backward_rate import EMA, BackwardRate, GaussianTargetRate
 

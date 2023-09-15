@@ -11,8 +11,8 @@ from graph_bridges.data.graph_dataloaders_config import CommunityConfig, GraphDa
 import torchvision.transforms as transforms
 from torchvision.datasets import MNIST, CIFAR10
 from abc import abstractmethod
-from graph_bridges.configs.graphs.config_ctdd import CTDDConfig
-from graph_bridges.configs.graphs.config_sb import SBConfig
+from graph_bridges.configs.graphs.graph_config_ctdd import CTDDConfig
+from graph_bridges.configs.graphs.graph_config_sb import SBConfig
 
 def from_networkx_to_spins(graph_,upper_diagonal_indices,full_adjacency=False):
     adjacency_ = nx.to_numpy_array(graph_)
@@ -368,7 +368,11 @@ class DoucetTargetData(BridgeDataLoader):
 
     def train(self):
         #from graph_bridges.data.graph_dataloaders import BinaryTensorToSpinsTransform
-        training_size = int(self.config.data.total_data_size*self.config.data.training_proportion)
+        try:
+            training_size = self.config.data.training_size
+        except:
+            training_size = int(self.config.data.total_data_size*self.config.data.training_proportion)
+
         batch_size =  self.config.data.batch_size
         number_of_batches = int(training_size / batch_size)
         for a in range(number_of_batches):
@@ -376,7 +380,10 @@ class DoucetTargetData(BridgeDataLoader):
             yield x
 
     def test(self):
-        test_size = self.config.data.total_data_size - int(self.config.data.total_data_size*self.config.data.training_proportion)
+        try:
+            test_size = self.config.data.test_size
+        except:
+            test_size = self.config.data.total_data_size - int(self.config.data.total_data_size*self.config.data.training_proportion)
         batch_size =  self.config.data.batch_size
         number_of_batches = int(test_size / batch_size) + 1
         for a in range(number_of_batches):

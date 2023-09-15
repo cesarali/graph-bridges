@@ -17,6 +17,7 @@ graph_data_path = data_path / "raw" / "graph"
 
 @dataclass
 class GraphDataConfig:
+    name: str = "BridgeGraphDataLoaders"
     data: str =None
     dir: Path=None
     batch_size: int=None
@@ -81,7 +82,7 @@ class GraphDataConfig:
                     self.D = self.C * self.H * self.W
                 else:
                     self.shape_ = [self.max_node_num, self.max_node_num]
-                    self.shape = [1,1,self.max_node_num, self.max_node_num]
+                    self.shape = [1,self.max_node_num, self.max_node_num]
                     self.H, self.W =  self.shape[0], self.shape[1]
                     self.C = None
                     self.D = self.max_node_num * self.max_node_num

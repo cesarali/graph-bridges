@@ -274,7 +274,7 @@ class SequenceTransformer(nn.Module):
         super().__init__()
 
         num_layers = cfg.model.num_layers
-        d_model = cfg.model.d_model
+        d_model = cfg.model.hidden_dim
         num_heads = cfg.model.num_heads
         dim_feedforward = cfg.model.dim_feedforward
         dropout = cfg.model.dropout
@@ -320,7 +320,7 @@ class ResidualMLP(nn.Module):
 
         self.S = cfg.data.S
         num_layers = cfg.model.num_layers
-        d_model = cfg.model.d_model
+        d_model = cfg.model.hidden_dim
         hidden_dim = cfg.model.hidden_dim
         time_scale_factor = cfg.model.time_scale_factor
         temb_dim = cfg.model.temb_dim

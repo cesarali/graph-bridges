@@ -1,8 +1,8 @@
 import os
 import json
 from typing import Union
-from graph_bridges.configs.graphs.config_sb import SBConfig
-from graph_bridges.configs.graphs.config_ctdd import CTDDConfig
+from graph_bridges.configs.graphs.graph_config_sb import SBConfig
+from graph_bridges.configs.graphs.graph_config_ctdd import CTDDConfig
 
 
 def get_config_from_file(experiment_name,experiment_type,experiment_indentifier)->Union[SBConfig,CTDDConfig]:

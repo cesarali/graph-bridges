@@ -129,7 +129,6 @@ class SpinDataloaderMetric(ABC):
         self.doucet = spin_dataloader.doucet
         self.device = device
 
-
     @abstractmethod
     def metric_on_pathbatch(self,batch,aggregation):
         return batch
@@ -148,7 +147,7 @@ class SpinDataloaderMetric(ABC):
             for batch in self.spin_dataloader.train():
                 aggregation = self.metric_on_pathbatch(batch,aggregation)
         elif type=="test":
-            for batch in self.paths_dataloader.test():
+            for batch in self.spin_dataloader.test():
                 aggregation = self.metric_on_pathbatch(batch,aggregation)
         else:
             raise Exception("Type of Data Not Included")
@@ -213,7 +212,7 @@ class SpinBernoulliMarginal(SpinDataloaderMetric):
 
 
 if __name__=="__main__":
-    from graph_bridges.configs.graphs.config_ctdd import CTDDConfig
+    from graph_bridges.configs.graphs.graph_config_ctdd import CTDDConfig
     from graph_bridges.data.graph_dataloaders_config import EgoConfig
 
     from graph_bridges.data.dataloaders_utils import load_dataloader
