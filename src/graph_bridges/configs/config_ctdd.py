@@ -68,6 +68,7 @@ class CTDDTrainerConfig:
     save_image_epochs :int = 50
     save_model_epochs :int = 50
     save_model_global_iter :int = 1000
+    log_loss: int = 500
 
     metrics:List[str] = field(default_factory=lambda: ["graphs", "graphs_plots", "histograms"])
 
@@ -146,7 +147,11 @@ class CTDDConfig:
     def save_config(self):
         config_as_dict = asdict(self)
         config_as_dict["experiment_files"]["results_dir"] = str(config_as_dict["experiment_files"]["results_dir"])
-        config_as_dict["data"]["dir"] = str(config_as_dict["data"]["dir"])
+        try:
+            config_as_dict["data"]["dir"] = str(config_as_dict["data"]["dir"])
+        except:
+            pass
+
         with open(self.experiment_files.config_path, "w") as file:
             json.dump(config_as_dict, file)
 

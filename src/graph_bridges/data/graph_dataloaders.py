@@ -368,7 +368,11 @@ class DoucetTargetData(BridgeDataLoader):
 
     def train(self):
         #from graph_bridges.data.graph_dataloaders import BinaryTensorToSpinsTransform
-        training_size = int(self.config.data.total_data_size*self.config.data.training_proportion)
+        try:
+            training_size = self.config.data.training_size
+        except:
+            training_size = int(self.config.data.total_data_size*self.config.data.training_proportion)
+
         batch_size =  self.config.data.batch_size
         number_of_batches = int(training_size / batch_size)
         for a in range(number_of_batches):
@@ -376,7 +380,10 @@ class DoucetTargetData(BridgeDataLoader):
             yield x
 
     def test(self):
-        test_size = self.config.data.total_data_size - int(self.config.data.total_data_size*self.config.data.training_proportion)
+        try:
+            test_size = self.config.data.test_size
+        except:
+            test_size = self.config.data.total_data_size - int(self.config.data.total_data_size*self.config.data.training_proportion)
         batch_size =  self.config.data.batch_size
         number_of_batches = int(test_size / batch_size) + 1
         for a in range(number_of_batches):

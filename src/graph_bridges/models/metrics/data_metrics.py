@@ -129,7 +129,6 @@ class SpinDataloaderMetric(ABC):
         self.doucet = spin_dataloader.doucet
         self.device = device
 
-
     @abstractmethod
     def metric_on_pathbatch(self,batch,aggregation):
         return batch
@@ -148,7 +147,7 @@ class SpinDataloaderMetric(ABC):
             for batch in self.spin_dataloader.train():
                 aggregation = self.metric_on_pathbatch(batch,aggregation)
         elif type=="test":
-            for batch in self.paths_dataloader.test():
+            for batch in self.spin_dataloader.test():
                 aggregation = self.metric_on_pathbatch(batch,aggregation)
         else:
             raise Exception("Type of Data Not Included")

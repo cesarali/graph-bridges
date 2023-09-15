@@ -4,6 +4,7 @@ from graph_bridges.configs.config_ctdd import CTDDConfig as GeneralCTDDConfig
 from graph_bridges.data.image_dataloader_config import NISTLoaderConfig
 from graph_bridges.models.backward_rates.ctdd_backward_rate_config import GaussianTargetRateImageX0PredEMAConfig
 from graph_bridges.models.networks.convnets.autoencoder import ConvNetAutoencoderConfig
+from graph_bridges.models.backward_rates.ctdd_backward_rate_config import BackRateMLPConfig
 
 class CTDDConfig(GeneralCTDDConfig):
 
@@ -28,9 +29,40 @@ class CTDDConfig(GeneralCTDDConfig):
         self.temp_network = ConvNetAutoencoderConfig()
 
     def align_configurations(self):
+        from graph_bridges.models.backward_rates.ctdd_backward_rate_config import GaussianTargetRateImageX0PredEMAConfig
+        from graph_bridges.models.backward_rates.ctdd_backward_rate_config import BackRateMLPConfig, BackwardRateTemporalHollowTransformerConfig
+
+        from graph_bridges.models.networks.convnets.autoencoder import ConvNetAutoencoderConfig
+        from graph_bridges.models.networks.transformers.temporal_hollow_transformers import TemporalHollowTransformerConfig
+        from graph_bridges.models.networks.unets.unet_wrapper import UnetTauConfig
+
+        self.data.as_spins = False
+
+        if isinstance(self.model,BackRateMLPConfig):
+            pass
+
+        elif isinstance(self.model,GaussianTargetRateImageX0PredEMAConfig):
+            if isinstance(self.temp_network,ConvNetAutoencoderConfig):
+                pass
+            elif isinstance(self.temp_network,UnetTauConfig):
+                raise Exception("Unet Network not compatible with MNIST")
+            
+        elif isinstance(self.model, BackwardRateTemporalHollowTransformerConfig):
+
+            if not isinstance(self.temp_network,TemporalHollowTransformerConfig):
+                self.temp_network = TemporalHollowTransformerConfig(input_vocab_size=2,
+                                                                    output_vocab_size=2,
+                                                                    max_seq_length=self.data.D)
+            else:
+                self.temp_network : TemporalHollowTransformerConfig
+                self.temp_network.input_vocab_size = 2
+                self.temp_network.output_vocab_size = 2
+                self.temp_network.max_seq_length = self.data.D
+
         #dataloaders for training
         self.data.as_image = True
         self.data.as_spins = False
+        self.data.doucet = True
 
         # data distributions matches at the end
         self.target.batch_size = self.data.batch_size

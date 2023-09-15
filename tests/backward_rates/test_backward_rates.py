@@ -47,7 +47,6 @@ class TestGraphs(unittest.TestCase):
         ctdd_config.data = CommunitySmallConfig(batch_size=24, full_adjacency=True)
         ctdd_config.model = BackRateMLPConfig()
 
-
         ctdd_config.data.batch_size = 12
 
         device = torch.device(ctdd_config.device)
@@ -131,6 +130,38 @@ class TestGraphs(unittest.TestCase):
         print(f"forward shape: {forward_.shape}")
 
         print(forward_)
+
+class TestNist(unittest.TestCase):
+
+    def test_backwardrate_mlp_graph(self):
+
+        from graph_bridges.configs.images.nist_config_ctdd import CTDDConfig
+        from graph_bridges.models.networks.unets.unet_wrapper import UnetTauConfig
+        from graph_bridges.data.graph_dataloaders_config import CommunitySmallConfig
+        from graph_bridges.models.networks.convnets.autoencoder import ConvNetAutoencoderConfig
+        from graph_bridges.models.backward_rates.ctdd_backward_rate_config import BackRateMLPConfig
+        from graph_bridges.models.backward_rates.ctdd_backward_rate_config import GaussianTargetRateImageX0PredEMAConfig
+
+        ctdd_config = CTDDConfig(experiment_indentifier="mnist_mlp_test",
+                                 experiment_name="mnist",
+                                 experiment_type="ctdd")
+        ctdd_config.model = BackRateMLPConfig()
+        ctdd_config.data.data = "mnist"
+
+        device = torch.device(ctdd_config.device)
+
+        ctdd = CTDD()
+        ctdd.create_new_from_config(ctdd_config,device)
+
+        databatch = next(ctdd.data_dataloader.train().__iter__())
+        x_adj = databatch[0]
+
+        batch_size = x_adj.shape[0]
+        fake_time = torch.rand(batch_size)
+        print(f"Input shape: {x_adj.shape}")
+
+        forward_ = ctdd.model(x_adj,fake_time)
+        print(f"forward shape: {forward_.shape}")
 
 if __name__=="__main__":
     unittest.main()

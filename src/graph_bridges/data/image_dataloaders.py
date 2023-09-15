@@ -147,6 +147,9 @@ class NISTLoader:
         self.batch_size = config.data.batch_size
         self.delete_data = config.data.delete_data
 
+        self.doucet = config.data.doucet
+        self.number_of_spins = config.data.D
+
         self.dataloader_data_dir = config.data.dataloader_data_dir
         self.dataloader_data_dir_path = Path(self.dataloader_data_dir)
         self.dataloader_data_dir_file_path = Path(config.data.dataloader_data_dir_file)

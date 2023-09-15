@@ -193,6 +193,11 @@ class CTDDTrainer:
                 training_loss.append(loss.item())
                 number_of_training_step += 1
                 LOSS.append(loss.item())
+
+                if number_of_training_step % self.config.trainer.log_loss == 0:
+                    training_loss_average = np.asarray(training_loss).mean()
+                    print("Epoch: {}, Loss: {}".format(epoch + 1, training_loss_average))
+
             training_loss_average = np.asarray(training_loss).mean()
 
             #VALIDATION
@@ -233,8 +238,7 @@ class CTDDTrainer:
                                   number_of_training_step=number_of_training_step,
                                   checkpoint=False)
 
-            if epoch % 10 == 0:
-                print("Epoch: {}, Loss: {}".format(epoch + 1, training_loss_average))
+
 
         self.time1 = datetime.now()
         #=====================================================

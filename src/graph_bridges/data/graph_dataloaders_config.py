@@ -17,6 +17,7 @@ graph_data_path = data_path / "raw" / "graph"
 
 @dataclass
 class GraphDataConfig:
+    name: str = "BridgeGraphDataLoaders"
     data: str =None
     dir: Path=None
     batch_size: int=None

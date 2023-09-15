@@ -39,7 +39,7 @@ class DiscreteCIFAR10Config:
 @dataclass
 class NISTLoaderConfig:
     name:str = "NISTLoader"
-    data:str = "mnist"
+    data:str = "mnist" #
     dataloader_data_dir:str = None
 
     input_dim: int = 784
@@ -66,6 +66,7 @@ class NISTLoaderConfig:
         from graph_bridges import data_path
         self.dataloader_data_dir = os.path.join(data_path,"raw")
         self.dataloader_data_dir_file = os.path.join(self.dataloader_data_dir,self.data+".tr")
+        self.preprocess_datapath = os.path.join(data_path,"raw",self.data)
 
         if self.as_spins:
             self.doucet = False

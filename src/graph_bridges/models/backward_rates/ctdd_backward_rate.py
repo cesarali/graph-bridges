@@ -120,6 +120,10 @@ class BackRateMLP(EMA,BackwardRate,GaussianTargetRate):
                 times: TensorType["batch_size"]
                 ) -> TensorType["batch_size", "dimension", "num_states"]:
 
+        if len(x.shape) == 4:
+            B, C, H, W = x.shape
+            x = x.view(B, C*H*W)
+
         if self.config.data.type == "doucet":
             x = self._center_data(x)
 

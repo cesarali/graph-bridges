@@ -16,24 +16,38 @@ def marginal_histograms_for_ctdd(ctdd,config,device):
 
     :return: marginal_0,marginal_generated_0,marginal_1,marginal_noising_1
     """
+    if config.data.name in ["NISTLoader","mnist"]:
+        data_loader_ = ctdd.data_dataloader.test()
+        type = "test"
+        try:
+            size_ = int(config.data.test_size)
+        except:
+            size_ = config.data.total_data_size - int(config.data.total_data_size * config.data.training_proportion)
+    else:
+        type = "train"
+        data_loader_ = ctdd.data_dataloader.train()
+        try:
+            size_ = int(config.data.training_size)
+        except:
+            size_ = int(config.data.total_data_size * config.data.training_proportion)
+
     # marginals from real data
-    marginal_0 = SpinBernoulliMarginal(spin_dataloader=ctdd.data_dataloader)()
-    marginal_1 = SpinBernoulliMarginal(spin_dataloader=ctdd.target_dataloader)()
+    marginal_0 = SpinBernoulliMarginal(spin_dataloader=ctdd.data_dataloader)(type=type)
+    marginal_1 = SpinBernoulliMarginal(spin_dataloader=ctdd.target_dataloader)(type=type)
 
     # marginals from generative models and noising
     marginal_generated_0 = torch.zeros(config.data.number_of_spins,device=device)
     marginal_noising_1 = torch.zeros(config.data.number_of_spins,device=device)
 
-    training_size = int(config.data.total_data_size * config.data.training_proportion)
     batch_size = config.data.batch_size
-    number_of_batches = int(training_size / batch_size)
+    number_of_batches = int(size_ / batch_size)
 
     for batch_index in range(number_of_batches):
         x = ctdd.pipeline(ctdd.model, batch_size,device=device)
         marginal_generated_0 += x.sum(axis=0)
 
     # Sample a random timestep for each image
-    for batchdata in ctdd.data_dataloader.train():
+    for batchdata in data_loader_:
         x_adj = batchdata[0]
         ts = torch.ones(batch_size)
         x_adj = x_adj.to(device)
