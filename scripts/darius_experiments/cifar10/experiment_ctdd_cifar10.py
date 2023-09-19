@@ -2,12 +2,12 @@ from graph_bridges.models.trainers.ctdd_training import CTDDTrainer
 
 
 if __name__=="__main__":
-    from graph_bridges.configs.images.cifar10_config_ctdd import CTDDConfig,CTDDTrainerConfig,ParametrizedSamplerConfig
+    from graph_bridges.configs.images.cifar10_config_ctdd import CTDDConfig, CTDDTrainerConfig, ParametrizedSamplerConfig
     from graph_bridges.models.backward_rates.ctdd_backward_rate_config import GaussianTargetRateImageX0PredEMAConfig
     from graph_bridges.data.graph_dataloaders_config import CommunitySmallConfig
 
     ctdd_config = CTDDConfig(experiment_indentifier="test_training",
-                             experiment_name="cifar10",
+                             experiment_name="darius_cifar10",
                              experiment_type="ctdd")
 
     ctdd_config.data.batch_size = 12
