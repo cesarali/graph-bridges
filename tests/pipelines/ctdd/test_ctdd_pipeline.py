@@ -38,7 +38,6 @@ class TestUnetCifar10(unittest.TestCase):
         x_sample = ctdd.pipeline(ctdd.model,sample_size=32,device=device)
         print(f"Pipeline sample shape {x_sample.shape}")
 
-
 class TestUnetGraph(unittest.TestCase):
 
     def test_unet_graph(self):

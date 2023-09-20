@@ -1,6 +1,6 @@
 import os
 from typing import List
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict,field
 from graph_bridges import data_path
 @dataclass
 class ParametrizedIsingHamiltonianConfig:
@@ -45,6 +45,8 @@ class ParametrizedIsingHamiltonianConfig:
     D: int = None
     S: int = 2
 
+    data_min_max: List[float] = field(default_factory=lambda :[0.,1.])
+
     def __post_init__(self):
         self.total_data_size = self.number_of_paths
 
@@ -61,7 +63,15 @@ class ParametrizedIsingHamiltonianConfig:
             self.C = 1
             self.H = 1
             self.W = self.D
+            self.shape = [self.C,self.H,self.W]
+            self.shape_ = [self.C, self.H, self.W]
+        else:
+            self.shape = [self.C,self.H,self.W]
+            self.shape_ = [self.H, self.W]
+
+        if self.as_spins:
+            self.data_min_max = [-1.,1.]
 
         self.dataloader_data_dir = os.path.join(data_path,"raw","spin_glass")
         self.dataloader_data_path = os.path.join(self.dataloader_data_dir,f"{self.data}.pkl")
-
+        self.preprocess_datapath = self.dataloader_data_dir

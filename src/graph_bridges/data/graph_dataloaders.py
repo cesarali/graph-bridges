@@ -193,20 +193,18 @@ class BridgeGraphDataLoaders:
         return train_graph_list, test_graph_list
 
 
-class BridgeDataLoader:
+class DoucetTargetData():
+    config : Union[SBConfig,CTDDConfig]
 
-    config : SBConfig
-    doucet: bool = True
+    doucet:bool = True
 
-    def __init__(self,config:SBConfig,device,rank=None):
+    def __init__(self,config:CTDDConfig,device,rank=None):
         self.config = config
         self.device = device
         self.doucet = self.config.data.doucet
         self.as_spins = self.config.data.as_spins
 
-        C,H,W = self.config.data.shape
-
-        self.D = C*H*W
+        self.D = self.config.data.D
         self.number_of_spins = self.D
 
         self.S = self.config.data.S
@@ -214,20 +212,9 @@ class BridgeDataLoader:
 
         self.initial_dist = sampler_config.initial_dist
         if self.initial_dist == 'gaussian':
-            self.initial_dist_std  = self.config.model.Q_sigma
+            self.initial_dist_std = self.config.model.Q_sigma
         else:
             self.initial_dist_std = None
-
-    @abstractmethod
-    def sample(self, num_of_paths:int, device=None) -> Tuple[TensorType["num_of_paths","D"],None]:
-        return None
-
-
-class DoucetTargetData(BridgeDataLoader):
-    doucet:bool = True
-
-    def __init__(self,config:CTDDConfig,device,rank=None):
-        BridgeDataLoader.__init__(self, config, device, rank)
 
     def sample(self, num_of_paths:int, device=None) -> TensorType["num_of_paths","D"]:
         from graph_bridges.data.graph_dataloaders import BinaryTensorToSpinsTransform

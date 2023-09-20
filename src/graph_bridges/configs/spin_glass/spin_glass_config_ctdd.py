@@ -18,6 +18,7 @@ class CTDDConfig(GeneralCTDDConfig):
     def __post_init__(self):
         self.data.as_spins = False
         self.data.doucet = True
+
     def align_configurations(self):
         from graph_bridges.models.backward_rates.ctdd_backward_rate_config import GaussianTargetRateImageX0PredEMAConfig
         from graph_bridges.models.backward_rates.ctdd_backward_rate_config import BackRateMLPConfig, BackwardRateTemporalHollowTransformerConfig
@@ -29,7 +30,7 @@ class CTDDConfig(GeneralCTDDConfig):
         self.data.as_spins = False
 
         #----------------------------------------------------------------------------------------
-        # HERE WE PREPARE THE DATA TRANSFORMATIONS TO FIX THE TEMPORAL NETWORK ARCHITECTURE
+        # HERE WE PREPARE THE DATA TRANSFORMATIONS TO PIN THE TEMPORAL NETWORK ARCHITECTURE
         #----------------------------------------------------------------------------------------
 
         if isinstance(self.model,BackRateMLPConfig):

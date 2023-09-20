@@ -72,18 +72,6 @@ class TestTargetDataloader(unittest.TestCase):
         self.assertTrue(as_spins == (not dataloader.doucet))
 
 
-@unittest.skip
-class TestPepperMNIST(unittest.TestCase):
-
-    def test_loader(self) -> None:
-        from graph_bridges.data.graph_dataloaders_config import PepperMNISTDataConfig
-        config = SBConfig(delete=True,experiment_indentifier="testing")
-        config.data = PepperMNISTDataConfig(as_image=False, batch_size=32, full_adjacency=False)
-        device = torch.device("cpu")
-        config.align_configurations()
-        dataloader = load_dataloader(config,"data",device)
-        self.assertIsNotNone(dataloader)
-
 
 if __name__=="__main__":
     unittest.main()
