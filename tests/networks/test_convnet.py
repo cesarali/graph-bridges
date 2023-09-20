@@ -3,7 +3,7 @@ import sys
 import torch
 import unittest
 from graph_bridges.configs.images.nist_config_ctdd import CTDDConfig
-from graph_bridges.models.networks.convnets.autoencoder import ConvNetAutoencoderConfig
+from graph_bridges.models.temporal_networks.convnets.autoencoder import ConvNetAutoencoderConfig
 from graph_bridges.models.backward_rates.backward_rate_utils import load_backward_rates
 from graph_bridges.models.backward_rates.ctdd_backward_rate import GaussianTargetRateImageX0PredEMA
 

@@ -1,34 +1,23 @@
+import os
+import sys
+from pprint import pprint
 from dataclasses import asdict,dataclass
-
 from graph_bridges.configs.config_ctdd import CTDDConfig as GeneralCTDDConfig
-from graph_bridges.data.image_dataloader_config import NISTLoaderConfig
-from graph_bridges.models.backward_rates.ctdd_backward_rate_config import GaussianTargetRateImageX0PredEMAConfig
-from graph_bridges.models.temporal_networks.convnets.autoencoder import ConvNetAutoencoderConfig
-from graph_bridges.models.backward_rates.ctdd_backward_rate_config import BackRateMLPConfig
-
+from graph_bridges.data.ising_dataloaders_config import ParametrizedIsingHamiltonianConfig
 @dataclass
 class CTDDConfig(GeneralCTDDConfig):
 
-    config_path : str = ""
-
     # files, directories and naming ---------------------------------------------
     delete :bool = False
-    experiment_name :str = 'mnist'
-    experiment_type :str = 'ctdd'
+    experiment_type: str = 'ctdd'
+    experiment_name :str = 'graph'
     experiment_indentifier :str  = 'testing'
-    init_model_path = None
 
-    # devices and parallelization ----------------------------------------------
-    device = 'cpu'
-    # device_paths = 'cpu' # not used
-    distributed = False
-    num_gpus = 0
+    data:ParametrizedIsingHamiltonianConfig = ParametrizedIsingHamiltonianConfig()
 
     def __post_init__(self):
-        self.data = NISTLoaderConfig()  # corresponds to the distributions at start time
-        self.model = GaussianTargetRateImageX0PredEMAConfig()
-        self.temp_network = ConvNetAutoencoderConfig()
-
+        self.data.as_spins = False
+        self.data.doucet = True
     def align_configurations(self):
         from graph_bridges.models.backward_rates.ctdd_backward_rate_config import GaussianTargetRateImageX0PredEMAConfig
         from graph_bridges.models.backward_rates.ctdd_backward_rate_config import BackRateMLPConfig, BackwardRateTemporalHollowTransformerConfig
@@ -39,16 +28,23 @@ class CTDDConfig(GeneralCTDDConfig):
 
         self.data.as_spins = False
 
+        #----------------------------------------------------------------------------------------
+        # HERE WE PREPARE THE DATA TRANSFORMATIONS TO FIX THE TEMPORAL NETWORK ARCHITECTURE
+        #----------------------------------------------------------------------------------------
+
         if isinstance(self.model,BackRateMLPConfig):
-            pass
+            self.data.as_image = False
 
         elif isinstance(self.model,GaussianTargetRateImageX0PredEMAConfig):
             if isinstance(self.temp_network,ConvNetAutoencoderConfig):
-                pass
-            elif isinstance(self.temp_network,UnetTauConfig):
-                raise Exception("Unet Network not compatible with MNIST")
-            
+                #dataloaders for training
+                self.data.as_image = True
+
+            elif isinstance(self.temp_network, UnetTauConfig):
+                raise Exception("Unet Network not implemented for Graphs (Yet)")
+
         elif isinstance(self.model, BackwardRateTemporalHollowTransformerConfig):
+            self.data.as_image = False
 
             if not isinstance(self.temp_network,TemporalHollowTransformerConfig):
                 self.temp_network = TemporalHollowTransformerConfig(input_vocab_size=2,
@@ -60,10 +56,7 @@ class CTDDConfig(GeneralCTDDConfig):
                 self.temp_network.output_vocab_size = 2
                 self.temp_network.max_seq_length = self.data.D
 
-        #dataloaders for training
-        self.data.as_image = True
-        self.data.as_spins = False
-        self.data.doucet = True
+        self.data.__post_init__()
 
         # data distributions matches at the end
         self.target.batch_size = self.data.batch_size
@@ -74,6 +67,8 @@ class CTDDConfig(GeneralCTDDConfig):
         self.target.C = self.data.C
         self.target.H = self.data.H
         self.target.W = self.data.W
+        self.target.shape = self.data.shape
+        self.target.shape_ = self.data.shape_
 
         # model matches reference process
         self.reference.initial_dist = self.model.initial_dist
@@ -84,6 +79,5 @@ class CTDDConfig(GeneralCTDDConfig):
 
 
 if __name__=="__main__":
-    from pprint import pprint
     config = CTDDConfig()
-    pprint(asdict(config))
+    pprint(asdict(config.data))

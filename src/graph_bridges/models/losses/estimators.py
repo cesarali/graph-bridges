@@ -6,14 +6,14 @@ from typing import Tuple,List,Union
 
 from torch.distributions import Bernoulli
 from graph_bridges.utils.spin_utils import bool_to_spins
-from graph_bridges.configs.graphs.lobster.config_base import BridgeConfig
 from graph_bridges.models.backward_rates.ctdd_backward_rate import BackwardRate
+from graph_bridges.configs.config_sb import SBConfig
 
 class SteinSpinEstimator:
     """
     """
     def __init__(self,
-                 config:BridgeConfig,
+                 config:SBConfig,
                  device:torch.device,
                  **kwargs):
         self.stein_epsilon = config.stein.stein_epsilon
@@ -89,7 +89,7 @@ class BackwardRatioSteinEstimator:
     """
     """
     def __init__(self,
-                 config:BridgeConfig,
+                 config:SBConfig,
                  device):
         self.dimension = config.loss.dimension_to_check
         self.stein_estimator = SteinSpinEstimator(config,device)

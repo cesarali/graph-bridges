@@ -2,7 +2,8 @@ import torch
 from pprint import pprint
 from torch.linalg import inv
 from matplotlib import pyplot as plt
-from discrete_diffusion.models.utils.embeddings import get_timestep_embedding
+
+from graph_bridges.models.temporal_networks.embedding_utils import transformer_timestep_embedding
 
 def get_marginal_spin_probability(paths):
     paths_count = torch.clone(paths)
@@ -124,10 +125,10 @@ def select_random_position(paths, time_grid):
     number_of_new_counted = new_counted_states.shape[0]
     number_of_new_unique = new_unique_states.shape[0]
     time_selected_repeated = torch.full((number_of_new_counted,), time_selected)
-    time_counted_embedding = get_timestep_embedding(time_selected_repeated)
+    time_counted_embedding = transformer_timestep_embedding(time_selected_repeated)
 
     time_selected_repeated = torch.full((number_of_new_unique,), time_selected)
-    time_unique_embedding = get_timestep_embedding(time_selected_repeated)
+    time_unique_embedding = transformer_timestep_embedding(time_selected_repeated)
 
     new_counted_n_time = torch.cat([new_counted_states, time_counted_embedding], dim=1)
     counted_n_time = torch.cat([repeated_counted_states, time_counted_embedding], dim=1)

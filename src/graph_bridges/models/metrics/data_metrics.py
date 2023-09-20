@@ -5,7 +5,7 @@ the aim is to aggregate metrics when we only have access to different batches
 """
 from torch.distributions import Bernoulli
 from graph_bridges.data.graph_dataloaders import BridgeGraphDataLoaders
-from graph_bridges.models.ising.spin_states import SpinStatesStatistics
+from graph_bridges.models.spin_glass.spin_states import SpinStatesStatistics
 from abc import ABC, abstractmethod
 import torch
 from torch.distributions.kl import kl_divergence

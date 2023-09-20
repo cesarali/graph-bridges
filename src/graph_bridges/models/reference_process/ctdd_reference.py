@@ -1,7 +1,6 @@
 import math
 import torch
 from graph_bridges.configs.graphs.graph_config_sb import SBConfig
-from graph_bridges.models.reference_process.reference_process_utils import register_reference
 
 import numpy as np
 from typing import Tuple,Union
@@ -133,7 +132,6 @@ class ReferenceProcess:
         return self.rates_states_and_times(states,times)
 
 
-@register_reference
 class GaussianTargetRate(ReferenceProcess):
     def __init__(self, cfg, device,rank=None):
         ReferenceProcess.__init__(self,cfg,device)

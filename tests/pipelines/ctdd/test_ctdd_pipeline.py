@@ -44,7 +44,7 @@ class TestUnetGraph(unittest.TestCase):
     def test_unet_graph(self):
         from graph_bridges.configs.graphs.graph_config_ctdd import CTDDConfig
         from graph_bridges.data.graph_dataloaders_config import CommunitySmallConfig
-        from graph_bridges.models.networks.convnets.autoencoder import ConvNetAutoencoderConfig
+        from graph_bridges.models.temporal_networks.convnets.autoencoder import ConvNetAutoencoderConfig
         from graph_bridges.models.backward_rates.ctdd_backward_rate_config import GaussianTargetRateImageX0PredEMAConfig
 
         ctdd_config = CTDDConfig(experiment_indentifier="graph_wunet_test",experiment_name="graph",experiment_type="ctdd")
@@ -77,7 +77,7 @@ class TestConvNetNist(unittest.TestCase):
     def test_convnet_mnist(self):
         from graph_bridges.configs.images.nist_config_ctdd import CTDDConfig
         from graph_bridges.data.image_dataloader_config import NISTLoaderConfig
-        from graph_bridges.models.networks.convnets.autoencoder import ConvNetAutoencoderConfig
+        from graph_bridges.models.temporal_networks.convnets.autoencoder import ConvNetAutoencoderConfig
         from graph_bridges.models.backward_rates.ctdd_backward_rate_config import GaussianTargetRateImageX0PredEMAConfig
 
         ctdd_config = CTDDConfig(experiment_indentifier="graph_convnet_test",
@@ -115,7 +115,7 @@ class TestMLPNist(unittest.TestCase):
         from graph_bridges.configs.images.nist_config_ctdd import CTDDConfig
         from graph_bridges.data.image_dataloader_config import NISTLoaderConfig
 
-        from graph_bridges.models.networks.convnets.autoencoder import ConvNetAutoencoderConfig
+        from graph_bridges.models.temporal_networks.convnets.autoencoder import ConvNetAutoencoderConfig
         from graph_bridges.models.backward_rates.ctdd_backward_rate_config import BackRateMLPConfig
 
         ctdd_config = CTDDConfig(experiment_indentifier="graph_mlp_test",

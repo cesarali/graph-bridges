@@ -8,6 +8,8 @@ import torchvision.transforms
 import os
 from graph_bridges.data.image_dataloader_config import DiscreteCIFAR10Config
 from graph_bridges.configs.images.cifar10_config_ctdd import CTDDConfig
+from graph_bridges.data.image_dataloader_config import NISTLoaderConfig
+from torchvision import transforms,datasets
 
 class DiscreteCIFAR10(torchvision.datasets.CIFAR10):
     def __init__(self, data_root,train=True,download=True,random_flips=False):
@@ -77,9 +79,6 @@ class DiscreteCIFAR10Dataloader():
     def test(self):
         return self.test_dataloader
 
-from graph_bridges.data.image_dataloader_config import NISTLoaderConfig
-from torchvision import transforms,datasets
-
 def get_data(config:NISTLoaderConfig,type="data"):
     if type=="data":
         data_config = config.data
@@ -134,8 +133,8 @@ def get_data(config:NISTLoaderConfig,type="data"):
         test_dataset,
         batch_size=batch_size, shuffle=True)
 
-    return train_loader,test_loader
 
+    return train_loader,test_loader
 
 class NISTLoader:
 

@@ -1,16 +1,14 @@
-import os
-import tqdm
+from dataclasses import dataclass,asdict
 import time
 import torch
+from typing import List
 
 from torch import nn
 from pprint import pprint
-from torch.optim import Adam
-import numpy as np
 from torch.distributions import Normal, Bernoulli
 
-from discrete_diffusion.models.ising.spin_states_statistics import obtain_all_spin_states, obtain_new_spin_states
-from discrete_diffusion.utils.basic_setups import create_dir_and_writer
+from graph_bridges.models.spin_glass.spin_states_statistics import obtain_all_spin_states, obtain_new_spin_states
+from graph_bridges.data.ising_dataloaders_config import ParametrizedIsingHamiltonianConfig
 
 class bernoulli_spins():
     """
@@ -40,11 +38,12 @@ def initialize_model(number_of_spins,number_of_paths,J_mean,J_std):
 
     return paths, J
 
+
 class ParametrizedIsingHamiltonian(nn.Module):
     """
     Simple Hamiltonian Model for Parameter Estimation
     """
-    def __init__(self, **kwargs):
+    def __init__(self, config:ParametrizedIsingHamiltonianConfig):
         """
         Parameters
         ----------
@@ -54,8 +53,8 @@ class ParametrizedIsingHamiltonian(nn.Module):
             only defined for number_of_spins < 10
         """
         super(ParametrizedIsingHamiltonian, self).__init__()
-        self.beta = kwargs.get("beta")
-        self.number_of_spins = kwargs.get("number_of_spins")
+        self.beta = config.beta
+        self.number_of_spins = config.number_of_spins
 
         self.lower_diagonal_indices = torch.tril_indices(self.number_of_spins, self.number_of_spins, -1)
         self.number_of_couplings = self.lower_diagonal_indices[0].shape[0]
@@ -63,11 +62,11 @@ class ParametrizedIsingHamiltonian(nn.Module):
         self.flip_mask = torch.ones((self.number_of_spins, self.number_of_spins))
         self.flip_mask.as_strided([self.number_of_spins], [self.number_of_spins + 1]).copy_(torch.ones(self.number_of_spins) * -1.)
         self.model_identifier = str(int(time.time()))
-        self.define_parameters(**kwargs)
-        self.model_parameters = kwargs
+        self.define_parameters(config)
+        self.config = config
 
     def obtain_parameters(self):
-        return self.model_parameters
+        return self.config
 
     @classmethod
     def coupling_size(self,number_of_spins):
@@ -89,12 +88,12 @@ class ParametrizedIsingHamiltonian(nn.Module):
 
         return fields,couplings
 
-    def define_parameters(self,**kwargs):
-        couplings = kwargs.get("couplings")
-        fields = kwargs.get("fields")
+    def define_parameters(self,config:ParametrizedIsingHamiltonianConfig):
+        couplings = config.couplings
+        fields = config.fields
 
-        self.couplings_deterministic = kwargs.get("couplings_deterministic")
-        self.couplings_sigma = kwargs.get("couplings_sigma")
+        self.couplings_deterministic = config.couplings_deterministic
+        self.couplings_sigma = config.couplings_sigma
 
         # INITIALIZING COUPLINGS AND FIELDS FROM ARRAYS
         if couplings is not None and fields is not None:
@@ -121,7 +120,7 @@ class ParametrizedIsingHamiltonian(nn.Module):
         self.fields = nn.Parameter(fields)
         self.couplings = nn.Parameter(couplings)
         #========================================================================
-        if kwargs.get("obtain_partition_function"):
+        if config.obtain_partition_function:
             self.obtain_partition_function()
         else:
             self.partition_function = None
@@ -162,12 +161,15 @@ class ParametrizedIsingHamiltonian(nn.Module):
             else:
                 return -self.beta * self(states).std()
 
-    def sample(self,number_of_paths:int,number_of_mcmc_steps: int, **kwargs)-> torch.Tensor:
+    def sample(self,config:ParametrizedIsingHamiltonianConfig)-> torch.Tensor:
         """
         Here we follow a basic metropolis hasting algorithm
 
         :return:
         """
+        number_of_paths = config.number_of_paths
+        number_of_mcmc_steps = config.number_of_mcmc_steps
+
         with torch.no_grad():
             self.number_of_paths = number_of_paths
             self.number_of_mcmc_steps = number_of_mcmc_steps
@@ -230,112 +232,14 @@ class ParametrizedIsingHamiltonian(nn.Module):
         Hamiltonian = - H_couplings - H_fields
         return Hamiltonian
 
-    @classmethod
-    def get_parameters(self):
-        kwargs = {
-            "number_of_spins": 4,
-            "beta": 1.,
-            "obtain_partition_function": True,
-            "couplings_deterministic":1.,
-            "couplings_sigma":1.,
-            "couplings":None,
-            "fields":None,
-            "number_of_paths": 2,
-            "number_of_mcmc_steps": 1000,
-        }
-        return kwargs
-
-
-class ParametrizedIsingHamiltonianEstimator(ParametrizedIsingHamiltonian):
-
-    def __init__(self):
-        super(ParametrizedIsingHamiltonianEstimator).__init__()
-
-    def oppers_estimator(self, states: torch.Tensor) -> torch.Tensor:
-        """
-        Here we evaluate over the difference between the states and the corresponding
-        one spin flop configuration
-
-        Parameters
-        ----------
-        IsingHamiltonian:ParametrizedIsingHamiltonian
-
-        states:torch.Tensor
-
-        Returns
-        -------
-        loss
-        """
-        new_states = obtain_new_spin_states(states,self.flip_mask)
-
-        H_states = self(states)
-        H_new_states = self(new_states)
-        H_new_states = H_new_states.reshape(H_states.shape[0], self.number_of_spins)
-        H = self.beta * (H_new_states - H_states[:, None])
-        H = torch.exp(-.5 * H)
-        loss = H.sum()
-        return loss
-
-    def inference(self,mcmc_sample:torch.Tensor,real_fields:torch.Tensor,real_couplings:torch.Tensor,
-                  number_of_epochs=10000,learning_rate=1e-3):
-        writer, results_path, best_model_path = create_dir_and_writer(model_name="oppers_estimation",
-                                                                      experiments_class="",
-                                                                      model_identifier="ising_{0}".format(self.model_identifier),
-                                                                      delete=True)
-        states = mcmc_sample[:,-1,:]
-        optimizer = Adam(self.parameters(), lr=learning_rate)
-        norm_loss_history = []
-        oppers_loss_history = []
-        for i in tqdm.tqdm(range(number_of_epochs)):
-            loss = self.oppers_estimator(states)
-            if real_couplings is not None:
-                couplings_norm = torch.norm(real_couplings - self.couplings)
-                norm_loss_history.append(couplings_norm.item())
-            loss.backward(retain_graph=True)
-            optimizer.step()
-            optimizer.zero_grad()
-            oppers_loss_history.append(loss.item())
-
-            writer.add_scalar("train/loss", loss.item(), i)
-            writer.add_scalar("train/norm", couplings_norm.item(), i)
-            print("train loss {0}".format(loss.item()))
-
-        print("Saving Model In {0}".format(best_model_path))
-        torch.save(self, best_model_path)
-        torch.save({"real_fields": real_fields,
-                    "real_couplings": real_couplings,
-                    "paths": mcmc_sample,
-                    "oppers_loss_history":oppers_loss_history,
-                    "norm_loss_history":norm_loss_history},
-                   os.path.join(results_path, "real_couplings.tr"))
-        print("Real Data in {0}".format(results_path))
-        return best_model_path, results_path
-
-g = lambda x: 1. / (1. + x)
-
-def score_ratio(model, x_copy, x_flip):
-    Q_copy = model(x_copy)
-    Q_flipped = model(x_flip)
-    loss = (g(Q_copy / Q_flipped)) ** 2.
-    return loss
-
-def total_loss_from_a_dataloader(model, spin_dataloader):
-    total_loss = 0.
-    for x_sample in spin_dataloader:
-        x_copy = x_sample.repeat_interleave(number_of_spins, dim=0)
-        x_flip = obtain_new_spin_states(x_sample, model.flip_mask)
-
-        loss = score_ratio(model, x_copy, x_flip).sum()
-        total_loss += loss
-    return total_loss
 
 #=============================================================
 # ARGUMENTS
 #=============================================================
 
 if __name__=="__main__":
-    from discrete_diffusion.models.ising.spin_states_statistics import log_likelihood_of_path
-    from discrete_diffusion.data.datasets import BasicDataSet, DataLoader
+    from graph_bridges.models.spin_glass.spin_states_statistics import log_likelihood_of_path
+    from graph_bridges.data.basic_datasets import BasicDataSet, DataLoader
 
     #===========================================================================
     # TEST PARAMETRIC MODEL
@@ -345,7 +249,7 @@ if __name__=="__main__":
     batch_size = 32
     number_of_mcmc_steps = 5000
 
-    ising_parameters = ParametrizedIsingHamiltonian.get_parameters()
+    config = ParametrizedIsingHamiltonianConfig()
     number_of_couplings = ParametrizedIsingHamiltonian.coupling_size(number_of_spins)
 
     #fields = torch.full((number_of_spins,),0.2)
@@ -356,19 +260,18 @@ if __name__=="__main__":
 
     #fields, couplings = ParametrizedIsingHamiltonian.sample_random_model(number_of_spins)
 
-    pprint(ising_parameters)
-    ising_parameters.update({"number_of_spins":number_of_spins,
-                             'couplings_deterministic': None,
-                             'obtain_partition_function':False,
-                             "number_of_mcmc_steps":number_of_mcmc_steps,
-                             'couplings_sigma': 5.,
-                             "fields": fields,
-                             "couplings": couplings})
+    pprint(asdict(config))
+    config.number_of_spins = number_of_spins
+    config.couplings_deterministic =  None
+    config.obtain_partition_function = False
+    config.number_of_mcmc_steps = number_of_mcmc_steps
+    config.couplings_sigma =  5.
+    config.fields =  fields
+    config.couplings =  couplings
 
-    ising_model_real = ParametrizedIsingHamiltonian(**ising_parameters)
-    ising_mcmc_sample = ising_model_real.sample(**ising_parameters)
+    ising_model_real = ParametrizedIsingHamiltonian(config)
+    ising_mcmc_sample = ising_model_real.sample(config)
     ising_sample = ising_mcmc_sample[:, 500, :]
-
 
     log_likelihood_of_path(ising_model_real,ising_mcmc_sample,plot=True)
     real_couplings = torch.clone(ising_model_real.couplings)

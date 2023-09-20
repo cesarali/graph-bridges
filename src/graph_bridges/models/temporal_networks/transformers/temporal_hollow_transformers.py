@@ -2,8 +2,8 @@ import torch
 from torch import nn
 from dataclasses import dataclass
 
-from graph_bridges.models.networks.transformers.hollow_transformers import HollowTransformerLayer
-from graph_bridges.models.networks.embedding_utils import transformer_timestep_embedding
+from graph_bridges.models.temporal_networks.embedding_utils import transformer_timestep_embedding
+from graph_bridges.models.temporal_networks.transformers.hollow_transformers import HollowTransformerLayer
 
 @dataclass
 class TemporalHollowTransformerConfig:

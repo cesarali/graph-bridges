@@ -1,10 +1,11 @@
-from dataclasses import asdict
+from dataclasses import asdict,dataclass
 
 from graph_bridges.configs.config_sb import SBConfig as GeneralSBConfig
 from graph_bridges.data.image_dataloader_config import NISTLoaderConfig
 from graph_bridges.models.backward_rates.ctdd_backward_rate_config import GaussianTargetRateImageX0PredEMAConfig
-from graph_bridges.models.networks.convnets.autoencoder import ConvNetAutoencoderConfig
+from graph_bridges.models.temporal_networks.convnets.autoencoder import ConvNetAutoencoderConfig
 
+@dataclass
 class SBConfig(GeneralSBConfig):
 
     config_path : str = ""

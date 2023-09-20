@@ -14,9 +14,11 @@ from graph_bridges.models.backward_rates.ctdd_backward_rate_config import all_ba
 from graph_bridges.models.reference_process.reference_process_config import GaussianTargetRateConfig
 from graph_bridges.models.reference_process.reference_process_config import all_reference_process_configs
 from graph_bridges.configs.config_files import ExperimentFiles
+from graph_bridges.models.temporal_networks.transformers.temporal_hollow_transformers import TemporalHollowTransformerConfig
+from graph_bridges.models.temporal_networks.convnets.autoencoder import ConvNetAutoencoderConfig
 
-from graph_bridges.models.networks.unets.unet_wrapper import UnetTauConfig
-from graph_bridges.models.networks.networks_configs import all_temp_nets_configs
+from graph_bridges.models.temporal_networks.unets.unet_wrapper import UnetTauConfig
+from graph_bridges.models.temporal_networks.networks_configs import all_temp_nets_configs
 
 from pprint import pprint
 
@@ -72,13 +74,15 @@ class CTDDTrainerConfig:
 
     metrics:List[str] = field(default_factory=lambda: ["graphs", "graphs_plots", "histograms"])
 
+
+
 @dataclass
 class CTDDConfig:
 
     config_path : str = ""
     # different elements configurations------------------------------------------
     model : BackRateMLPConfig = BackRateMLPConfig()
-    temp_network : UnetTauConfig = UnetTauConfig()
+    temp_network : Union[UnetTauConfig,TemporalHollowTransformerConfig,ConvNetAutoencoderConfig] = UnetTauConfig()
 
     data : GraphDataConfig = CommunityConfig() # corresponds to the distributions at start time
     target : TargetConfig = TargetConfig() # corresponds to the distribution at final time

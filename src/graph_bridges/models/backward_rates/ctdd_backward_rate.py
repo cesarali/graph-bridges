@@ -4,19 +4,19 @@ import torch.nn.functional as F
 from torch.nn.parallel import DistributedDataParallel as DDP
 
 from abc import ABC,abstractmethod
-from graph_bridges.models.networks import networks_tau
+from graph_bridges.models.temporal_networks import networks_tau
 from graph_bridges.configs.graphs.graph_config_sb import SBConfig
 
-from torchtyping import TensorType
-from graph_bridges.models.networks.embedding_utils import transformer_timestep_embedding
-from graph_bridges.models.reference_process.ctdd_reference import GaussianTargetRate
 from typing import Union, Tuple
+from torchtyping import TensorType
+from graph_bridges.models.temporal_networks.embedding_utils import transformer_timestep_embedding
+from graph_bridges.models.reference_process.ctdd_reference import GaussianTargetRate
 
 from dataclasses import dataclass
 from diffusers.utils import BaseOutput
-from graph_bridges.models.networks.ema import EMA
+from graph_bridges.models.temporal_networks.ema import EMA
+from graph_bridges.models.temporal_networks.network_utils import load_temp_network
 from graph_bridges.models.backward_rates.backward_rate import BackwardRate
-from graph_bridges.models.networks.network_utils import load_temp_network
 
 class ImageX0PredBase(BackwardRate):
     def __init__(self, cfg, device, rank=None):
@@ -190,9 +190,9 @@ class GaussianTargetRateImageX0PredEMA(EMA,ImageX0PredBase):
         self.config = cfg
         self.init_ema()
 
-from graph_bridges.models.networks.network_utils import load_temp_network
+from graph_bridges.models.temporal_networks.network_utils import load_temp_network
 
-from graph_bridges.models.networks.transformers.temporal_hollow_transformers import TemporalHollowTransformer
+from graph_bridges.models.temporal_networks.transformers.temporal_hollow_transformers import TemporalHollowTransformer
 
 class BackwardRateTemporalHollowTransformer(EMA,BackwardRate,GaussianTargetRate):
 

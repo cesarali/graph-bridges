@@ -8,7 +8,7 @@ from graph_bridges.data.graph_dataloaders_config import EgoConfig
 from graph_bridges.configs.graphs.graph_config_ctdd import CTDDConfig
 from graph_bridges.models.backward_rates.ctdd_backward_rate_config import BackRateMLPConfig
 from graph_bridges.models.backward_rates.ctdd_backward_rate_config import BackwardRateTemporalHollowTransformerConfig
-from graph_bridges.models.networks.transformers.temporal_hollow_transformers import TemporalHollowTransformerConfig
+from graph_bridges.models.temporal_networks.transformers.temporal_hollow_transformers import TemporalHollowTransformerConfig
 
 
 #from graph_bridges.models.backward_rates.

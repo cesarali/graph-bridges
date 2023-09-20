@@ -10,7 +10,7 @@ class TestTemporalHollowTransformers(unittest.TestCase):
         from graph_bridges.models.backward_rates.backward_rate_utils import load_backward_rates
         from graph_bridges.models.backward_rates.ctdd_backward_rate_config import BackwardRateTemporalHollowTransformerConfig
 
-        from graph_bridges.models.networks.transformers.temporal_hollow_transformers import TemporalHollowTransformerConfig
+        from graph_bridges.models.temporal_networks.transformers.temporal_hollow_transformers import TemporalHollowTransformerConfig
 
         config = CTDDConfig()
         device = torch.device(config.trainer.device)

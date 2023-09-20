@@ -15,9 +15,9 @@ class SBConfig(GeneralSBConfig):
         from graph_bridges.models.backward_rates.ctdd_backward_rate_config import GaussianTargetRateImageX0PredEMAConfig
         from graph_bridges.models.backward_rates.ctdd_backward_rate_config import BackRateMLPConfig, BackwardRateTemporalHollowTransformerConfig
 
-        from graph_bridges.models.networks.convnets.autoencoder import ConvNetAutoencoderConfig
-        from graph_bridges.models.networks.transformers.temporal_hollow_transformers import TemporalHollowTransformerConfig
-        from graph_bridges.models.networks.unets.unet_wrapper import UnetTauConfig
+        from graph_bridges.models.temporal_networks.convnets.autoencoder import ConvNetAutoencoderConfig
+        from graph_bridges.models.temporal_networks.transformers.temporal_hollow_transformers import TemporalHollowTransformerConfig
+        from graph_bridges.models.temporal_networks.unets.unet_wrapper import UnetTauConfig
 
         self.data.as_spins = True
 

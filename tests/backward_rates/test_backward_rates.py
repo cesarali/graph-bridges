@@ -38,8 +38,8 @@ class TestGraphs(unittest.TestCase):
         from graph_bridges.configs.graphs.graph_config_ctdd import CTDDConfig
         from graph_bridges.data.graph_dataloaders_config import CommunitySmallConfig
 
-        from graph_bridges.models.networks.unets.unet_wrapper import UnetTauConfig
-        from graph_bridges.models.networks.convnets.autoencoder import ConvNetAutoencoderConfig
+        from graph_bridges.models.temporal_networks.unets.unet_wrapper import UnetTauConfig
+        from graph_bridges.models.temporal_networks.convnets.autoencoder import ConvNetAutoencoderConfig
         from graph_bridges.models.backward_rates.ctdd_backward_rate_config import BackRateMLPConfig
         from graph_bridges.models.backward_rates.ctdd_backward_rate_config import GaussianTargetRateImageX0PredEMAConfig
 
@@ -70,7 +70,7 @@ class TestGraphs(unittest.TestCase):
         from graph_bridges.configs.graphs.graph_config_ctdd import CTDDConfig
         from graph_bridges.data.graph_dataloaders_config import CommunitySmallConfig
         from graph_bridges.models.backward_rates.ctdd_backward_rate_config import GaussianTargetRateImageX0PredEMAConfig
-        from graph_bridges.models.networks.convnets.autoencoder import ConvNetAutoencoderConfig
+        from graph_bridges.models.temporal_networks.convnets.autoencoder import ConvNetAutoencoderConfig
 
         ctdd_config = CTDDConfig(experiment_indentifier="graph_wunet_test",
                                  experiment_name="graph",
@@ -102,7 +102,7 @@ class TestGraphs(unittest.TestCase):
         from graph_bridges.data.graph_dataloaders_config import CommunitySmallConfig
         from graph_bridges.models.backward_rates.backward_rate_utils import load_backward_rates
         from graph_bridges.models.backward_rates.ctdd_backward_rate_config import BackwardRateTemporalHollowTransformerConfig
-        from graph_bridges.models.networks.transformers.temporal_hollow_transformers import  TemporalHollowTransformerConfig
+        from graph_bridges.models.temporal_networks.transformers.temporal_hollow_transformers import  TemporalHollowTransformerConfig
 
         config = CTDDConfig()
         config.data = CommunitySmallConfig(batch_size=24, full_adjacency=True)
@@ -136,9 +136,9 @@ class TestNist(unittest.TestCase):
     def test_backwardrate_mlp_graph(self):
 
         from graph_bridges.configs.images.nist_config_ctdd import CTDDConfig
-        from graph_bridges.models.networks.unets.unet_wrapper import UnetTauConfig
+        from graph_bridges.models.temporal_networks.unets.unet_wrapper import UnetTauConfig
         from graph_bridges.data.graph_dataloaders_config import CommunitySmallConfig
-        from graph_bridges.models.networks.convnets.autoencoder import ConvNetAutoencoderConfig
+        from graph_bridges.models.temporal_networks.convnets.autoencoder import ConvNetAutoencoderConfig
         from graph_bridges.models.backward_rates.ctdd_backward_rate_config import BackRateMLPConfig
         from graph_bridges.models.backward_rates.ctdd_backward_rate_config import GaussianTargetRateImageX0PredEMAConfig
 

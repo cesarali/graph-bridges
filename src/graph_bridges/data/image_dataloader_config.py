@@ -39,7 +39,7 @@ class DiscreteCIFAR10Config:
 @dataclass
 class NISTLoaderConfig:
     name:str = "NISTLoader"
-    data:str = "mnist" #
+    data:str = "mnist" # emnist, fashion, mnist
     dataloader_data_dir:str = None
 
     input_dim: int = 784

@@ -9,7 +9,7 @@ from graph_bridges.configs.graphs.graph_config_sb import SBConfig
 
 from typing import Union, Tuple
 from torchtyping import TensorType
-from graph_bridges.models.networks import networks_tau
+from graph_bridges.models.temporal_networks import networks_tau
 from graph_bridges.models.reference_process.ctdd_reference import GaussianTargetRate
 
 

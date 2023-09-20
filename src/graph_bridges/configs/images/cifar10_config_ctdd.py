@@ -3,9 +3,11 @@ from dataclasses import asdict
 from graph_bridges.configs.config_ctdd import CTDDConfig as GeneralCTDDConfig
 from graph_bridges.data.image_dataloader_config import DiscreteCIFAR10Config
 from graph_bridges.models.backward_rates.ctdd_backward_rate_config import GaussianTargetRateImageX0PredEMAConfig
-from graph_bridges.models.networks.unets.unet_wrapper import UnetTauConfig
+from graph_bridges.models.temporal_networks.unets.unet_wrapper import UnetTauConfig
 
+from dataclasses import dataclass
 
+@dataclass
 class CTDDConfig(GeneralCTDDConfig):
 
     config_path : str = ""

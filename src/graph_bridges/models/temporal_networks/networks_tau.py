@@ -3,7 +3,7 @@ import torch.nn as nn
 import math
 from torchtyping import TensorType
 
-import graph_bridges.models.networks.embedding_utils as embedding_utils
+import graph_bridges.models.temporal_networks.embedding_utils as embedding_utils
 import torch.nn.functional as F
 import numpy as np
 

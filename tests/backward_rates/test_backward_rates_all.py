@@ -13,7 +13,7 @@ from graph_bridges.data.dataloaders_utils import load_dataloader
 from graph_bridges.models.generative_models.sb import SB
 from graph_bridges.utils.test_utils import check_model_devices
 from graph_bridges.data.graph_dataloaders import BridgeGraphDataLoaders
-from graph_bridges.models.networks.convnets.autoencoder import ConvNetAutoencoderConfig
+from graph_bridges.models.temporal_networks.convnets.autoencoder import ConvNetAutoencoderConfig
 from graph_bridges.models.backward_rates.ctdd_backward_rate_config import GaussianTargetRateImageX0PredEMAConfig
 
 class BaseBackwardRateForSBTest(object):

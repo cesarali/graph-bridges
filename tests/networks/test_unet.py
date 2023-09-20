@@ -3,7 +3,7 @@ import unittest
 import torch
 import diffusers
 
-from graph_bridges.models.networks.networks_tau import UNet
+from graph_bridges.models.temporal_networks.networks_tau import UNet
 from diffusers import UNet2DModel, UNet1DModel
 from torchvision.datasets import MNIST, CIFAR10
 from torchvision.transforms import ToTensor

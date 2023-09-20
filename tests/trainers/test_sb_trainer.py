@@ -11,7 +11,7 @@ from graph_bridges.data.graph_dataloaders_config import EgoConfig
 from graph_bridges.configs.graphs.graph_config_sb import SBConfig
 from graph_bridges.configs.config_sb import  ParametrizedSamplerConfig, SteinSpinEstimatorConfig
 from graph_bridges.models.backward_rates.ctdd_backward_rate_config import BackwardRateTemporalHollowTransformerConfig
-from graph_bridges.models.networks.transformers.temporal_hollow_transformers import TemporalHollowTransformerConfig
+from graph_bridges.models.temporal_networks.transformers.temporal_hollow_transformers import TemporalHollowTransformerConfig
 from graph_bridges.models.trainers.sb_training import SBTrainer
 
 class TestSBTrainer(unittest.TestCase):

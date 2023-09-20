@@ -1,8 +1,8 @@
 import torch
 import unittest
 
-from graph_bridges.models.networks.transformers.hollow_transformers import MultiheadHollowAttention
-from graph_bridges.models.networks.transformers.hollow_transformers import HollowTransformer
+from graph_bridges.models.temporal_networks.transformers.hollow_transformers import MultiheadHollowAttention
+from graph_bridges.models.temporal_networks.transformers.hollow_transformers import HollowTransformer
 
 class TestHollowTransformers(unittest.TestCase):
 

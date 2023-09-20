@@ -1,7 +1,7 @@
 import torch
 from graph_bridges.models.backward_rates.backward_rate import BackwardRate
-from graph_bridges.models.networks.transformers.temporal_hollow_transformers import TemporalHollowTransformer
-from graph_bridges.models.networks.ema import EMA
+from graph_bridges.models.temporal_networks.transformers.temporal_hollow_transformers import TemporalHollowTransformer
+from graph_bridges.models.temporal_networks.ema import EMA
 from torch.nn.parallel import DistributedDataParallel as DDP
 import torch.nn.functional as F
 

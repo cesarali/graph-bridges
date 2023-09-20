@@ -36,6 +36,7 @@ class GraphDataConfig:
     S: int = None
     number_of_spins: int = None
     number_of_states: int = None
+
     total_data_size:int = None
     training_size:int = None
     test_size:int = None

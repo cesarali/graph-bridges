@@ -41,11 +41,11 @@ if __name__ == "__main__":
     from graph_bridges.data.graph_dataloaders_config import PepperMNISTDataConfig
     from graph_bridges.data.graph_dataloaders_config import CommunitySmallConfig
 
-    from graph_bridges.models.networks.convnets.autoencoder import ConvNetAutoencoderConfig
+    from graph_bridges.models.temporal_networks.convnets.autoencoder import ConvNetAutoencoderConfig
     from graph_bridges.models.backward_rates.ctdd_backward_rate_config import BackRateMLPConfig
     from graph_bridges.models.backward_rates.ctdd_backward_rate_config import GaussianTargetRateImageX0PredEMAConfig
     from graph_bridges.models.backward_rates.ctdd_backward_rate_config import BackwardRateTemporalHollowTransformerConfig
-    from graph_bridges.models.networks.transformers.temporal_hollow_transformers import TemporalHollowTransformerConfig
+    from graph_bridges.models.temporal_networks.transformers.temporal_hollow_transformers import TemporalHollowTransformerConfig
     
     ctdd_config = CTDDConfig(experiment_indentifier="temporal_hollow_ego_{}".format(random.randint(0,10000)),
                              experiment_name="darius_graph",

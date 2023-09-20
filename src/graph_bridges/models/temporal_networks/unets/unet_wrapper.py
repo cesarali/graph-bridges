@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 from dataclasses import dataclass
-from graph_bridges.models.networks import networks_tau
+from graph_bridges.models.temporal_networks import networks_tau
 from typing import List
 from dataclasses import field
 
