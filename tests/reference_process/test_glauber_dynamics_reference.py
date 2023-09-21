@@ -42,7 +42,7 @@ class TestGlauberDynamics(unittest.TestCase):
                                      self.sb_config.sampler.min_t,
                                      sinkhorn_iteration=0)
         timesteps_ = self.scheduler.timesteps
-        print(f"Initial Values {self.x_adj_data}")
+        self.reference_process.sample_path(self.x_adj_data,timesteps_)
 
     @unittest.skip
     def test_rates_and_probabilities(self):

@@ -78,7 +78,7 @@ class GlauberDynamics(ReferenceProcess):
         rate_per_spin = rate_per_spin.reshape(batch_size,number_of_spins)
         return rate_per_spin
 
-    def glauber_dynamics(self,start_spins,time_steps):
+    def sample_path(self, start_spins, time_grid):
         if len(start_spins.shape) == 2:
             paths = start_spins.unsqueeze(1)
         elif len(start_spins.shape) == 3:
@@ -89,17 +89,22 @@ class GlauberDynamics(ReferenceProcess):
 
         number_of_paths = paths.shape[0]
         number_of_spins = paths.shape[-1]
-        rows_index = torch.arange(0, number_of_paths)
-        for time_index in self.time_grid[1:]:
+        rows_index = torch.arange(0, number_of_paths).to(self.device)
+        time_index = 0
+
+        for time_step in time_grid[1:]:
+            tau = time_grid[time_index+1] - time_grid[time_index]
+            time_index +=1
+
             states = paths[:, -1, :]
 
-            i_random = torch.randint(0, number_of_spins, (number_of_paths,))
+            i_random = torch.randint(0, number_of_spins, (number_of_paths,)).to(self.device)
 
             # EVALUATES HAMILTONIAN
             H_i = self.hamiltonian.hamiltonian_diagonal(states, i_random)
             x_i = torch.diag(states[:, i_random])
-            flip_probability = (self.tau * self.mu * torch.exp(-x_i * H_i)) / 2 * torch.cosh(H_i)
-            r = torch.rand((number_of_paths,))
+            flip_probability = (tau * self.gamma * torch.exp(-x_i * H_i)) / 2 * torch.cosh(H_i)
+            r = torch.rand((number_of_paths,)).to(self.device)
             where_to_flip = r < flip_probability
 
             new_states = torch.clone(states)
@@ -108,4 +113,4 @@ class GlauberDynamics(ReferenceProcess):
 
             paths = torch.cat([paths, new_states.unsqueeze(1)], dim=1)
 
-        return paths, self.time_grid
+        return paths, time_grid
