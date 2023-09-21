@@ -2,21 +2,9 @@ import os
 from typing import List
 from dataclasses import dataclass, asdict,field
 from graph_bridges import data_path
+
 @dataclass
-class ParametrizedIsingHamiltonianConfig:
-
-    #NAMES
-    name: str = "ParametrizedIsingHamiltonian"
-    data: str = "spin_glass"#spin_glass, ising
-    delete_data:bool = False
-
-    dataloader_data_dir:str = None
-    dataloader_data_path:str = None
-
-    dir: str = None
-    batch_size: int = 32
-    test_split: float = 0.2
-
+class SpinGlassVariablesConfig:
     #ISING VARIABLES
     number_of_spins : int = 4
     beta : int = 1.
@@ -28,6 +16,22 @@ class ParametrizedIsingHamiltonianConfig:
     number_of_paths : int = 500
     number_of_mcmc_steps : int = 1000
     number_of_mcmc_burning_steps: int = 500
+
+
+@dataclass
+class ParametrizedSpinGlassHamiltonianConfig(SpinGlassVariablesConfig):
+
+    #NAMES
+    name: str = "ParametrizedSpinGlassHamiltonian"
+    data: str = "spin_glass"#spin_glass, ising
+    delete_data:bool = False
+
+    dataloader_data_dir:str = None
+    dataloader_data_path:str = None
+
+    dir: str = None
+    batch_size: int = 32
+    test_split: float = 0.2
 
     # CTDD or SB variables
     total_data_size:int = None

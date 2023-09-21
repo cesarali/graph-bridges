@@ -41,7 +41,6 @@ from diffusers.utils import BaseOutput, randn_tensor
 from diffusers.configuration_utils import ConfigMixin, register_to_config
 from diffusers.schedulers.scheduling_utils import KarrasDiffusionSchedulers, SchedulerMixin
 
-from graph_bridges.models.schedulers.scheduling_utils import register_scheduler
 from graph_bridges.models.backward_rates.ctdd_backward_rate import BackwardRate
 from graph_bridges.models.reference_process.ctdd_reference import ReferenceProcess
 from torch.distributions.poisson import Poisson
@@ -66,7 +65,6 @@ class SBSchedulerOutput(BaseOutput):
     new_sample: torch.FloatTensor
     original_sample: Optional[torch.FloatTensor] = None
 
-@register_scheduler
 class SBScheduler(SchedulerMixin, ConfigMixin):
     """
 

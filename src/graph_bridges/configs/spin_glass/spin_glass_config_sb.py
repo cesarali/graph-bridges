@@ -1,9 +1,12 @@
 import os
 from pprint import pprint
-from dataclasses import asdict
-from graph_bridges.configs.config_sb import SBConfig as GeneralSBConfig
-from dataclasses import dataclass
+from typing import Union
 
+from dataclasses import asdict
+from dataclasses import dataclass
+from graph_bridges.configs.config_sb import SBConfig as GeneralSBConfig
+from graph_bridges.data.spin_glass_dataloaders_config import ParametrizedSpinGlassHamiltonianConfig
+from graph_bridges.models.reference_process.reference_process_config import GlauberDynamicsConfig,GaussianTargetRateConfig
 @dataclass
 class SBConfig(GeneralSBConfig):
 
@@ -12,6 +15,9 @@ class SBConfig(GeneralSBConfig):
     experiment_type: str = 'sb'
     experiment_name :str = 'graph'
     experiment_indentifier :str  = 'testing'
+
+    data: ParametrizedSpinGlassHamiltonianConfig = ParametrizedSpinGlassHamiltonianConfig()
+    reference: Union[GlauberDynamicsConfig,GaussianTargetRateConfig] = GaussianTargetRateConfig()
 
     def align_configurations(self):
         from graph_bridges.models.backward_rates.ctdd_backward_rate_config import GaussianTargetRateImageX0PredEMAConfig
@@ -23,6 +29,8 @@ class SBConfig(GeneralSBConfig):
         from graph_bridges.models.temporal_networks.unets.unet_wrapper import UnetTauConfig
 
         self.data.as_spins = True
+        if not isinstance(self.data, ParametrizedSpinGlassHamiltonianConfig):
+            raise Exception("Data Not For the Specified Configuration")
 
         if isinstance(self.model,BackRateMLPConfig):
             self.data.as_image = False

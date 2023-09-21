@@ -122,7 +122,6 @@ class TestMLPNist(unittest.TestCase):
                                  experiment_type="ctdd")
         ctdd_config.data = NISTLoaderConfig(batch_size=24)
         ctdd_config.model = BackRateMLPConfig()
-        ctdd_config.temp_network = ctdd_config.model
 
         ctdd_config.data.batch_size = 12
         device = torch.device(ctdd_config.device)

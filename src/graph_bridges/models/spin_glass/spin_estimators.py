@@ -2,7 +2,7 @@ import os
 import tqdm
 
 import torch
-from ising_parameters import ParametrizedIsingHamiltonian
+from ising_parameters import ParametrizedSpinGlassHamiltonian
 from graph_bridges.utils.files_utils import create_dir_and_writer
 from graph_bridges.models.spin_glass.spin_states_statistics import obtain_all_spin_states, obtain_new_spin_states
 from torch.optim import Adam
@@ -15,10 +15,10 @@ def score_ratio(model, x_copy, x_flip):
     loss = (g(Q_copy / Q_flipped)) ** 2.
     return loss
 
-class ParametrizedIsingHamiltonianEstimator(ParametrizedIsingHamiltonian):
+class ParametrizedIsingHamiltonianEstimator():
 
     def __init__(self):
-        super(ParametrizedIsingHamiltonianEstimator).__init__()
+        pass
 
     def oppers_estimator(self, states: torch.Tensor) -> torch.Tensor:
         """
@@ -27,7 +27,7 @@ class ParametrizedIsingHamiltonianEstimator(ParametrizedIsingHamiltonian):
 
         Parameters
         ----------
-        IsingHamiltonian:ParametrizedIsingHamiltonian
+        IsingHamiltonian:ParametrizedSpinGlassHamiltonian
 
         states:torch.Tensor
 

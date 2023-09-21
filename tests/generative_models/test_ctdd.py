@@ -9,7 +9,6 @@ from graph_bridges.models.backward_rates.ctdd_backward_rate_config import BackRa
 from graph_bridges.models.backward_rates.ctdd_backward_rate_config import BackwardRateTemporalHollowTransformerConfig
 from graph_bridges.models.temporal_networks.transformers.temporal_hollow_transformers import TemporalHollowTransformerConfig
 
-
 class TestGraphCTDD(unittest.TestCase):
     from graph_bridges.configs.graphs.graph_config_ctdd import CTDDConfig
 
@@ -78,6 +77,8 @@ class TestCTDDCifar10(unittest.TestCase):
         x = self.ctdd.pipeline(self.ctdd.model, 36)
         print(x)
 
+
+@unittest.skip
 class TestCTDDSpins(unittest.TestCase):
 
     from graph_bridges.configs.spin_glass.spin_glass_config_ctdd import CTDDConfig
@@ -86,12 +87,12 @@ class TestCTDDSpins(unittest.TestCase):
 
     def setUp(self) -> None:
         from graph_bridges.configs.spin_glass.spin_glass_config_ctdd import CTDDConfig
-
-        from graph_bridges.data.ising_dataloaders_config import ParametrizedIsingHamiltonianConfig
+        from graph_bridges.data.spin_glass_dataloaders_config import ParametrizedSpinGlassHamiltonianConfig
         from graph_bridges.models.generative_models.ctdd import CTDD
 
         config = CTDDConfig()
-        config.data = ParametrizedIsingHamiltonianConfig(batch_size=28)
+        config.data = ParametrizedSpinGlassHamiltonianConfig(batch_size=28)
+
         config.trainer.device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
         # device

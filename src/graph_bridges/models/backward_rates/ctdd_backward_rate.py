@@ -15,9 +15,10 @@ from graph_bridges.models.reference_process.ctdd_reference import GaussianTarget
 from dataclasses import dataclass
 from diffusers.utils import BaseOutput
 from graph_bridges.models.temporal_networks.ema import EMA
-from graph_bridges.models.temporal_networks.network_utils import load_temp_network
+from graph_bridges.models.temporal_networks.temporal_networks_utils import load_temp_network
 from graph_bridges.models.backward_rates.backward_rate import BackwardRate
-
+from graph_bridges.models.temporal_networks.temporal_networks_utils import load_temp_network
+from graph_bridges.models.temporal_networks.transformers.temporal_hollow_transformers import TemporalHollowTransformer
 class ImageX0PredBase(BackwardRate):
     def __init__(self, cfg, device, rank=None):
         BackwardRate.__init__(self,cfg,device,rank)
@@ -95,25 +96,13 @@ class BackRateMLP(EMA,BackwardRate,GaussianTargetRate):
         BackwardRate.__init__(self,config,device,rank)
 
         self.hidden_layer = config.model.hidden_layer
-        self.define_deep_models()
+        self.define_deep_models(device)
         #self.init_parameters()
         self.init_ema()
         self.to(device)
 
-    def define_deep_models(self):
-        # layers
-        self.f1 = nn.Linear(self.dimension, self.hidden_layer)
-        self.f2 = nn.Linear(self.hidden_layer + self.time_embed_dim,self.dimension*self.num_states)
-
-        # temporal encoding
-        #self.temb_modules = []
-        #self.temb_modules.append(nn.Linear(self.time_embed_dim, self.time_embed_dim * 4))
-        #nn.init.zeros_(self.temb_modules[-1].bias)
-        #self.temb_modules.append(nn.Linear(self.time_embed_dim * 4, self.time_embed_dim * 4))
-        #nn.init.zeros_(self.temb_modules[-1].bias)
-        #self.temb_modules = nn.ModuleList(self.temb_modules)
-
-        #self.expanded_time_dim = 4 * self.time_embed_dim if self.do_time_embed else None
+    def define_deep_models(self,device):
+        self.net = load_temp_network(config=self.config,device=device)
 
     def _forward(self,
                 x: TensorType["batch_size", "dimension"],
@@ -127,14 +116,8 @@ class BackRateMLP(EMA,BackwardRate,GaussianTargetRate):
         if self.config.data.type == "doucet":
             x = self._center_data(x)
 
-        batch_size = x.shape[0]
-        time_embbedings = transformer_timestep_embedding(times,
-                                                         embedding_dim=self.time_embed_dim)
+        rate_logits = self.net(x,times)
 
-        step_one = self.f1(x)
-        step_two = torch.concat([step_one, time_embbedings], dim=1)
-        rate_logits = self.f2(step_two)
-        rate_logits = rate_logits.reshape(batch_size,self.dimension,self.num_states)
         return rate_logits
 
     def init_parameters(self):
@@ -189,10 +172,6 @@ class GaussianTargetRateImageX0PredEMA(EMA,ImageX0PredBase):
         #GaussianTargetRate.__init__(self,cfg, device)
         self.config = cfg
         self.init_ema()
-
-from graph_bridges.models.temporal_networks.network_utils import load_temp_network
-
-from graph_bridges.models.temporal_networks.transformers.temporal_hollow_transformers import TemporalHollowTransformer
 
 class BackwardRateTemporalHollowTransformer(EMA,BackwardRate,GaussianTargetRate):
 

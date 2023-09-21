@@ -17,8 +17,11 @@ from graph_bridges.data.graph_dataloaders import DoucetTargetData
 from graph_bridges.data.dataloaders_utils import load_dataloader
 from graph_bridges.data.graph_dataloaders import BridgeGraphDataLoaders
 from graph_bridges.models.reference_process.ctdd_reference import GaussianTargetRate
+
 from graph_bridges.models.backward_rates.backward_rate_utils import load_backward_rates
+from graph_bridges.models.reference_process.reference_process_utils import load_reference
 from graph_bridges.utils.test_utils import check_model_devices
+
 
 @dataclass
 class SB:
@@ -43,7 +46,9 @@ class SB:
         self.data_dataloader = load_dataloader(config, type="data", device=device)
         self.target_dataloader = load_dataloader(config, type="target", device=device)
 
-        self.reference_process = GaussianTargetRate(config, device)
+        self.reference_process = load_reference(config,device)
+
+
         self.backward_ratio_stein_estimator = BackwardRatioSteinEstimator(config, device)
         self.scheduler = SBScheduler(config, device)
         self.pipeline = SBPipeline(config,

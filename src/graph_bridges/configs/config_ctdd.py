@@ -18,7 +18,7 @@ from graph_bridges.models.temporal_networks.transformers.temporal_hollow_transfo
 from graph_bridges.models.temporal_networks.convnets.autoencoder import ConvNetAutoencoderConfig
 
 from graph_bridges.models.temporal_networks.unets.unet_wrapper import UnetTauConfig
-from graph_bridges.models.temporal_networks.networks_configs import all_temp_nets_configs
+from graph_bridges.models.temporal_networks.temporal_networks_configs import all_temp_nets_configs
 
 from pprint import pprint
 

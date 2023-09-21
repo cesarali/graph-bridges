@@ -18,13 +18,11 @@ from diffusers.pipelines.pipeline_utils import DiffusionPipeline, ImagePipelineO
 from graph_bridges.configs.graphs.graph_config_sb import SBConfig
 import torch.nn.functional as F
 from tqdm import tqdm
-from graph_bridges.models.pipelines.pipelines_utils import register_pipeline
 from graph_bridges.models.schedulers.scheduling_sb import SBScheduler
 from graph_bridges.models.reference_process.ctdd_reference import ReferenceProcess
 from graph_bridges.models.backward_rates.ctdd_backward_rate import BackwardRate
 from graph_bridges.data.graph_dataloaders import BridgeGraphDataLoaders
 
-@register_pipeline
 class SBPipeline(DiffusionPipeline):
     r"""
     This model inherits from [`DiffusionPipeline`]. Check the superclass documentation for the generic methods the

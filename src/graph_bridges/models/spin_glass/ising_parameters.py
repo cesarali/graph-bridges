@@ -8,7 +8,7 @@ from pprint import pprint
 from torch.distributions import Normal, Bernoulli
 
 from graph_bridges.models.spin_glass.spin_states_statistics import obtain_all_spin_states, obtain_new_spin_states
-from graph_bridges.data.ising_dataloaders_config import ParametrizedIsingHamiltonianConfig
+from graph_bridges.data.spin_glass_dataloaders_config import ParametrizedSpinGlassHamiltonianConfig
 
 class bernoulli_spins():
     """
@@ -39,11 +39,11 @@ def initialize_model(number_of_spins,number_of_paths,J_mean,J_std):
     return paths, J
 
 
-class ParametrizedIsingHamiltonian(nn.Module):
+class ParametrizedSpinGlassHamiltonian(nn.Module):
     """
     Simple Hamiltonian Model for Parameter Estimation
     """
-    def __init__(self, config:ParametrizedIsingHamiltonianConfig):
+    def __init__(self, config:ParametrizedSpinGlassHamiltonianConfig, device=torch.device("cpu")):
         """
         Parameters
         ----------
@@ -52,14 +52,15 @@ class ParametrizedIsingHamiltonian(nn.Module):
         obtain_partition_function: bool
             only defined for number_of_spins < 10
         """
-        super(ParametrizedIsingHamiltonian, self).__init__()
+        super(ParametrizedSpinGlassHamiltonian, self).__init__()
         self.beta = config.beta
         self.number_of_spins = config.number_of_spins
+        self.device = device
 
-        self.lower_diagonal_indices = torch.tril_indices(self.number_of_spins, self.number_of_spins, -1)
+        self.lower_diagonal_indices = torch.tril_indices(self.number_of_spins, self.number_of_spins, -1).to(self.device)
         self.number_of_couplings = self.lower_diagonal_indices[0].shape[0]
 
-        self.flip_mask = torch.ones((self.number_of_spins, self.number_of_spins))
+        self.flip_mask = torch.ones((self.number_of_spins, self.number_of_spins)).to(self.device)
         self.flip_mask.as_strided([self.number_of_spins], [self.number_of_spins + 1]).copy_(torch.ones(self.number_of_spins) * -1.)
         self.model_identifier = str(int(time.time()))
         self.define_parameters(config)
@@ -88,7 +89,7 @@ class ParametrizedIsingHamiltonian(nn.Module):
 
         return fields,couplings
 
-    def define_parameters(self,config:ParametrizedIsingHamiltonianConfig):
+    def define_parameters(self, config:ParametrizedSpinGlassHamiltonianConfig):
         couplings = config.couplings
         fields = config.fields
 
@@ -119,6 +120,8 @@ class ParametrizedIsingHamiltonian(nn.Module):
         #CONVERT INTO PARAMETERS
         self.fields = nn.Parameter(fields)
         self.couplings = nn.Parameter(couplings)
+        self.to(self.device)
+
         #========================================================================
         if config.obtain_partition_function:
             self.obtain_partition_function()
@@ -127,7 +130,7 @@ class ParametrizedIsingHamiltonian(nn.Module):
 
     def obtain_partition_function(self):
         assert self.number_of_spins < 12
-        all_states = obtain_all_spin_states(self.number_of_spins)
+        all_states = obtain_all_spin_states(self.number_of_spins).to(self.device)
         with torch.no_grad():
             self.partition_function = self(all_states)
             self.partition_function = torch.exp(-self.partition_function).sum()
@@ -140,8 +143,8 @@ class ParametrizedIsingHamiltonian(nn.Module):
         :return:
         """
         if couplings is None:
-            couplings = self.couplings
-        coupling_matrix = torch.zeros((self.number_of_spins, self.number_of_spins))
+            couplings = self.couplings.to(self.device)
+        coupling_matrix = torch.zeros((self.number_of_spins, self.number_of_spins)).to(self.device)
         coupling_matrix[self.lower_diagonal_indices[0], self.lower_diagonal_indices[1]] = couplings
         coupling_matrix = coupling_matrix + coupling_matrix.T
         return coupling_matrix
@@ -161,7 +164,7 @@ class ParametrizedIsingHamiltonian(nn.Module):
             else:
                 return -self.beta * self(states).std()
 
-    def sample(self,config:ParametrizedIsingHamiltonianConfig)-> torch.Tensor:
+    def sample(self, config:ParametrizedSpinGlassHamiltonianConfig)-> torch.Tensor:
         """
         Here we follow a basic metropolis hasting algorithm
 
@@ -175,15 +178,16 @@ class ParametrizedIsingHamiltonian(nn.Module):
             self.number_of_mcmc_steps = number_of_mcmc_steps
 
             # we start a simple bernoulli spin distribution
-            p0 = torch.Tensor(self.number_of_spins * [0.5])
+            p0 = torch.Tensor(self.number_of_spins * [0.5]).to(self.device)
             initial_distribution = bernoulli_spins(p0)
             states = initial_distribution.sample(sample_shape=(self.number_of_paths,))
+
             paths = states.unsqueeze(1)
-            rows_index = torch.arange(0, self.number_of_paths)
+            rows_index = torch.arange(0, self.number_of_paths).to(self.device)
 
             # METROPOLIS HASTING
             for mcmc_index in range(self.number_of_mcmc_steps):
-                i_random = torch.randint(0, self.number_of_spins, (self.number_of_paths,))
+                i_random = torch.randint(0, self.number_of_spins, (self.number_of_paths,)).to(self.device)
                 index_to_change = (rows_index, i_random)
 
                 states = paths[:,-1,:]
@@ -195,7 +199,7 @@ class ParametrizedIsingHamiltonian(nn.Module):
                 H = self.beta * (H_0-H_1)
 
                 flip_probability = torch.exp(H)
-                r = torch.rand((number_of_paths,))
+                r = torch.rand((number_of_paths,)).to(self.device)
                 where_to_flip = r < flip_probability
 
                 new_states = torch.clone(states)
@@ -245,12 +249,12 @@ if __name__=="__main__":
     # TEST PARAMETRIC MODEL
     #===========================================================================
     number_of_spins = 100
-    number_of_paths = 3000
+    number_of_paths = 20
     batch_size = 32
-    number_of_mcmc_steps = 5000
+    number_of_mcmc_steps = 500
 
-    config = ParametrizedIsingHamiltonianConfig()
-    number_of_couplings = ParametrizedIsingHamiltonian.coupling_size(number_of_spins)
+    config = ParametrizedSpinGlassHamiltonianConfig()
+    number_of_couplings = ParametrizedSpinGlassHamiltonian.coupling_size(number_of_spins)
 
     #fields = torch.full((number_of_spins,),0.2)
     #couplings = torch.full((number_of_couplings,),.1)
@@ -265,17 +269,28 @@ if __name__=="__main__":
     config.couplings_deterministic =  None
     config.obtain_partition_function = False
     config.number_of_mcmc_steps = number_of_mcmc_steps
-    config.couplings_sigma =  5.
-    config.fields =  fields
-    config.couplings =  couplings
+    config.number_of_paths = number_of_paths
+    config.couplings_sigma = 5.
+    config.fields = fields
+    config.couplings = couplings
+    device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
 
-    ising_model_real = ParametrizedIsingHamiltonian(config)
+    ising_model_real = ParametrizedSpinGlassHamiltonian(config, device)
     ising_mcmc_sample = ising_model_real.sample(config)
-    ising_sample = ising_mcmc_sample[:, 500, :]
+    print(f"ising_mcmc_sample shape {ising_mcmc_sample.shape}")
+    ising_sample = ising_mcmc_sample[:, 23, :]
+    print(ising_sample.shape)
+
+    print("Test Hamiltonian")
+    print(ising_model_real(ising_sample))
+    print("Test Diagonal")
+    i_random = torch.randint(0, number_of_spins, (number_of_paths,)).to(device)
+    print("Test Hamiltonian Diagonal")
+    print(ising_model_real.hamiltonian_diagonal(states=ising_sample,i_random=i_random))
 
     log_likelihood_of_path(ising_model_real,ising_mcmc_sample,plot=True)
-    real_couplings = torch.clone(ising_model_real.couplings)
-    real_fields = torch.clone(ising_model_real.fields)
+    #real_couplings = torch.clone(ising_model_real.couplings)
+    #real_fields = torch.clone(ising_model_real.fields)
 
     # Create the dataset and the model
     #ising_dataset = BinaryDataSet(ising_sample)

@@ -1,6 +1,11 @@
+import os
 import torch
 from torch import nn
 from dataclasses import dataclass
+from typing import Union
+
+#from graph_bridges.configs.config_sb import SBConfig
+#from graph_bridges.configs.config_ctdd import CTDDConfig
 
 from graph_bridges.models.temporal_networks.embedding_utils import transformer_timestep_embedding
 from graph_bridges.models.temporal_networks.transformers.hollow_transformers import HollowTransformerLayer
@@ -23,7 +28,7 @@ class TemporalHollowTransformerConfig:
 
 class TemporalHollowTransformer(nn.Module):
 
-    def __init__(self, config:TemporalHollowTransformerConfig, device:torch.device):
+    def __init__(self, config, device:torch.device):
         super(TemporalHollowTransformer, self).__init__()
 
         self.device = device

@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from diffusers.pipelines.pipeline_utils import DiffusionPipeline, ImagePipelineOutput
-from graph_bridges.configs.graphs.graph_config_ctdd import CTDDConfig
+from graph_bridges.configs.config_ctdd import CTDDConfig
 from diffusers.utils import randn_tensor
 import torch.nn.functional as F
 from tqdm import tqdm
@@ -106,14 +106,12 @@ class DDPMPipeline(DiffusionPipeline):
 
         return ImagePipelineOutput(images=image)
 
-from graph_bridges.models.pipelines.pipelines_utils import register_pipeline
 from graph_bridges.models.schedulers.scheduling_ctdd import CTDDScheduler
 from graph_bridges.data.graph_dataloaders import DoucetTargetData,BridgeGraphDataLoaders
 from graph_bridges.models.reference_process.ctdd_reference import ReferenceProcess
 from graph_bridges.models.backward_rates.ctdd_backward_rate import BackwardRate
 
 
-@register_pipeline
 class CTDDPipeline(DiffusionPipeline):
     r"""
     This model inherits from [`DiffusionPipeline`]. Check the superclass documentation for the generic methods the

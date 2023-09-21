@@ -3,7 +3,8 @@ import sys
 from pprint import pprint
 from dataclasses import asdict,dataclass
 from graph_bridges.configs.config_ctdd import CTDDConfig as GeneralCTDDConfig
-from graph_bridges.data.ising_dataloaders_config import ParametrizedIsingHamiltonianConfig
+from graph_bridges.data.spin_glass_dataloaders_config import ParametrizedSpinGlassHamiltonianConfig
+
 @dataclass
 class CTDDConfig(GeneralCTDDConfig):
 
@@ -13,7 +14,7 @@ class CTDDConfig(GeneralCTDDConfig):
     experiment_name :str = 'graph'
     experiment_indentifier :str  = 'testing'
 
-    data:ParametrizedIsingHamiltonianConfig = ParametrizedIsingHamiltonianConfig()
+    data:ParametrizedSpinGlassHamiltonianConfig = ParametrizedSpinGlassHamiltonianConfig()
 
     def __post_init__(self):
         self.data.as_spins = False
@@ -26,6 +27,7 @@ class CTDDConfig(GeneralCTDDConfig):
         from graph_bridges.models.temporal_networks.convnets.autoencoder import ConvNetAutoencoderConfig
         from graph_bridges.models.temporal_networks.transformers.temporal_hollow_transformers import TemporalHollowTransformerConfig
         from graph_bridges.models.temporal_networks.unets.unet_wrapper import UnetTauConfig
+        from graph_bridges.models.temporal_networks.mlp.temporal_mlp import TemporalMLPConfig
 
         self.data.as_spins = False
 
@@ -34,6 +36,10 @@ class CTDDConfig(GeneralCTDDConfig):
         #----------------------------------------------------------------------------------------
 
         if isinstance(self.model,BackRateMLPConfig):
+            if isinstance(self.temp_network,TemporalMLPConfig):
+                pass
+            else:
+                self.temp_network = TemporalMLPConfig()
             self.data.as_image = False
 
         elif isinstance(self.model,GaussianTargetRateImageX0PredEMAConfig):

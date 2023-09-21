@@ -68,6 +68,7 @@ class ReferenceProcess:
         forward_rates,qt0_denom,qt0_numer = self.forward_rates_and_probabilities(x, t, device)
         inner_sum = (p0t / qt0_denom) @ qt0_numer  # (N, D, S)
         backward_rates = forward_rates * inner_sum  # (N, D, S)
+
         backward_rates[
             torch.arange(num_of_paths, device=device).repeat_interleave(self.D),
             torch.arange(self.D, device=device).repeat(num_of_paths),

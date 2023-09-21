@@ -11,8 +11,8 @@ from torchvision import transforms
 from torch.utils.data import TensorDataset
 from graph_bridges.configs.config_sb import SBConfig
 from graph_bridges.configs.config_ctdd import CTDDConfig
-from graph_bridges.data.ising_dataloaders_config import ParametrizedIsingHamiltonianConfig
-from graph_bridges.models.spin_glass.ising_parameters import ParametrizedIsingHamiltonian
+from graph_bridges.data.spin_glass_dataloaders_config import ParametrizedSpinGlassHamiltonianConfig
+from graph_bridges.models.spin_glass.ising_parameters import ParametrizedSpinGlassHamiltonian
 
 from graph_bridges.data.transforms import (
     FlattenTransform,
@@ -25,7 +25,7 @@ from graph_bridges.data.transforms import (
     SpinsToBinaryTensor
 )
 
-def get_spins_transforms(config:ParametrizedIsingHamiltonianConfig):
+def get_spins_transforms(config:ParametrizedSpinGlassHamiltonianConfig):
     """
     :param config:
 
@@ -51,32 +51,39 @@ class SpinGlassSimulationData:
     fields:List = None
     beta:float = 1.
 
-def simulate_spin_glass_data(config:ParametrizedIsingHamiltonianConfig)->SpinGlassSimulationData:
+def simulate_fields_and_couplings(number_of_spins,number_of_couplings):
+
+    #fields = torch.full((number_of_spins,),0.2)
+    #couplings = torch.full((number_of_couplings,),.1)
+
+    fields = torch.Tensor(size=(number_of_spins,)).normal_(0.,1./number_of_spins)
+    couplings = torch.Tensor(size=(number_of_couplings,)).normal_(0.,1/number_of_spins)
+
+    return fields,couplings
+
+def simulate_spin_glass_data(config:ParametrizedSpinGlassHamiltonianConfig)->SpinGlassSimulationData:
     number_of_spins = config.number_of_spins
-    number_of_couplings = ParametrizedIsingHamiltonian.coupling_size(number_of_spins)
+    number_of_couplings = ParametrizedSpinGlassHamiltonian.coupling_size(number_of_spins)
 
     if config.fields is None and config.couplings is None:
-        #fields = torch.full((number_of_spins,),0.2)
-        #couplings = torch.full((number_of_couplings,),.1)
-
-        fields = torch.Tensor(size=(number_of_spins,)).normal_(0.,1./number_of_spins)
-        couplings = torch.Tensor(size=(number_of_couplings,)).normal_(0.,1/number_of_spins)
-
+        fields, couplings = simulate_fields_and_couplings(number_of_spins, number_of_couplings)
         config.fields = fields.tolist()
         config.couplings = couplings.tolist()
 
-    ising_model_real = ParametrizedIsingHamiltonian(config)
+    ising_model_real = ParametrizedSpinGlassHamiltonian(config,torch.device("cpu"))
     ising_mcmc_sample = ising_model_real.sample(config)
 
     assert config.number_of_mcmc_burning_steps < config.number_of_mcmc_steps
 
     ising_sample = ising_mcmc_sample[:, config.number_of_mcmc_burning_steps,:]
     simulation_data = SpinGlassSimulationData(sample=ising_sample.tolist(),
-                                              couplings=couplings.tolist(),
-                                              fields=fields.tolist())
+                                              couplings=config.couplings,
+                                              fields=config.fields,
+                                              beta=config.beta)
     return simulation_data
-def get_ising_dataset(data_config:ParametrizedIsingHamiltonianConfig):
-    data_config: ParametrizedIsingHamiltonianConfig
+
+def get_ising_dataset(data_config:ParametrizedSpinGlassHamiltonianConfig):
+    data_config: ParametrizedSpinGlassHamiltonianConfig
 
     data_ = data_config.data
     dataloader_data_dir = data_config.dataloader_data_dir
@@ -105,13 +112,17 @@ def get_ising_dataset(data_config:ParametrizedIsingHamiltonianConfig):
     train_spin = torch.Tensor(train_spin_list)
     test_spin = torch.Tensor(test_spin_list)
 
+    data_config.total_data_size = len(spin_glass_simulation.sample)
+    data_config.test_size = test_size
+    data_config.training_size = data_config.total_data_size - test_size
+
     return test_spin,train_spin
 
-class ParametrizedIsingHamiltonianLoader:
+class ParametrizedSpinGlassHamiltonianLoader:
 
     name_ = "ParametrizedIsingHamiltonianLoader"
 
-    def __init__(self, config:ParametrizedIsingHamiltonianConfig,device):
+    def __init__(self, config:ParametrizedSpinGlassHamiltonianConfig, device):
         self.config = config
 
         self.batch_size = config.batch_size

@@ -36,11 +36,15 @@ class CTDDConfig(GeneralCTDDConfig):
         from graph_bridges.models.temporal_networks.convnets.autoencoder import ConvNetAutoencoderConfig
         from graph_bridges.models.temporal_networks.transformers.temporal_hollow_transformers import TemporalHollowTransformerConfig
         from graph_bridges.models.temporal_networks.unets.unet_wrapper import UnetTauConfig
+        from graph_bridges.models.temporal_networks.mlp.temporal_mlp import TemporalMLPConfig
 
         self.data.as_spins = False
 
         if isinstance(self.model,BackRateMLPConfig):
-            pass
+            if isinstance(self.temp_network,TemporalMLPConfig):
+                pass
+            else:
+                self.temp_network = TemporalMLPConfig()
 
         elif isinstance(self.model,GaussianTargetRateImageX0PredEMAConfig):
             if isinstance(self.temp_network,ConvNetAutoencoderConfig):

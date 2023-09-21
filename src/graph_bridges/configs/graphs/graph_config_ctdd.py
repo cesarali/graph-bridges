@@ -9,19 +9,22 @@ class CTDDConfig(GeneralCTDDConfig):
     delete :bool = False
     experiment_type: str = 'ctdd'
     experiment_name :str = 'graph'
-    experiment_indentifier :str  = 'testing'
+    experiment_indentifier :str = 'testing'
 
     def align_configurations(self):
-        from graph_bridges.models.backward_rates.ctdd_backward_rate_config import GaussianTargetRateImageX0PredEMAConfig
         from graph_bridges.models.backward_rates.ctdd_backward_rate_config import BackRateMLPConfig, BackwardRateTemporalHollowTransformerConfig
+        from graph_bridges.models.temporal_networks.transformers.temporal_hollow_transformers import TemporalHollowTransformerConfig
+        from graph_bridges.models.backward_rates.ctdd_backward_rate_config import GaussianTargetRateImageX0PredEMAConfig
 
         from graph_bridges.models.temporal_networks.convnets.autoencoder import ConvNetAutoencoderConfig
-        from graph_bridges.models.temporal_networks.transformers.temporal_hollow_transformers import TemporalHollowTransformerConfig
+        from graph_bridges.models.temporal_networks.mlp.temporal_mlp import TemporalMLPConfig
         from graph_bridges.models.temporal_networks.unets.unet_wrapper import UnetTauConfig
 
         if isinstance(self.model,BackRateMLPConfig):
             self.data.as_image = False
             self.data.as_spins = False
+            if not isinstance(self.temp_network,TemporalMLPConfig):
+                self.temp_network = TemporalMLPConfig()
 
         elif isinstance(self.model,GaussianTargetRateImageX0PredEMAConfig):
             if isinstance(self.temp_network,ConvNetAutoencoderConfig):
@@ -31,6 +34,7 @@ class CTDDConfig(GeneralCTDDConfig):
                 self.data.flatten_adjacency = False
             elif isinstance(self.temp_network, UnetTauConfig):
                 raise Exception("Unet Network not implemented for Graphs (Yet)")
+
         elif isinstance(self.model, BackwardRateTemporalHollowTransformerConfig):
             self.data.as_spins = False
             self.data.as_image = False

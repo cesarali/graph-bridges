@@ -2,6 +2,7 @@ import os
 import torch
 from pathlib import Path
 from dataclasses import dataclass
+from typing import List,Union
 
 @dataclass
 class GaussianTargetRateConfig:
@@ -32,5 +33,20 @@ class GaussianTargetRateConfig:
         self.time_exponential = time_exponential
         self.time_base = time_base
 
+from graph_bridges.data.spin_glass_dataloaders_config import SpinGlassVariablesConfig
 
-all_reference_process_configs = {"GaussianTargetRate":GaussianTargetRateConfig}
+@dataclass
+class GlauberDynamicsConfig(SpinGlassVariablesConfig):
+
+    name:str = "GlauberDynamics"
+
+    fom_data_hamiltonian:bool = True #defines if the fields and coupling depend on the data
+
+    beta:float=1.
+    gamma:float = 1.
+    fields:List[float] = None
+    couplings:List[float] = None
+
+
+all_reference_process_configs = {"GaussianTargetRate":GaussianTargetRateConfig,
+                                 "GlauberDynamics":GlauberDynamicsConfig}

@@ -16,7 +16,7 @@ from graph_bridges.models.reference_process.reference_process_config import Gaus
 from graph_bridges.models.reference_process.reference_process_config import all_reference_process_configs
 from graph_bridges.configs.config_files import ExperimentFiles
 from pprint import pprint
-from graph_bridges.models.temporal_networks.networks_configs import all_temp_nets_configs
+from graph_bridges.models.temporal_networks.temporal_networks_configs import all_temp_nets_configs
 from graph_bridges.models.temporal_networks.transformers.temporal_hollow_transformers import TemporalHollowTransformerConfig
 from graph_bridges.models.temporal_networks.unets.unet_wrapper import UnetTauConfig
 
@@ -54,11 +54,17 @@ class ParametrizedSamplerConfig:
     step_type:str = 'TauLeaping' # TauLeaping
     num_steps:int = 20
     min_t:float = 0.01
+
     eps_ratio:float = 1e-9
     initial_dist:str = 'gaussian'
     num_corrector_steps:int = 10
     corrector_step_size_multiplier:float = 1.5
     corrector_entry_time:float = 0.1
+
+    def define_min_t_from_number_of_steps(self):
+        self.min_t = 1./self.num_steps
+
+
 
 @dataclass
 class SteinSpinEstimatorConfig:
@@ -114,7 +120,7 @@ class SBConfig:
     delete :bool = True
     experiment_name :str = 'graph'
     experiment_type :str = 'sb'
-    experiment_indentifier :str  = None
+    experiment_indentifier :str = None
     init_model_path = None
 
     # different elements configurations------------------------------------------
@@ -124,8 +130,8 @@ class SBConfig:
     data : GraphDataConfig =  CommunityConfig() # corresponds to the distributions at start time
     target : TargetConfig =  TargetConfig() # corresponds to the distribution at final time
 
-    reference : GaussianTargetRateConfig =  GaussianTargetRateConfig()
-    sampler : ParametrizedSamplerConfig =  ParametrizedSamplerConfig()
+    reference : GaussianTargetRateConfig = GaussianTargetRateConfig()
+    sampler : ParametrizedSamplerConfig = ParametrizedSamplerConfig()
 
     stein : SteinSpinEstimatorConfig= SteinSpinEstimatorConfig()
     loss : BackwardEstimatorConfig = BackwardEstimatorConfig()
