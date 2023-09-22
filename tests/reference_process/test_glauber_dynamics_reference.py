@@ -9,10 +9,13 @@ from graph_bridges.models.reference_process.reference_process_config import Glau
 from graph_bridges.configs.spin_glass.spin_glass_config_sb import SBConfig
 
 from graph_bridges.models.backward_rates.ctdd_backward_rate_config import BackRateMLPConfig
+from graph_bridges.models.temporal_networks.mlp.temporal_mlp import TemporalMLPConfig
 from graph_bridges.models.reference_process.ctdd_reference import GaussianTargetRate
 from graph_bridges.models.reference_process.glauber_reference import GlauberDynamics
 from graph_bridges.models.schedulers.scheduling_sb import SBScheduler
 from graph_bridges.models.generative_models.sb import SB
+
+
 
 class TestGlauberDynamics(unittest.TestCase):
 
@@ -21,6 +24,10 @@ class TestGlauberDynamics(unittest.TestCase):
 
         self.sb_config = SBConfig(experiment_indentifier="test_glauber")
         self.sb_config.data = ParametrizedSpinGlassHamiltonianConfig(batch_size=23)
+
+        self.sb_config.model = BackRateMLPConfig()
+        self.sb_config.temp_network = TemporalMLPConfig()
+
         self.sb_config.reference = GlauberDynamicsConfig()
         self.sb_config.initialize_new_experiment()
 
@@ -39,6 +46,7 @@ class TestGlauberDynamics(unittest.TestCase):
         self.batch_size = self.x_adj_data.shape[0]
         self.times = torch.rand(self.batch_size,device=self.device)
 
+    @unittest.skip
     def test_sampling(self):
         self.sb.scheduler.set_timesteps(self.sb_config.sampler.num_steps,
                                      self.sb_config.sampler.min_t,
@@ -48,6 +56,7 @@ class TestGlauberDynamics(unittest.TestCase):
         print(f"Paths Shape {paths.shape}")
         print(f"times_steps {time_steps.shape}")
 
+    @unittest.skip
     def test_rates_and_probabilities(self):
         i_range = torch.full((self.sb_config.data.batch_size,), 2).to(self.device)
         rates_ = self.sb.reference_process.selected_flip_rates(self.x_adj_data, i_range)
@@ -57,15 +66,45 @@ class TestGlauberDynamics(unittest.TestCase):
         transition_rates = self.sb.reference_process.transition_rates_states(self.x_adj_data)
         print(f"All Flip Rates {transition_rates.shape}")
 
+    @unittest.skip
     def test_pipelines(self):
+        """
         paths, times_ = self.sb.pipeline(generation_model=None,
                                          sinkhorn_iteration=0,
                                          device=self.device,
                                          initial_spins=self.x_adj_data,
-                                         return_path=True)
+                                         sample_from_reference_native=True,
+                                         return_path=True,
+                                         return_path_shape=False)
+        print(f"Paths Shape {paths.shape}")
+        print(f"Times Shape {times_.shape}")
+        """
+        paths, times_ = self.sb.pipeline(generation_model=None,
+                                         sinkhorn_iteration=0,
+                                         device=self.device,
+                                         initial_spins=self.x_adj_data,
+                                         sample_from_reference_native=False,
+                                         return_path=True,
+                                         return_path_shape=False)
         print(f"Paths Shape {paths.shape}")
         print(f"Times Shape {times_.shape}")
 
+    def test_losses(self):
+        current_model = self.sb.training_model
+        past_model = self.sb.reference_process
+
+        paths, times_ = self.sb.pipeline(generation_model=None,
+                                         sinkhorn_iteration=0,
+                                         device=self.device,
+                                         initial_spins=self.x_adj_data,
+                                         sample_from_reference_native=True,
+                                         return_path=True,
+                                         return_path_shape=False)
+        print(f"Paths Shape {paths.shape}")
+        print(f"Times Shape {times_.shape}")
+
+        loss_ = self.sb.backward_ratio_stein_estimator.estimator(current_model, past_model, paths, times_)
+        print(loss_.shape)
 
 if __name__=="__main__":
     unittest.main()

@@ -281,18 +281,6 @@ class SBPipeline(DiffusionPipeline):
             # HANDLES PATH SHAPES
             #=========================================================
             if return_path:
-                full_path = torch.concat(full_path, dim=1)
-                number_of_paths = full_path.shape[0]
-                number_of_timesteps = full_path.shape[1]
-
-                timesteps = timesteps.unsqueeze(0).repeat(num_of_paths, 1)
-
-                if return_path_shape:
-                    return full_path, timesteps
-                else:
-                    timesteps = timesteps.reshape(number_of_paths * number_of_timesteps)
-                    full_path = full_path.reshape(number_of_paths * number_of_timesteps, -1)
-                    return full_path, timesteps
-
+                return self.paths_shapes(full_path,timesteps,return_path_shape)
             else:
                 return spins_new

@@ -19,6 +19,8 @@ from pprint import pprint
 from graph_bridges.models.temporal_networks.temporal_networks_configs import all_temp_nets_configs
 from graph_bridges.models.temporal_networks.transformers.temporal_hollow_transformers import TemporalHollowTransformerConfig
 from graph_bridges.models.temporal_networks.unets.unet_wrapper import UnetTauConfig
+from graph_bridges.models.temporal_networks.mlp.temporal_mlp import TemporalMLPConfig
+
 
 
 def get_git_revisions_hash():
@@ -124,7 +126,7 @@ class SBConfig:
 
     # different elements configurations------------------------------------------
     model : BackRateMLPConfig =  BackRateMLPConfig()
-    temp_network : Union[UnetTauConfig,TemporalHollowTransformerConfig] = UnetTauConfig()
+    temp_network : Union[UnetTauConfig,TemporalHollowTransformerConfig,TemporalMLPConfig] = TemporalMLPConfig()
 
     data : GraphDataConfig =  CommunityConfig() # corresponds to the distributions at start time
     target : TargetConfig =  TargetConfig() # corresponds to the distribution at final time
