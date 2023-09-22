@@ -73,6 +73,7 @@ class TestSB(unittest.TestCase):
     #=============================================
     # WITH REFERENCE PROCESS
     #=============================================
+
     def test_pipeline_reference_no_path(self):
         sample_size = 50
         x_end = self.sb.pipeline(None, 0, self.device, sample_size=sample_size, return_path=False)
@@ -106,6 +107,7 @@ class TestSB(unittest.TestCase):
     # =============================================
     # WITH PARAMETRIC BACKWARD RATE PROCESS
     # =============================================
+
     def test_pipeline_parametric_backward_rate_with_path_with_start(self):
         x_end1, times1 = self.sb.pipeline(self.sb.past_model, 1, self.device, self.x_ajd, return_path=True)
         print(x_end1.shape)

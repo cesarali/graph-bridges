@@ -13,8 +13,8 @@ import torch
 import networkx as nx
 from typing import List
 
-from graph_bridges.data.graph_dataloaders import DoucetTargetData
 from graph_bridges.data.dataloaders_utils import load_dataloader
+from graph_bridges.data.graph_dataloaders import DoucetTargetData
 from graph_bridges.data.graph_dataloaders import BridgeGraphDataLoaders
 from graph_bridges.models.reference_process.ctdd_reference import GaussianTargetRate
 
@@ -128,4 +128,5 @@ class SB:
                     break
             if ready:
                 break
-        return  graphs_
+
+        return graphs_

@@ -2,6 +2,8 @@ import os
 from pprint import pprint
 from dataclasses import asdict
 from graph_bridges.configs.config_sb import SBConfig as GeneralSBConfig
+from graph_bridges.models.reference_process.reference_process_config import GlauberDynamicsConfig
+
 from dataclasses import dataclass
 
 @dataclass
@@ -23,6 +25,8 @@ class SBConfig(GeneralSBConfig):
         from graph_bridges.models.temporal_networks.unets.unet_wrapper import UnetTauConfig
 
         self.data.as_spins = True
+        if isinstance(self.reference,GlauberDynamicsConfig):
+            self.sampler.define_min_t_from_number_of_steps()
 
         if isinstance(self.model,BackRateMLPConfig):
             self.data.as_image = False

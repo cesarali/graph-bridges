@@ -4,6 +4,7 @@ from graph_bridges.configs.config_sb import SBConfig as GeneralSBConfig
 from graph_bridges.data.image_dataloader_config import NISTLoaderConfig
 from graph_bridges.models.backward_rates.ctdd_backward_rate_config import GaussianTargetRateImageX0PredEMAConfig
 from graph_bridges.models.temporal_networks.convnets.autoencoder import ConvNetAutoencoderConfig
+from graph_bridges.models.reference_process.reference_process_config import GlauberDynamicsConfig,GaussianTargetRateConfig
 
 @dataclass
 class SBConfig(GeneralSBConfig):
@@ -29,6 +30,9 @@ class SBConfig(GeneralSBConfig):
         self.temp_network = ConvNetAutoencoderConfig()
 
     def align_configurations(self):
+        if isinstance(self.reference,GlauberDynamicsConfig):
+            self.sampler.define_min_t_from_number_of_steps()
+
         #dataloaders for training
         self.data.as_image = True
         self.data.as_spins = False

@@ -65,7 +65,6 @@ class ParametrizedSamplerConfig:
         self.min_t = 1./self.num_steps
 
 
-
 @dataclass
 class SteinSpinEstimatorConfig:
 

@@ -20,13 +20,16 @@ class SBConfig(GeneralSBConfig):
     reference: Union[GlauberDynamicsConfig,GaussianTargetRateConfig] = GaussianTargetRateConfig()
 
     def align_configurations(self):
-        from graph_bridges.models.backward_rates.ctdd_backward_rate_config import GaussianTargetRateImageX0PredEMAConfig
         from graph_bridges.models.backward_rates.ctdd_backward_rate_config import BackRateMLPConfig, BackwardRateTemporalHollowTransformerConfig
+        from graph_bridges.models.backward_rates.ctdd_backward_rate_config import GaussianTargetRateImageX0PredEMAConfig
         from graph_bridges.models.temporal_networks.mlp.temporal_mlp import TemporalMLPConfig
 
+        from graph_bridges.models.temporal_networks.unets.unet_wrapper import UnetTauConfig
         from graph_bridges.models.temporal_networks.convnets.autoencoder import ConvNetAutoencoderConfig
         from graph_bridges.models.temporal_networks.transformers.temporal_hollow_transformers import TemporalHollowTransformerConfig
-        from graph_bridges.models.temporal_networks.unets.unet_wrapper import UnetTauConfig
+
+        if isinstance(self.reference,GlauberDynamicsConfig):
+            self.sampler.define_min_t_from_number_of_steps()
 
         self.data.as_spins = True
         if not isinstance(self.data, ParametrizedSpinGlassHamiltonianConfig):
@@ -58,6 +61,7 @@ class SBConfig(GeneralSBConfig):
                 self.temp_network.max_seq_length = self.data.D
 
         self.data.__post_init__()
+
         # data distributions matches at the end
         self.target.batch_size = self.data.batch_size
 

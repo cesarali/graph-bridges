@@ -88,6 +88,9 @@ class GlauberDynamics:
         flip_rates_ = (self.gamma * torch.exp(-states * H_i)) / 2 * torch.cosh(H_i)
         return flip_rates_
 
+    def rates_states_and_times(self,states):
+        return self.all_flip_rates(states)
+
     def sample_path(self, start_spins, time_grid)->Tuple[TensorType["number_of_paths","number_of_time_steps","number_of_spins"],
                                                          TensorType["number_of_time_steps"]]:
         if len(start_spins.shape) == 2:

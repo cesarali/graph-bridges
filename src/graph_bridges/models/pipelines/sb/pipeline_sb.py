@@ -104,6 +104,21 @@ class SBPipeline(DiffusionPipeline):
                 data_sampler = self.target
         return data_sampler
 
+    def paths_shapes(self,full_path,timesteps,return_path_shape):
+        if isinstance(full_path,list):
+            full_path = torch.concat(full_path, dim=1)
+
+        number_of_paths = full_path.shape[0]
+        number_of_timesteps = full_path.shape[1]
+
+        timesteps = timesteps.unsqueeze(0).repeat(number_of_paths, 1)
+        if return_path_shape:
+            return full_path, timesteps
+        else:
+            timesteps = timesteps.reshape(number_of_paths * number_of_timesteps)
+            full_path = full_path.reshape(number_of_paths * number_of_timesteps, -1)
+            return full_path, timesteps
+
     def paths_iterator(self,
                        generation_model: Union[BackwardRate,ReferenceProcess] = None,
                        sinkhorn_iteration = 0,
@@ -175,6 +190,7 @@ class SBPipeline(DiffusionPipeline):
         device :torch.device = None,
         initial_spins: torch.Tensor = None,
         train: bool =True,
+        sample_from_reference_native: bool = True,
         sample_size: int = None,
         return_dict: bool = True,
         return_path:bool = True,
@@ -187,11 +203,18 @@ class SBPipeline(DiffusionPipeline):
         :param device:
         :param x:
         :param train:
+        :param sample_from_reference_native: use the native sampling from the reference
         :param return_dict:
         :param return_path: bool  gives you the whole path, otherwise is set to zero
         :param return_path_shape: returns paths as [batchsize,num_timesteps,dimension]
+
         :return:
         """
+        #=========================================================
+        # PREPROCESSING
+        #=========================================================
+
+        # reference process is only available for sinkhorn iteration 0
         if generation_model is None:
             assert sinkhorn_iteration == 0
         else:
@@ -204,46 +227,72 @@ class SBPipeline(DiffusionPipeline):
                                      sinkhorn_iteration=sinkhorn_iteration)
         timesteps = self.scheduler.timesteps
         timesteps = timesteps.to(device)
+
+        # sample initial state
         if initial_spins is None:
             if sample_size is None:
                 sample_size = self.bridge_config.data.batch_size
             data_sampler = self.select_data_sampler(sinkhorn_iteration,train)
             initial_spins = data_sampler.sample(sample_size)[0]
 
+        # preprocess initial state and full path
         initial_spins = initial_spins.to(device)
         num_of_paths = initial_spins.shape[0]
         if return_path:
             full_path = [initial_spins.unsqueeze(1)]
 
-        for idx, t in tqdm(enumerate(timesteps[0:-1])):
-
-            h = self.select_time_difference(sinkhorn_iteration, timesteps, idx)
-            times = t * torch.ones(num_of_paths,device=device)
-
-            if sinkhorn_iteration != 0:
-                logits = generation_model.stein_binary_forward(initial_spins, times)
-                rates_ = F.softplus(logits)
-            else:
-                rates_ = self.reference_process.rates_states_and_times(initial_spins, times)
-
-            spins_new = self.scheduler.step(rates_, initial_spins, t, h, device, return_dict=True, step_type=self.bridge_config.sampler.step_type).new_sample
-            initial_spins = spins_new
-
+        # =============================================================
+        # SAMPLE NATIVELY
+        # ==============================================================
+        if sinkhorn_iteration == 0 and sample_from_reference_native and hasattr(self.reference_process,'sample_path'):
+            full_path, timesteps = self.reference_process.sample_path(initial_spins, timesteps)
             if return_path:
-                full_path.append(initial_spins.unsqueeze(1))
-
-        if return_path:
-            full_path = torch.concat(full_path, dim=1)#
-            number_of_paths = full_path.shape[0]
-            number_of_timesteps = full_path.shape[1]
-
-            timesteps = timesteps.unsqueeze(0).repeat(num_of_paths, 1)
-            if return_path_shape:
-                return full_path, timesteps
+                return self.paths_shapes(full_path, timesteps, return_path_shape)
             else:
-                timesteps = timesteps.reshape(number_of_paths * number_of_timesteps)
-                full_path = full_path.reshape(number_of_paths * number_of_timesteps, -1)
-                return full_path, timesteps
-
+                return full_path[:,-1,:]
         else:
-            return spins_new
+            #=========================================================
+            # SAMPLING LOOP
+            #=========================================================
+            for idx, t in tqdm(enumerate(timesteps[0:-1])):
+
+                h = self.select_time_difference(sinkhorn_iteration, timesteps, idx)
+                times = t * torch.ones(num_of_paths,device=device)
+
+                if sinkhorn_iteration != 0:
+                    logits = generation_model.stein_binary_forward(initial_spins, times)
+                    rates_ = F.softplus(logits)
+                else:
+                    rates_ = self.reference_process.rates_states_and_times(initial_spins, times)
+
+                spins_new = self.scheduler.step(rates_,
+                                                initial_spins,
+                                                t,
+                                                h,
+                                                device,
+                                                return_dict=True,
+                                                step_type=self.bridge_config.sampler.step_type).new_sample
+                initial_spins = spins_new
+
+                if return_path:
+                    full_path.append(initial_spins.unsqueeze(1))
+
+            #=========================================================
+            # HANDLES PATH SHAPES
+            #=========================================================
+            if return_path:
+                full_path = torch.concat(full_path, dim=1)
+                number_of_paths = full_path.shape[0]
+                number_of_timesteps = full_path.shape[1]
+
+                timesteps = timesteps.unsqueeze(0).repeat(num_of_paths, 1)
+
+                if return_path_shape:
+                    return full_path, timesteps
+                else:
+                    timesteps = timesteps.reshape(number_of_paths * number_of_timesteps)
+                    full_path = full_path.reshape(number_of_paths * number_of_timesteps, -1)
+                    return full_path, timesteps
+
+            else:
+                return spins_new
