@@ -16,7 +16,7 @@ def load_dataloader(config,type:str="data",device:torch.device=torch.device("cpu
             dataloader = DiscreteCIFAR10Dataloader(config, device)
         elif config.data.data == "DoucetTargetData":
             dataloader = DoucetTargetData(config,device)
-        elif config.data.data in ["spin_glass","ising"]:
+        elif config.data.data in ["spin_glass","ising","small_spins"]:
             dataloader = ParametrizedSpinGlassHamiltonianLoader(config.data, device)
         else:
             raise Exception("{0} not found in dataloaders".format(config.data.data))
@@ -27,7 +27,7 @@ def load_dataloader(config,type:str="data",device:torch.device=torch.device("cpu
             dataloader = NISTLoader(config, device)
         elif config.target.data == "DoucetTargetData":
             dataloader = DoucetTargetData(config,device)
-        elif config.target.data in ["spin_glass","ising"]:
+        elif config.target.data in ["spin_glass","ising","small_spins"]:
             dataloader = ParametrizedSpinGlassHamiltonianLoader(config.target, device)
         else:
             raise Exception("{0} not found in dataloaders".format(config.data.data))

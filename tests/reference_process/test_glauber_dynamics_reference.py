@@ -42,25 +42,22 @@ class TestGlauberDynamics(unittest.TestCase):
                                      self.sb_config.sampler.min_t,
                                      sinkhorn_iteration=0)
         timesteps_ = self.scheduler.timesteps
-        self.reference_process.sample_path(self.x_adj_data,timesteps_)
+        paths, time_steps = self.reference_process.sample_path(self.x_adj_data,timesteps_)
+        print(f"Paths Shape {paths.shape}")
+        print(f"times_steps {time_steps.shape}")
 
-    @unittest.skip
     def test_rates_and_probabilities(self):
-        stein_binary_forward = self.reference_process.stein_binary_forward(states=self.x_adj_target, times=self.times)
-        forward_ = self.reference_process.forward_rates(self.x_adj_data, self.times, self.device)
+        i_range = torch.full((self.sb_config.data.batch_size,), 2).to(self.device)
+        rates_ = self.reference_process.selected_flip_rates(self.x_adj_data, i_range)
+        print(f"Selected Rates shape {rates_.shape}")
+        all_flip_rates = self.reference_process.all_flip_rates(self.x_adj_data)
+        print(f"All Flip Rates {all_flip_rates.shape}")
+        transition_rates = self.reference_process.transition_rates_states(self.x_adj_data)
+        print(f"All Flip Rates {transition_rates.shape}")
 
-        rate_ = self.reference_process.rate(self.times)
-        transition_ = self.reference_process.transition(self.times)
-        forward_rates_and_probabilities_ = self.reference_process.forward_rates_and_probabilities(self.x_adj_data, self.times, self.device)
-        forward_rates, qt0_denom, qt0_numer = forward_rates_and_probabilities_
-        forward_rates_and_probabilities_ = self.reference_process.forward_rates_and_probabilities(self.x_adj_target, self.times, self.device)
-        forward_rates, qt0_denom, qt0_numer = forward_rates_and_probabilities_
-        forward_rates_ = self.reference_process.forward_rates(self.x_adj_data, self.times, self.device)
-        forward_rates_ = self.reference_process.forward_rates(self.x_adj_target, self.times, self.device)
-        print(
-            "rate_ {0}, transition_ {1}, forward_rates {2}, qt0_denom {3}, qt0_numer {4}, forward_rates_ {5}, ".format(
-                rate_.shape, transition_.shape, forward_rates.shape, qt0_denom.shape, qt0_numer.shape,
-                forward_rates_.shape))
+
+
+
 
 
 if __name__=="__main__":

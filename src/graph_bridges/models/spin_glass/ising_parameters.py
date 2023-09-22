@@ -205,16 +205,21 @@ class ParametrizedSpinGlassHamiltonian(nn.Module):
                 new_states = torch.clone(states)
                 index_to_change = (rows_index[torch.where(where_to_flip)], i_random[torch.where(where_to_flip)])
                 new_states[index_to_change] = states[index_to_change] * -1.
-
                 paths = torch.cat([paths, new_states.unsqueeze(1)], dim=1)
 
             return paths
 
-    def hamiltonian_diagonal(self, states, i_random):
+    def selected_hamiltonian_diagonal(self, states, i_random):
         coupling_matrix = self.obtain_couplings_as_matrix()
         J_i = coupling_matrix[:, i_random].T
         H_i = self.fields[i_random]
         H_i =  H_i + torch.einsum('bi,bi->b', J_i, states)
+        return H_i
+
+    def all_hamiltonian_diagonal(self,states):
+        coupling_matrix = self.obtain_couplings_as_matrix()
+        theta_i = self.fields[None, :]
+        H_i = theta_i + torch.einsum("bij,bj->bi", coupling_matrix[None, :, :], states)
         return H_i
 
     def forward(self, states: torch.Tensor) -> torch.Tensor:
@@ -286,7 +291,7 @@ if __name__=="__main__":
     print("Test Diagonal")
     i_random = torch.randint(0, number_of_spins, (number_of_paths,)).to(device)
     print("Test Hamiltonian Diagonal")
-    print(ising_model_real.hamiltonian_diagonal(states=ising_sample,i_random=i_random))
+    print(ising_model_real.selected_hamiltonian_diagonal(states=ising_sample, i_random=i_random))
 
     log_likelihood_of_path(ising_model_real,ising_mcmc_sample,plot=True)
     #real_couplings = torch.clone(ising_model_real.couplings)

@@ -7,8 +7,10 @@ from typing import Tuple,Union
 from torchtyping import TensorType
 from torch.distributions import Exponential, Bernoulli
 
+
 class ReferenceProcess:
     """
+
     """
     def __init__(self, config:SBConfig, device):
         assert config.target.S == config.data.S

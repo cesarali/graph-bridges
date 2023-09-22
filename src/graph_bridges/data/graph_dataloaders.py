@@ -95,9 +95,15 @@ class BridgeGraphDataLoaders:
         self.transform_to_graph = transforms.Compose(inverse_transform_list)
 
         train_graph_list, test_graph_list = self.read_graph_lists()
+
         self.training_data_size = len(train_graph_list)
         self.test_data_size = len(test_graph_list)
         self.total_data_size = self.training_data_size + self.test_data_size
+
+        self.graph_data_config.training_size = self.training_data_size
+        self.graph_data_config.test_size = self.test_data_size
+        self.graph_data_config.total_data_size = self.total_data_size
+        self.graph_data_config.training_proportion = float(self.training_data_size)/self.total_data_size
 
         train_adjs_tensor,train_x_tensor = self.graph_to_tensor_and_features(train_graph_list,
                                                                              self.graph_data_config.init,
@@ -249,10 +255,13 @@ class DoucetTargetData():
         except:
             training_size = int(self.config.data.total_data_size*self.config.data.training_proportion)
 
-        batch_size =  self.config.data.batch_size
-        number_of_batches = int(training_size / batch_size)
-        for a in range(number_of_batches):
-            x = self.sample(batch_size)
+        batch_size = self.config.data.batch_size
+        current_index = 0
+        while current_index < training_size:
+            remaining = min(training_size - current_index, batch_size)
+            x = self.sample(remaining)
+            # Your processing code here
+            current_index += remaining
             yield x
 
     def test(self):

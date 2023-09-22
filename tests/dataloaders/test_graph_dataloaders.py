@@ -5,6 +5,7 @@ import unittest
 from graph_bridges.data.dataloaders_utils import load_dataloader
 from graph_bridges.configs.graphs.graph_config_sb import SBConfig
 from graph_bridges.configs.graphs.graph_config_ctdd import CTDDConfig
+
 from graph_bridges.data.graph_dataloaders import DoucetTargetData
 from graph_bridges.data.graph_dataloaders import BridgeGraphDataLoaders
 from graph_bridges.data.graph_dataloaders_config import CommunityConfig
@@ -21,20 +22,32 @@ class TestDataDataloader(unittest.TestCase):
                                            full_adjacency=False)
         self.device = torch.device("cpu")
         self.config.align_configurations()
-        self.dataloader = load_dataloader(self.config,"data",self.device)
+        self.dataloader_data = load_dataloader(self.config,"data",self.device)
+        self.dataloader_target = load_dataloader(self.config,"target",self.device)
 
     def test_sample(self):
         sample_size = 40
-        samples = self.dataloader.sample(sample_size=sample_size,type="train")
+        samples = self.dataloader_data.sample(sample_size=sample_size,type="train")
         self.assertTrue(samples[0].shape[0] == sample_size)
         self.assertTrue(samples[1].shape[0] == sample_size)
 
     def test_back_to_graph(self):
-        databatch = next(self.dataloader.train().__iter__())
+        databatch = next(self.dataloader_data.train().__iter__())
         x_adj_spins = databatch[0]
         x_adj = self.dataloader.transform_to_graph(x_adj_spins)
         self.assertTrue(x_adj.min() >= 0.)
 
     def test_databatch(self):
-        databatch = next(self.dataloader.train().__iter__())
+        databatch = next(self.dataloader_data.train().__iter__())
         self.assertTrue(len(databatch)==2)
+
+    def test_sizes(self):
+        number_of_steps_data = 0
+        for databatch in self.dataloader_data.train():
+            number_of_steps_data += databatch[0].shape[0]
+        self.assertTrue(number_of_steps_data,self.config.data.training_size)
+
+        number_of_steps_target = 0
+        for databatch in self.dataloader_target.train():
+            number_of_steps_target += databatch[0].shape[0]
+        self.assertTrue(number_of_steps_target,self.config.data.training_size)
