@@ -68,6 +68,8 @@ class TestGlauberDynamics(unittest.TestCase):
 
     @unittest.skip
     def test_pipelines(self):
+        from graph_bridges.models.spin_glass.spin_states_statistics import spin_states_stats
+
         """
         paths, times_ = self.sb.pipeline(generation_model=None,
                                          sinkhorn_iteration=0,
@@ -78,6 +80,9 @@ class TestGlauberDynamics(unittest.TestCase):
                                          return_path_shape=False)
         print(f"Paths Shape {paths.shape}")
         print(f"Times Shape {times_.shape}")
+        
+        """
+
         """
         paths, times_ = self.sb.pipeline(generation_model=None,
                                          sinkhorn_iteration=0,
@@ -85,10 +90,25 @@ class TestGlauberDynamics(unittest.TestCase):
                                          initial_spins=self.x_adj_data,
                                          sample_from_reference_native=False,
                                          return_path=True,
-                                         return_path_shape=False)
+                                         return_path_shape=True)
         print(f"Paths Shape {paths.shape}")
         print(f"Times Shape {times_.shape}")
+        """
 
+        for databatch in self.sb.pipeline.paths_iterator(generation_model=None,
+                                                         sinkhorn_iteration=0,
+                                                         device=self.device,
+                                                         train=True,
+                                                         return_path=True,
+                                                         return_path_shape=True):
+            print(f"paths {databatch[0].shape}")
+            print(f"time {databatch[1].shape}")
+
+        #stats_ = spin_states_stats(self.sb_config.data.number_of_spins)
+        #time_series_of_paths = stats_.counts_states_in_paths(paths.cpu())
+        #print(time_series_of_paths.shape)
+
+    @unittest.skip
     def test_losses(self):
         current_model = self.sb.training_model
         past_model = self.sb.reference_process
@@ -102,9 +122,26 @@ class TestGlauberDynamics(unittest.TestCase):
                                          return_path_shape=False)
         print(f"Paths Shape {paths.shape}")
         print(f"Times Shape {times_.shape}")
-
         loss_ = self.sb.backward_ratio_stein_estimator.estimator(current_model, past_model, paths, times_)
         print(loss_.shape)
+
+    def test_metrics(self):
+        from graph_bridges.models.metrics.sb_paths_metrics import paths_states_histograms
+        from graph_bridges.models.metrics.sb_paths_metrics import states_paths_histograms_plots
+
+        current_model = self.sb.training_model
+        past_model = 0
+
+
+        states_paths_histograms_plots(self.sb,
+                                      sinkhorn_iteration=0,
+                                      device=self.device,
+                                      current_model=current_model,
+                                      past_to_train_model=past_model,
+                                      plot_path=None)
+
+
+
 
 if __name__=="__main__":
     unittest.main()

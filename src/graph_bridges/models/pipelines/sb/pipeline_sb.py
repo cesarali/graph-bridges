@@ -124,6 +124,7 @@ class SBPipeline(DiffusionPipeline):
                        sinkhorn_iteration = 0,
                        device :torch.device = None,
                        train: bool = True,
+                       sample_from_reference_native:bool = True,
                        return_dict: bool = True,
                        return_path:bool = True,
                        return_path_shape:bool = False):
@@ -148,39 +149,40 @@ class SBPipeline(DiffusionPipeline):
             if return_path:
                 full_path = [spins.unsqueeze(1)]
 
-            for idx, t in enumerate(timesteps_[0:-1]):
-
-                h = self.select_time_difference(sinkhorn_iteration,timesteps_,idx)
-                times_ = t * torch.ones(num_of_paths,device=device)
-
-                if sinkhorn_iteration != 0:
-                    logits = generation_model.stein_binary_forward(spins, times_)
-                    rates_ = F.softplus(logits)
+            if sinkhorn_iteration == 0 and sample_from_reference_native and hasattr(self.reference_process,'sample_path'):
+                full_path, timesteps = self.reference_process.sample_path(spins, timesteps_)
+                if return_path:
+                    yield self.paths_shapes(full_path, timesteps, return_path_shape)
                 else:
-                    rates_ = self.reference_process.rates_states_and_times(spins,times_)
+                    yield full_path[:, -1, :]
+            else:
+                for idx, t in enumerate(timesteps_[0:-1]):
 
-                spins_new = self.scheduler.step(rates_,spins,t,h,device=device,return_dict=True,step_type="Poisson").new_sample
-                spins = spins_new
+                    h = self.select_time_difference(sinkhorn_iteration,timesteps_,idx)
+                    times_ = t * torch.ones(num_of_paths,device=device)
+
+                    if sinkhorn_iteration != 0:
+                        logits = generation_model.stein_binary_forward(spins, times_)
+                        rates_ = F.softplus(logits)
+                    else:
+                        rates_ = self.reference_process.rates_states_and_times(spins,times_)
+
+                    spins_new = self.scheduler.step(rates_,
+                                                    spins,
+                                                    t,
+                                                    h,
+                                                    device=device,
+                                                    return_dict=True,
+                                                    step_type=self.bridge_config.sampler.step_type).new_sample
+                    spins = spins_new
+
+                    if return_path:
+                        full_path.append(spins.unsqueeze(1))
 
                 if return_path:
-                    full_path.append(spins.unsqueeze(1))
-
-            if return_path:
-                full_path = torch.concat(full_path, dim=1)
-                timesteps = timesteps_.unsqueeze(0).repeat(num_of_paths,1)
-
-                if return_path_shape:
-                    yield (full_path, timesteps)
+                    yield self.paths_shapes(full_path,timesteps_,return_path_shape)
                 else:
-                    number_of_paths = full_path.shape[0]
-                    number_of_timesteps = full_path.shape[1]
-
-                    timesteps = timesteps.reshape(number_of_paths * number_of_timesteps)
-                    full_path = full_path.reshape(number_of_paths * number_of_timesteps, -1)
-
-                    yield (full_path, timesteps)
-            else:
-                yield spins_new
+                    yield spins_new
 
     @torch.no_grad()
     def __call__(
@@ -213,7 +215,6 @@ class SBPipeline(DiffusionPipeline):
         #=========================================================
         # PREPROCESSING
         #=========================================================
-
         # reference process is only available for sinkhorn iteration 0
         if generation_model is None:
             assert sinkhorn_iteration == 0
