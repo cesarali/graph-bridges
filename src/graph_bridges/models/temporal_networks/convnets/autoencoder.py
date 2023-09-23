@@ -60,6 +60,8 @@ class ConvNetAutoencoder(nn.Module):
         self.time_embed_dim = config.temp_network.time_embed_dim
         self.time_scale_factor = config.temp_network.time_scale_factor
 
+        self.expected_output_shape = [2*self.in_channels,config.data.H,config.data.W]
+
         self.do_time_embed = True
         self.act = nn.functional.silu
 

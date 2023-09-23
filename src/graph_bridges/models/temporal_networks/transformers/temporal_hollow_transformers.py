@@ -45,6 +45,8 @@ class TemporalHollowTransformer(nn.Module):
         self.do_time_embed = config.temp_network.do_time_embed
         self.define_time_embeddings()
 
+        self.expected_output_shape = [self.max_seq_length,self.output_vocab_size]
+
         self.embedding = nn.Embedding(self.input_vocab_size, self.hidden_dim).to(self.device)
         self.transformer_layers = nn.ModuleList(
             [HollowTransformerLayer(self.num_heads,

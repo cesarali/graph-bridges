@@ -46,7 +46,6 @@ class GraphDataConfig:
     doucet:bool = False
     type:str=None
 
-
     def __post_init__(self):
         self.number_of_upper_entries = int(self.max_node_num*(self.max_node_num-1)*.5)
 
@@ -137,7 +136,6 @@ class CommunityConfig(GraphDataConfig):
     max_feat_num: int = 10
     total_data_size:int = 1000
     init: str = 'deg'
-
 
 @dataclass
 class GridConfig(GraphDataConfig):

@@ -8,6 +8,7 @@ import json
 import torch
 from pathlib import Path
 
+from graph_bridges.models.backward_rates.sb_backward_rate_config import SchrodingerBridgeBackwardRateConfig
 from graph_bridges.data.graph_dataloaders_config import TargetConfig, CommunityConfig, GraphDataConfig
 from graph_bridges.data.graph_dataloaders_config import all_dataloaders_configs
 from graph_bridges.models.backward_rates.ctdd_backward_rate_config import BackRateMLPConfig
@@ -125,7 +126,7 @@ class SBConfig:
     init_model_path = None
 
     # different elements configurations------------------------------------------
-    model : BackRateMLPConfig =  BackRateMLPConfig()
+    model : SchrodingerBridgeBackwardRateConfig = SchrodingerBridgeBackwardRateConfig()
     temp_network : Union[UnetTauConfig,TemporalHollowTransformerConfig,TemporalMLPConfig] = TemporalMLPConfig()
 
     data : GraphDataConfig =  CommunityConfig() # corresponds to the distributions at start time
@@ -157,12 +158,9 @@ class SBConfig:
 
 
         if isinstance(self.model,dict):
-            self.model = all_backward_rates_configs[self.model["name"]](**self.model)
+            self.model = SchrodingerBridgeBackwardRateConfig(**self.model)
         if isinstance(self.temp_network,dict):
-            try:
-                self.temp_network = all_temp_nets_configs[self.temp_network["temp_name"]](**self.temp_network)
-            except:
-                self.temp_network = self.model
+            self.temp_network = all_temp_nets_configs[self.temp_network["temp_name"]](**self.temp_network)
         if isinstance(self.data,dict):
             self.data =  all_dataloaders_configs[self.data["data"]](**self.data)
         if isinstance(self.target,dict):
@@ -202,6 +200,12 @@ class SBConfig:
         self.save_config()
 
     def align_configurations(self):
+        """
+        Here we make the transformation necesary for the data to fix the
+        temporal network
+
+        :return:
+        """
         #dataloaders for training
         self.data.as_image = False
         self.data.as_spins = True

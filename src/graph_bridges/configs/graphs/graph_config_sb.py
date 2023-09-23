@@ -16,42 +16,36 @@ class SBConfig(GeneralSBConfig):
     experiment_indentifier :str  = 'testing'
 
     def align_configurations(self):
-        from graph_bridges.models.backward_rates.ctdd_backward_rate_config import GaussianTargetRateImageX0PredEMAConfig
-        from graph_bridges.models.backward_rates.ctdd_backward_rate_config import BackRateMLPConfig, BackwardRateTemporalHollowTransformerConfig
-        from graph_bridges.models.temporal_networks.mlp.temporal_mlp import TemporalMLPConfig
+        from graph_bridges.models.backward_rates.sb_backward_rate_config import SchrodingerBridgeBackwardRateConfig
 
+        from graph_bridges.models.temporal_networks.mlp.temporal_mlp import TemporalMLPConfig
+        from graph_bridges.models.temporal_networks.unets.unet_wrapper import UnetTauConfig
         from graph_bridges.models.temporal_networks.convnets.autoencoder import ConvNetAutoencoderConfig
         from graph_bridges.models.temporal_networks.transformers.temporal_hollow_transformers import TemporalHollowTransformerConfig
-        from graph_bridges.models.temporal_networks.unets.unet_wrapper import UnetTauConfig
 
         self.data.as_spins = True
         if isinstance(self.reference,GlauberDynamicsConfig):
             self.sampler.define_min_t_from_number_of_steps()
 
-        if isinstance(self.model,BackRateMLPConfig):
-            self.data.as_image = False
-            self.temp_network = TemporalMLPConfig()
-
-        elif isinstance(self.model,GaussianTargetRateImageX0PredEMAConfig):
-            if isinstance(self.temp_network,ConvNetAutoencoderConfig):
+        if isinstance(self.model,SchrodingerBridgeBackwardRateConfig):
+            if isinstance(self.temp_network,TemporalMLPConfig):
+                self.data.as_image = False
+                self.data.flatten_adjacency = True
+            elif isinstance(self.temp_network,ConvNetAutoencoderConfig):
                 #dataloaders for training
                 self.data.as_image = True
                 self.data.flatten_adjacency = False
             elif isinstance(self.temp_network, UnetTauConfig):
                 raise Exception("Unet Network not implemented for Graphs (Yet)")
-
-        elif isinstance(self.model, BackwardRateTemporalHollowTransformerConfig):
-            self.data.as_image = False
-            self.data.flatten_adjacency = True
-            if not isinstance(self.temp_network,TemporalHollowTransformerConfig):
-                self.temp_network = TemporalHollowTransformerConfig(input_vocab_size=2,
-                                                                    output_vocab_size=2,
-                                                                    max_seq_length=self.data.D)
-            else:
+            elif isinstance(self.temp_network,TemporalHollowTransformerConfig):
+                self.data.as_image = False
+                self.data.flatten_adjacency = True
                 self.temp_network : TemporalHollowTransformerConfig
                 self.temp_network.input_vocab_size = 2
                 self.temp_network.output_vocab_size = 2
                 self.temp_network.max_seq_length = self.data.D
+        else:
+            raise Exception("Backward Rate Exclusive for Schrodinger")
 
         self.data.__post_init__()
         # data distributions matches at the end

@@ -82,17 +82,27 @@ class DiscreteCIFAR10Dataloader():
 def get_data(config:NISTLoaderConfig,type="data"):
     if type=="data":
         data_config = config.data
-
     else:
         data_config = config.target
 
     data_ = data_config.data
-    dataloader_data_dir = data_config.dataloader_data_dir
     batch_size = data_config.batch_size
     threshold = data_config.pepper_threshold
+    dataloader_data_dir = data_config.dataloader_data_dir
 
-    transform = transforms.Compose([transforms.ToTensor(),
-                                    transforms.Lambda(lambda x: (x > threshold).float())])
+    from graph_bridges.data.transforms import BinaryTensorToSpinsTransform
+    from graph_bridges.data.transforms import SqueezeTransform
+    from graph_bridges.data.transforms import FlattenTransform
+
+    transform = [transforms.ToTensor(),
+                 transforms.Lambda(lambda x: (x > threshold).float())]
+
+    if not data_config.as_image:
+        transform.append(FlattenTransform)
+    if data_config.as_spins:
+        transform.append(BinaryTensorToSpinsTransform)
+
+    transform = transforms.Compose(transform)
 
     # Load MNIST dataset
     if data_ == "mnist":
@@ -132,7 +142,6 @@ def get_data(config:NISTLoaderConfig,type="data"):
     test_loader = torch.utils.data.DataLoader(
         test_dataset,
         batch_size=batch_size, shuffle=True)
-
 
     return train_loader,test_loader
 

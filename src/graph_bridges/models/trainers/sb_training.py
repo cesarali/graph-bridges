@@ -116,13 +116,14 @@ class SBTrainer:
                          device=self.device)
         # INFO
         #self.parameters_info(sinkhorn_iteration)
-
         return initial_loss
 
     def train_step(self, current_model, past_model, databatch, number_of_training_step, sinkhorn_iteration=0):
         databatch = self.preprocess_data(databatch)
+        X_spins = databatch[0]
+        current_time = databatch[1]
         # LOSS UPDATE
-        loss = self.sb.backward_ratio_stein_estimator.estimator(current_model, past_model, databatch[0], databatch[1])
+        loss = self.sb.backward_ratio_stein_estimator.estimator(current_model, past_model, X_spins, current_time)
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
@@ -133,7 +134,9 @@ class SBTrainer:
     def test_step(self, current_model, past_model, databatch, number_of_test_step, sinkhorn_iteration=0):
         with torch.no_grad():
             databatch = self.preprocess_data(databatch)
-            loss = self.sb.backward_ratio_stein_estimator.estimator(current_model, past_model, databatch[0], databatch[1])
+            X_spins = databatch[0]
+            current_time = databatch[1]
+            loss = self.sb.backward_ratio_stein_estimator.estimator(current_model,past_model,X_spins,current_time)
             self.writer.add_scalar('test loss sinkhorn {0}'.format(sinkhorn_iteration), loss, number_of_test_step)
         return loss
 

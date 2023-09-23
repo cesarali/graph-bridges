@@ -49,8 +49,8 @@ class TestGlauberDynamics(unittest.TestCase):
     @unittest.skip
     def test_sampling(self):
         self.sb.scheduler.set_timesteps(self.sb_config.sampler.num_steps,
-                                     self.sb_config.sampler.min_t,
-                                     sinkhorn_iteration=0)
+                                        self.sb_config.sampler.min_t,
+                                        sinkhorn_iteration=0)
         timesteps_ = self.sb.scheduler.timesteps
         paths, time_steps = self.sb.reference_process.sample_path(self.x_adj_data,timesteps_)
         print(f"Paths Shape {paths.shape}")
@@ -108,7 +108,6 @@ class TestGlauberDynamics(unittest.TestCase):
         #time_series_of_paths = stats_.counts_states_in_paths(paths.cpu())
         #print(time_series_of_paths.shape)
 
-    @unittest.skip
     def test_losses(self):
         current_model = self.sb.training_model
         past_model = self.sb.reference_process

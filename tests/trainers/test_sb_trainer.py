@@ -27,9 +27,6 @@ class TestSBTrainer(unittest.TestCase):
                                   experiment_indentifier="unittest_sb_trainer")
         self.sb_config.data = EgoConfig(as_image=False, batch_size=2, flatten_adjacency=True,full_adjacency=True)
 
-        self.sb_config.model = BackRateMLPConfig()
-        self.sb_config.temp_network = BackRateMLPConfig()
-
         self.sb_config.stein = SteinSpinEstimatorConfig(stein_sample_size=10)
         self.sb_config.sampler = ParametrizedSamplerConfig(num_steps=5)
         self.sb_config.trainer = SBTrainerConfig(learning_rate=1e-3,

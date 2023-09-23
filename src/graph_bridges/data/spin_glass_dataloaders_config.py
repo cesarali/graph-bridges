@@ -49,11 +49,9 @@ class ParametrizedSpinGlassHamiltonianConfig(SpinGlassVariablesConfig):
     D: int = None
     S: int = 2
 
-    data_min_max: List[float] = field(default_factory=lambda :[0.,1.])
+    data_min_max: List[float] = field(default_factory=lambda :[-1.,1.])
 
     def __post_init__(self):
-        self.total_data_size = self.number_of_paths
-
         self.D  = self.number_of_spins
         self.number_of_states = 2**self.D
 
@@ -70,11 +68,12 @@ class ParametrizedSpinGlassHamiltonianConfig(SpinGlassVariablesConfig):
             self.shape = [self.C,self.H,self.W]
             self.shape_ = [self.C, self.H, self.W]
         else:
-            self.shape = [self.C,self.H,self.W]
-            self.shape_ = [self.H, self.W]
+            #self.C = self.H, self.W
+            self.shape = [None,None,None]
+            self.shape_ = [self.D]
 
-        if self.as_spins:
-            self.data_min_max = [-1.,1.]
+        if not self.as_spins:
+            self.data_min_max = [0.,1.]
 
         self.dataloader_data_dir = os.path.join(data_path,"raw","spin_glass")
         self.dataloader_data_path = os.path.join(self.dataloader_data_dir,f"{self.data}.pkl")

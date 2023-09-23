@@ -48,7 +48,6 @@ class SB:
 
         self.reference_process = load_reference(config,device)
 
-
         self.backward_ratio_stein_estimator = BackwardRatioSteinEstimator(config, device)
         self.scheduler = SBScheduler(config, device)
         self.pipeline = SBPipeline(config,

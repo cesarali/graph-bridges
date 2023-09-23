@@ -119,6 +119,7 @@ class SBPipeline(DiffusionPipeline):
             full_path = full_path.reshape(number_of_paths * number_of_timesteps, -1)
             return full_path, timesteps
 
+    @torch.no_grad()
     def paths_iterator(self,
                        generation_model: Union[BackwardRate,ReferenceProcess] = None,
                        sinkhorn_iteration = 0,
@@ -212,9 +213,9 @@ class SBPipeline(DiffusionPipeline):
 
         :return:
         """
-        #=========================================================
+        #===========================================================================
         # PREPROCESSING
-        #=========================================================
+        #===========================================================================
         # reference process is only available for sinkhorn iteration 0
         if generation_model is None:
             assert sinkhorn_iteration == 0
@@ -239,12 +240,16 @@ class SBPipeline(DiffusionPipeline):
         # preprocess initial state and full path
         initial_spins = initial_spins.to(device)
         num_of_paths = initial_spins.shape[0]
+
+        initial_shape = initial_spins.shape
+        initial_spins = initial_spins.reshape(num_of_paths,self.bridge_config.data.number_of_spins)
+
         if return_path:
             full_path = [initial_spins.unsqueeze(1)]
 
-        # =============================================================
+        # =========================================================================
         # SAMPLE NATIVELY
-        # ==============================================================
+        # =========================================================================
         if sinkhorn_iteration == 0 and sample_from_reference_native and hasattr(self.reference_process,'sample_path'):
             full_path, timesteps = self.reference_process.sample_path(initial_spins, timesteps)
             if return_path:
@@ -277,11 +282,10 @@ class SBPipeline(DiffusionPipeline):
 
                 if return_path:
                     full_path.append(initial_spins.unsqueeze(1))
-
             #=========================================================
             # HANDLES PATH SHAPES
             #=========================================================
             if return_path:
                 return self.paths_shapes(full_path,timesteps,return_path_shape)
             else:
-                return spins_new
+                return spins_new.reshape(initial_shape)

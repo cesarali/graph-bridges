@@ -26,7 +26,6 @@ class TestSB(unittest.TestCase):
     def setUp(self) -> None:
         self.sb_config = SBConfig(experiment_indentifier="sb_unittest")
         self.sb_config.data = EgoConfig(as_image=False, batch_size=5, full_adjacency=False)
-        self.sb_config.model = BackRateMLPConfig(time_embed_dim=12)
         self.sb_config.stein = SteinSpinEstimatorConfig(stein_sample_size=5)
         self.sb_config.sampler = ParametrizedSamplerConfig(num_steps=5)
 

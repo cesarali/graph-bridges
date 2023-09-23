@@ -34,7 +34,7 @@ class TestDataDataloader(unittest.TestCase):
     def test_back_to_graph(self):
         databatch = next(self.dataloader_data.train().__iter__())
         x_adj_spins = databatch[0]
-        x_adj = self.dataloader.transform_to_graph(x_adj_spins)
+        x_adj = self.dataloader_data.transform_to_graph(x_adj_spins)
         self.assertTrue(x_adj.min() >= 0.)
 
     def test_databatch(self):

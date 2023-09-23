@@ -19,6 +19,7 @@ from graph_bridges.models.temporal_networks.temporal_networks_utils import load_
 from graph_bridges.models.backward_rates.backward_rate import BackwardRate
 from graph_bridges.models.temporal_networks.temporal_networks_utils import load_temp_network
 from graph_bridges.models.temporal_networks.transformers.temporal_hollow_transformers import TemporalHollowTransformer
+
 class ImageX0PredBase(BackwardRate):
     def __init__(self, cfg, device, rank=None):
         BackwardRate.__init__(self,cfg,device,rank)

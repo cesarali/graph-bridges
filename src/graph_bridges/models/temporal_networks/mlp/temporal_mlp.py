@@ -27,9 +27,12 @@ class TemporalMLP(nn.Module):
         self.hidden_layer = config.temp_network.hidden_dim
         self.num_states = config.data.number_of_states
         self.dimension = config.data.D
-        self.define_deep_models()
 
+        self.expected_output_shape = [self.dimension,self.num_states]
+
+        self.define_deep_models()
         self.device = device
+        self.to(self.device)
 
     def define_deep_models(self):
         # layers
