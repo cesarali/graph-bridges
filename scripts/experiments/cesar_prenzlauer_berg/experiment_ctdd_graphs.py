@@ -5,7 +5,6 @@ if __name__=="__main__":
     from graph_bridges.configs.config_ctdd import CTDDTrainerConfig,ParametrizedSamplerConfig
 
     from graph_bridges.data.graph_dataloaders_config import EgoConfig,CommunityConfig,GridConfig,CommunitySmallConfig
-    from graph_bridges.data.graph_dataloaders_config import PepperMNISTDataConfig
     from graph_bridges.data.graph_dataloaders_config import CommunitySmallConfig
 
     from graph_bridges.models.temporal_networks.mlp.temporal_mlp import TemporalMLPConfig

@@ -161,6 +161,7 @@ class SBTrainer:
             past_loss = past_model
 
         assert check_model_devices(training_model) == self.device
+
         self.sb.backward_ratio_stein_estimator.set_device(self.device)
 
         for sinkhorn_iteration in range(self.starting_sinkhorn,self.number_of_sinkhorn):
@@ -172,7 +173,6 @@ class SBTrainer:
             #=====================================================================================
             # SINKHORN TRAINING
             #=====================================================================================
-
             # INITIATE LOSS
             initial_loss = self.initialize_sinkhorn(training_model, past_model, sinkhorn_iteration)
 
@@ -282,7 +282,7 @@ class SBTrainer:
         if "graphs" in config.trainer.metrics:
             graph_metrics_path_ = config.experiment_files.metrics_file.format("graph_sinkhorn_{0}_{1}".format(sinkhorn_iteration,
                                                                                                               epoch))
-            graph_metrics =  graph_metrics_for_sb(self.sb, current_model,device)
+            graph_metrics = graph_metrics_for_sb(self.sb, current_model,device)
             with open(graph_metrics_path_, "w") as f:
                 json.dump(graph_metrics, f)
 
@@ -293,6 +293,8 @@ class SBTrainer:
                                                        generating_model=current_model,
                                                        sinkhorn_iteration=1)
             plot_graphs_list2(generated_graphs,title="Generated 0",save_dir=graph_plot_path_)
+
+
 
     def save_results(self,
                      current_model,

@@ -13,7 +13,7 @@ class SpinGlassVariablesConfig:
     couplings_sigma : float = 1.
     couplings : List[float] = None
     fields : List[float] = None
-    number_of_paths : int = 500
+    number_of_paths : int = 800
     number_of_mcmc_steps : int = 1000
     number_of_mcmc_burning_steps: int = 500
 
@@ -23,7 +23,11 @@ class ParametrizedSpinGlassHamiltonianConfig(SpinGlassVariablesConfig):
 
     #NAMES
     name: str = "ParametrizedSpinGlassHamiltonian"
-    data: str = "spin_glass"#spin_glass, ising
+    data: str = "bernoulli_spins"#spin_glass, ising "bernoulli_spins_0.2","bernoulli_spins_0.8"
+
+    bernoulli_spins:bool = False
+    bernoulli_probability:float = 0.2
+
     delete_data:bool = False
 
     dataloader_data_dir:str = None

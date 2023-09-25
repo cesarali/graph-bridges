@@ -8,8 +8,9 @@ from graph_bridges.models.generative_models.sb import SB
 from graph_bridges.configs.config_sb import SBTrainerConfig
 from graph_bridges.models.backward_rates.ctdd_backward_rate_config import BackRateMLPConfig
 from graph_bridges.data.graph_dataloaders_config import EgoConfig
+from graph_bridges.data.spin_glass_dataloaders_config import ParametrizedSpinGlassHamiltonianConfig
 from graph_bridges.configs.graphs.graph_config_sb import SBConfig
-from graph_bridges.configs.config_sb import  ParametrizedSamplerConfig, SteinSpinEstimatorConfig
+from graph_bridges.configs.config_sb import ParametrizedSamplerConfig, SteinSpinEstimatorConfig
 from graph_bridges.models.backward_rates.ctdd_backward_rate_config import BackwardRateTemporalHollowTransformerConfig
 from graph_bridges.models.temporal_networks.transformers.temporal_hollow_transformers import TemporalHollowTransformerConfig
 from graph_bridges.models.trainers.sb_training import SBTrainer
@@ -25,9 +26,12 @@ class TestSBTrainer(unittest.TestCase):
                                   experiment_name="graph",
                                   experiment_type="sb",
                                   experiment_indentifier="unittest_sb_trainer")
-        self.sb_config.data = EgoConfig(as_image=False, batch_size=2, flatten_adjacency=True,full_adjacency=True)
 
-        self.sb_config.stein = SteinSpinEstimatorConfig(stein_sample_size=10)
+        #self.sb_config.data = EgoConfig(as_image=False, batch_size=2, flatten_adjacency=True,full_adjacency=True)
+        self.sb_config.data = ParametrizedSpinGlassHamiltonianConfig(data="bernoulli_probability_0.2")
+        self.sb_config.target = ParametrizedSpinGlassHamiltonianConfig(data="bernoulli_probability_0.9")
+
+        self.sb_config.stein = SteinSpinEstimatorConfig(stein_sample_size=2)
         self.sb_config.sampler = ParametrizedSamplerConfig(num_steps=5)
         self.sb_config.trainer = SBTrainerConfig(learning_rate=1e-3,
                                                  num_epochs=4,
@@ -48,7 +52,8 @@ class TestSBTrainer(unittest.TestCase):
                                     experiment_indentifier="unittest_sb_trainer",
                                     sinkhorn_iteration_to_load=0)
         x_end = sb.pipeline(None,0,torch.device("cpu"),sample_size=32,return_path=False)
-        x_adj = sb.data_dataloader.transform_to_graph(x_end)
+        if hasattr(sb.data_dataloader,"transform_to_graph"):
+            x_adj = sb.data_dataloader,"transform_to_graph"(x_end)
         print("Original")
         pprint(self.sb_config.data.__dict__)
         print("Loaded")

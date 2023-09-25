@@ -9,6 +9,7 @@ from dataclasses import dataclass, asdict
 
 from torchvision import transforms
 from torch.utils.data import TensorDataset
+from torch.distributions import Bernoulli
 from graph_bridges.configs.config_sb import SBConfig
 from graph_bridges.configs.config_ctdd import CTDDConfig
 from graph_bridges.data.spin_glass_dataloaders_config import ParametrizedSpinGlassHamiltonianConfig
@@ -62,25 +63,39 @@ def simulate_fields_and_couplings(number_of_spins,number_of_couplings):
     return fields,couplings
 
 def simulate_spin_glass_data(config:ParametrizedSpinGlassHamiltonianConfig)->SpinGlassSimulationData:
-    number_of_spins = config.number_of_spins
-    number_of_couplings = ParametrizedSpinGlassHamiltonian.coupling_size(number_of_spins)
+    if config.bernoulli_spins:
+        bernoulli_probability = config.bernoulli_probability
+        number_of_spins = config.number_of_spins
+        spins_probability = torch.full((number_of_spins,), bernoulli_probability)
+        spins_distribution = Bernoulli(spins_probability)
+        ising_sample = spins_distribution.sample(sample_shape=(config.number_of_paths,))
+        ising_sample = BinaryTensorToSpinsTransform(ising_sample)
+        simulation_data = SpinGlassSimulationData(sample=ising_sample.tolist(),
+                                                  couplings=None,
+                                                  fields=spins_probability.tolist(),
+                                                  beta=None)
+        return simulation_data
+    else:
+        number_of_spins = config.number_of_spins
+        number_of_couplings = ParametrizedSpinGlassHamiltonian.coupling_size(number_of_spins)
 
-    if config.fields is None and config.couplings is None:
-        fields, couplings = simulate_fields_and_couplings(number_of_spins, number_of_couplings)
-        config.fields = fields.tolist()
-        config.couplings = couplings.tolist()
+        if config.fields is None and config.couplings is None:
+            fields, couplings = simulate_fields_and_couplings(number_of_spins, number_of_couplings)
+            config.fields = fields.tolist()
+            config.couplings = couplings.tolist()
 
-    ising_model_real = ParametrizedSpinGlassHamiltonian(config,torch.device("cpu"))
-    ising_mcmc_sample = ising_model_real.sample(config)
+        ising_model_real = ParametrizedSpinGlassHamiltonian(config,torch.device("cpu"))
+        ising_mcmc_sample = ising_model_real.sample(config)
 
-    assert config.number_of_mcmc_burning_steps < config.number_of_mcmc_steps
+        assert config.number_of_mcmc_burning_steps < config.number_of_mcmc_steps
 
-    ising_sample = ising_mcmc_sample[:, config.number_of_mcmc_burning_steps,:]
-    simulation_data = SpinGlassSimulationData(sample=ising_sample.tolist(),
-                                              couplings=config.couplings,
-                                              fields=config.fields,
-                                              beta=config.beta)
-    return simulation_data
+        ising_sample = ising_mcmc_sample[:, config.number_of_mcmc_burning_steps,:]
+        simulation_data = SpinGlassSimulationData(sample=ising_sample.tolist(),
+                                                  couplings=config.couplings,
+                                                  fields=config.fields,
+                                                  beta=config.beta)
+        return simulation_data
+
 
 def get_ising_dataset(data_config:ParametrizedSpinGlassHamiltonianConfig):
     data_config: ParametrizedSpinGlassHamiltonianConfig
@@ -92,6 +107,7 @@ def get_ising_dataset(data_config:ParametrizedSpinGlassHamiltonianConfig):
     #==============================================
     # READ OR SIMULATE
     #==============================================
+
     if dataloader_data_path.exists():
         with open(dataloader_data_path, 'rb') as f:
             spin_glass_simulation = pickle.load(f)
@@ -141,7 +157,7 @@ class ParametrizedSpinGlassHamiltonianLoader:
         self.transform_to_spins = transforms.Compose(inverse_transform_list)
 
         # datasets
-        train_dataset,test_dataset = get_ising_dataset(self.config)
+        test_dataset, train_dataset = get_ising_dataset(self.config)
         train_dataset = self.composed_transform(train_dataset)
         test_dataset = self.composed_transform(test_dataset)
 
@@ -157,3 +173,31 @@ class ParametrizedSpinGlassHamiltonianLoader:
 
     def test(self):
         return self.test_loader
+
+    def sample(self,sample_size=10,type="train"):
+        if type == "train":
+            data_iterator = self.train()
+        else:
+            data_iterator = self.test()
+
+        included = 0
+        x_adj_list = []
+        #x_features_list = []
+        for databatch in data_iterator:
+            x_adj = databatch[0]
+            #x_features = databatch[1]
+            x_adj_list.append(x_adj)
+            #x_features_list.append(x_features)
+
+            current_batchsize = x_adj.shape[0]
+            included += current_batchsize
+            if included > sample_size:
+                break
+
+        if included < sample_size:
+            raise Exception("Sample Size Smaller Than Expected")
+
+        x_adj_list = torch.vstack(x_adj_list)
+        #x_features_list = torch.vstack(x_features_list)
+
+        return [x_adj_list[:sample_size]]

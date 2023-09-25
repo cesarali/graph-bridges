@@ -12,7 +12,7 @@ from graph_bridges.utils.test_utils import check_model_devices
 from graph_bridges.data.graph_dataloaders_config import EgoConfig
 from graph_bridges.configs.graphs.graph_config_sb import SBConfig
 from graph_bridges.configs.config_sb import ParametrizedSamplerConfig, SteinSpinEstimatorConfig
-
+from graph_bridges.data.spin_glass_dataloaders_config import ParametrizedSpinGlassHamiltonianConfig
 
 class TestSB(unittest.TestCase):
     """
@@ -27,7 +27,12 @@ class TestSB(unittest.TestCase):
         self.batch_size = 12
         self.num_time_steps = 8
         self.sb_config = SBConfig(experiment_indentifier="sb_unittest")
-        self.sb_config.data = EgoConfig(as_image=False, batch_size=self.batch_size, full_adjacency=False)
+
+        #self.sb_config.data = EgoConfig(as_image=False, batch_size=self.batch_size, full_adjacency=False)
+
+        self.sb_config.data = ParametrizedSpinGlassHamiltonianConfig(data="bernoulli_probability_0.2")
+        self.sb_config.target = ParametrizedSpinGlassHamiltonianConfig(data="bernoulli_probability_0.9")
+
         self.sb_config.stein = SteinSpinEstimatorConfig(stein_sample_size=5)
         self.sb_config.sampler = ParametrizedSamplerConfig(num_steps=self.num_time_steps, step_type="TauLeaping")
 
@@ -41,7 +46,7 @@ class TestSB(unittest.TestCase):
 
         databatch = next(self.sb.data_dataloader.train().__iter__())
         self.x_ajd = databatch[0].to(self.device)
-        self.x_features = databatch[1].to(self.device)
+        #self.x_features = databatch[1].to(self.device)
 
     #=============================================
     #devices
@@ -115,8 +120,8 @@ class TestSB(unittest.TestCase):
         for spins_path_2, times_2 in self.sb.pipeline.paths_iterator(self.sb.training_model,
                                                                      device=self.device,
                                                                      sinkhorn_iteration=1,
-                                                                     return_path_shape=False,
-                                                                     respect_batch_from_path=True):
+                                                                     return_path_shape=True,
+                                                                     respect_batch_from_path=False):
             number_of_states_2 += spins_path_2.shape[0]
         self.assertTrue(number_of_states_2,self.sb_config.data.training_size*(self.num_time_steps+1))
 
@@ -124,13 +129,10 @@ class TestSB(unittest.TestCase):
         for spins_path_1, times_1 in self.sb.pipeline.paths_iterator(None,
                                                                      sinkhorn_iteration=0,
                                                                      device=self.device,
-                                                                     return_path_shape=False,
-                                                                     respect_batch_from_path=True):
+                                                                     return_path_shape=True,
+                                                                     respect_batch_from_path=False):
             number_of_states_1 += spins_path_1.shape[0]
-        self.assertTrue(number_of_states_1 == number_of_states_2)
-
-
-
+        self.assertTrue(number_of_states_1,number_of_states_2)
 
 if __name__ == '__main__':
     unittest.main()

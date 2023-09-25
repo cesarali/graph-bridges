@@ -20,7 +20,7 @@ import torch.nn.functional as F
 from tqdm import tqdm
 from graph_bridges.models.schedulers.scheduling_sb import SBScheduler
 from graph_bridges.models.reference_process.ctdd_reference import ReferenceProcess
-from graph_bridges.models.backward_rates.ctdd_backward_rate import BackwardRate
+from graph_bridges.models.backward_rates.sb_backward_rate import SchrodingerBridgeBackwardRate
 from graph_bridges.data.graph_dataloaders import BridgeGraphDataLoaders
 
 class SBPipeline(DiffusionPipeline):
@@ -35,7 +35,7 @@ class SBPipeline(DiffusionPipeline):
             [`DDPMScheduler`], or [`DDIMScheduler`].
     """
     config : SBConfig
-    model: BackwardRate
+    model: SchrodingerBridgeBackwardRate
     reference_process: ReferenceProcess
     data: BridgeGraphDataLoaders
     target: BridgeGraphDataLoaders
@@ -53,9 +53,15 @@ class SBPipeline(DiffusionPipeline):
                               data=data,
                               target=target,
                               scheduler=scheduler)
+
         self.bridge_config = config
         self.D = self.bridge_config.data.D
 
+        data_training_size = self.bridge_config.data.training_size
+        target_training_size = self.bridge_config.target.training_size
+
+        self.min_training_size = min(target_training_size,data_training_size)
+        self.batch_size = self.bridge_config.data.batch_size
 
     def select_time_difference(self,sinkhorn_iteration,timesteps,idx):
         if sinkhorn_iteration % 2 == 0:
@@ -104,8 +110,6 @@ class SBPipeline(DiffusionPipeline):
                 data_sampler = self.target
         return data_sampler
 
-
-
     def paths_shapes(self,full_path,timesteps,return_path_shape):
         if isinstance(full_path,list):
             full_path = torch.concat(full_path, dim=1)
@@ -123,7 +127,7 @@ class SBPipeline(DiffusionPipeline):
 
     @torch.no_grad()
     def paths_iterator(self,
-                       generation_model: Union[BackwardRate,ReferenceProcess] = None,
+                       generation_model: Union[SchrodingerBridgeBackwardRate,ReferenceProcess] = None,
                        sinkhorn_iteration = 0,
                        device :torch.device = None,
                        train: bool = True,
@@ -136,7 +140,7 @@ class SBPipeline(DiffusionPipeline):
         if generation_model is None:
             assert sinkhorn_iteration == 0
         else:
-            if isinstance(generation_model, BackwardRate):
+            if isinstance(generation_model, SchrodingerBridgeBackwardRate):
                 assert sinkhorn_iteration >= 1
 
         # set step values
@@ -147,10 +151,18 @@ class SBPipeline(DiffusionPipeline):
         data_iterator = self.select_data_iterator(sinkhorn_iteration, train)
         number_of_time_steps = len(timesteps_)
 
+        current_index = 0
         for databatch in data_iterator:
-            spins = databatch[0]
+
+            remaining = min(self.min_training_size - current_index, self.batch_size)
+            spins = databatch[0][:remaining]
+            current_index += remaining
+
             num_of_paths = spins.shape[0]
             spins = spins.to(device)
+
+            #self.min_training_size
+
             if return_path:
                 full_path = [spins.unsqueeze(1)]
 
@@ -201,10 +213,15 @@ class SBPipeline(DiffusionPipeline):
                 else:
                     yield spins_new
 
+            if current_index < self.min_training_size:
+                pass
+            else:
+                break
+
     @torch.no_grad()
     def __call__(
         self,
-        generation_model: Optional[BackwardRate] = None,
+        generation_model: Optional[SchrodingerBridgeBackwardRate] = None,
         sinkhorn_iteration = 0,
         device :torch.device = None,
         initial_spins: torch.Tensor = None,
@@ -236,7 +253,7 @@ class SBPipeline(DiffusionPipeline):
         if generation_model is None:
             assert sinkhorn_iteration == 0
         else:
-            if isinstance(generation_model, BackwardRate):
+            if isinstance(generation_model, SchrodingerBridgeBackwardRate):
                 assert sinkhorn_iteration >= 1
 
         # set step values

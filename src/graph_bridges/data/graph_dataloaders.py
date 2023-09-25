@@ -209,6 +209,9 @@ class DoucetTargetData():
         self.device = device
         self.doucet = self.config.data.doucet
         self.as_spins = self.config.data.as_spins
+        self.config.target.training_size = self.config.data.training_size
+        self.config.target.test_size = self.config.data.test_size
+        self.config.target.total_data_size = self.config.data.total_data_size
 
         self.D = self.config.data.D
         self.number_of_spins = self.D

@@ -155,16 +155,20 @@ class SBConfig:
                                                    experiment_name=self.experiment_name,
                                                    experiment_indentifier=self.experiment_indentifier,
                                                    experiment_type=self.experiment_type)
-
-
         if isinstance(self.model,dict):
             self.model = SchrodingerBridgeBackwardRateConfig(**self.model)
         if isinstance(self.temp_network,dict):
             self.temp_network = all_temp_nets_configs[self.temp_network["temp_name"]](**self.temp_network)
         if isinstance(self.data,dict):
-            self.data =  all_dataloaders_configs[self.data["data"]](**self.data)
+            if self.data["data"] in all_dataloaders_configs.keys():
+                self.data = all_dataloaders_configs[self.data["data"]](**self.data)
+            elif self.data["name"] in all_dataloaders_configs.keys():
+                self.data = all_dataloaders_configs[self.data["name"]](**self.data)
         if isinstance(self.target,dict):
-            self.target = all_dataloaders_configs[self.target["data"]](**self.target)  # corresponds to the distribution at final time
+            if self.target["data"] in all_dataloaders_configs.keys():
+                self.target = all_dataloaders_configs[self.target["data"]](**self.target)
+            elif self.target["name"] in all_dataloaders_configs.keys():
+                self.target = all_dataloaders_configs[self.target["name"]](**self.target)
         if isinstance(self.reference,dict):
             reference_name = self.reference["name"]
             self.reference = all_reference_process_configs[reference_name](**self.reference)
