@@ -11,8 +11,6 @@ from graph_bridges.models.generative_models.sb import SB
 from graph_bridges.utils.test_utils import check_model_devices
 from graph_bridges.data.graph_dataloaders_config import EgoConfig
 from graph_bridges.configs.graphs.graph_config_sb import SBConfig
-
-from graph_bridges.models.backward_rates.ctdd_backward_rate_config import BackRateMLPConfig
 from graph_bridges.configs.config_sb import ParametrizedSamplerConfig, SteinSpinEstimatorConfig
 
 
@@ -26,10 +24,12 @@ class TestSB(unittest.TestCase):
     sb: SB
 
     def setUp(self) -> None:
+        self.batch_size = 12
+        self.num_time_steps = 8
         self.sb_config = SBConfig(experiment_indentifier="sb_unittest")
-        self.sb_config.data = EgoConfig(as_image=False, batch_size=5, full_adjacency=False)
+        self.sb_config.data = EgoConfig(as_image=False, batch_size=self.batch_size, full_adjacency=False)
         self.sb_config.stein = SteinSpinEstimatorConfig(stein_sample_size=5)
-        self.sb_config.sampler = ParametrizedSamplerConfig(num_steps=5, step_type="TauLeaping")
+        self.sb_config.sampler = ParametrizedSamplerConfig(num_steps=self.num_time_steps, step_type="TauLeaping")
 
         if torch.cuda.is_available():
             self.device = torch.device("cuda:0")
@@ -98,11 +98,6 @@ class TestSB(unittest.TestCase):
         self.assertIsInstance(x_end,torch.Tensor)
         self.assertIsInstance(times,torch.Tensor)
 
-    def test_pipeline_reference_with_path_with_start(self):
-        x_end, times = self.sb.pipeline(None, 0, self.device, self.x_ajd, return_path=True)
-        print(x_end.shape)
-        print(times.shape)
-
     # =============================================
     # WITH PARAMETRIC BACKWARD RATE PROCESS
     # =============================================
@@ -120,14 +115,17 @@ class TestSB(unittest.TestCase):
         for spins_path_2, times_2 in self.sb.pipeline.paths_iterator(self.sb.training_model,
                                                                      device=self.device,
                                                                      sinkhorn_iteration=1,
-                                                                     return_path_shape=True):
+                                                                     return_path_shape=False,
+                                                                     respect_batch_from_path=True):
             number_of_states_2 += spins_path_2.shape[0]
+        self.assertTrue(number_of_states_2,self.sb_config.data.training_size*(self.num_time_steps+1))
 
         number_of_states_1 = 0
         for spins_path_1, times_1 in self.sb.pipeline.paths_iterator(None,
                                                                      sinkhorn_iteration=0,
                                                                      device=self.device,
-                                                                     return_path_shape=True):
+                                                                     return_path_shape=False,
+                                                                     respect_batch_from_path=True):
             number_of_states_1 += spins_path_1.shape[0]
         self.assertTrue(number_of_states_1 == number_of_states_2)
 

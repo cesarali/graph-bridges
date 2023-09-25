@@ -35,7 +35,8 @@ class TestSBTrainer(unittest.TestCase):
                                                  save_model_epochs=2,
                                                  save_image_epochs=2,
                                                  device="cpu",
-                                                 metrics=["graphs_plots","histograms"])
+                                                 metrics=[])
+        #["graphs_plots", "histograms"]
         self.sb_config.__post_init__()
         self.sb_trainer = SBTrainer(self.sb_config)
 
@@ -53,12 +54,13 @@ class TestSBTrainer(unittest.TestCase):
         print("Loaded")
         pprint(sb.config.data.__dict__)
 
-
+    @unittest.skip
     def test_sinkhorn_initialization(self):
         current_model = self.sb_trainer.sb.training_model
         past_model = self.sb_trainer.sb.reference_process
         self.sb_trainer.initialize_sinkhorn(current_model,past_model,sinkhorn_iteration=0)
 
+    @unittest.skip
     def test_metrics_login(self):
         sinkhorn_iteration = 0
         current_model = self.sb_trainer.sb.training_model

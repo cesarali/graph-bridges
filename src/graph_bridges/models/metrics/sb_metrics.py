@@ -81,6 +81,7 @@ def paths_marginal_histograms(sb:SB,
 
     for spins_path_1, times_1 in sb.pipeline.paths_iterator(past_to_train_model,
                                                             sinkhorn_iteration=sinkhorn_iteration,
+                                                            return_path=True,
                                                             return_path_shape=True,
                                                             device=device):
         end_of_path = spins_path_1[:, -1, :]

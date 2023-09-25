@@ -73,8 +73,8 @@ class SchrodingerBridgeBackwardRate(EMA,nn.Module):
 
         temporal_net_logits = self.temp_network(x, times)
         flip_rate_logits = self.flip_rate_logits(temporal_net_logits.view(batch_size,-1))
-
-        return flip_rate_logits
+        flip_rates = F.softplus(flip_rate_logits)
+        return flip_rates
 
     def stein_binary_forward(self,
                 x: TensorType["batch_size", "dimension"],

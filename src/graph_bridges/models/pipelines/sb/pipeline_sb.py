@@ -104,6 +104,8 @@ class SBPipeline(DiffusionPipeline):
                 data_sampler = self.target
         return data_sampler
 
+
+
     def paths_shapes(self,full_path,timesteps,return_path_shape):
         if isinstance(full_path,list):
             full_path = torch.concat(full_path, dim=1)
@@ -128,7 +130,8 @@ class SBPipeline(DiffusionPipeline):
                        sample_from_reference_native:bool = True,
                        return_dict: bool = True,
                        return_path:bool = True,
-                       return_path_shape:bool = False):
+                       return_path_shape:bool = False,
+                       respect_batch_from_path=False):
 
         if generation_model is None:
             assert sinkhorn_iteration == 0
@@ -142,6 +145,7 @@ class SBPipeline(DiffusionPipeline):
                                      sinkhorn_iteration=sinkhorn_iteration)
         timesteps_ = self.scheduler.timesteps
         data_iterator = self.select_data_iterator(sinkhorn_iteration, train)
+        number_of_time_steps = len(timesteps_)
 
         for databatch in data_iterator:
             spins = databatch[0]
@@ -151,20 +155,21 @@ class SBPipeline(DiffusionPipeline):
                 full_path = [spins.unsqueeze(1)]
 
             if sinkhorn_iteration == 0 and sample_from_reference_native and hasattr(self.reference_process,'sample_path'):
-                full_path, timesteps = self.reference_process.sample_path(spins, timesteps_)
+                full_path, paths_timesteps = self.reference_process.sample_path(spins, timesteps_)
                 if return_path:
-                    yield self.paths_shapes(full_path, timesteps, return_path_shape)
+                    yield self.paths_shapes(full_path, paths_timesteps, return_path_shape)
                 else:
                     yield full_path[:, -1, :]
             else:
                 for idx, t in enumerate(timesteps_[0:-1]):
 
                     h = self.select_time_difference(sinkhorn_iteration,timesteps_,idx)
+                    if h < 0:
+                        print(h)
                     times_ = t * torch.ones(num_of_paths,device=device)
 
                     if sinkhorn_iteration != 0:
-                        logits = generation_model.stein_binary_forward(spins, times_)
-                        rates_ = F.softplus(logits)
+                        rates_ = generation_model.stein_binary_forward(spins, times_)
                     else:
                         rates_ = self.reference_process.rates_states_and_times(spins,times_)
 
@@ -181,7 +186,18 @@ class SBPipeline(DiffusionPipeline):
                         full_path.append(spins.unsqueeze(1))
 
                 if return_path:
-                    yield self.paths_shapes(full_path,timesteps_,return_path_shape)
+                    full_path, paths_timesteps = self.paths_shapes(full_path, timesteps_, return_path_shape)
+                    if not return_path_shape and respect_batch_from_path:
+                        perm = torch.randperm(full_path.shape[0])
+                        full_path = full_path[perm]
+                        paths_timesteps = paths_timesteps[perm]
+
+                        full_path = torch.chunk(full_path, number_of_time_steps)
+                        paths_timesteps = torch.chunk(paths_timesteps, number_of_time_steps)
+                        for path_chunk,time_chunk in zip(full_path, paths_timesteps):
+                            yield path_chunk,time_chunk
+                    else:
+                        yield full_path, paths_timesteps
                 else:
                     yield spins_new
 
@@ -266,8 +282,7 @@ class SBPipeline(DiffusionPipeline):
                 times = t * torch.ones(num_of_paths,device=device)
 
                 if sinkhorn_iteration != 0:
-                    logits = generation_model.stein_binary_forward(initial_spins, times)
-                    rates_ = F.softplus(logits)
+                    rates_ = generation_model.stein_binary_forward(initial_spins, times)
                 else:
                     rates_ = self.reference_process.rates_states_and_times(initial_spins, times)
 
