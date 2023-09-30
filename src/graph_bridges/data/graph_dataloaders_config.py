@@ -42,9 +42,11 @@ class GraphDataConfig:
     test_size:int = None
 
     shape : List[int] = None
+    temporal_net_expected_shape : List[int] = None
     preprocess_datapath:str = "graphs"
     doucet:bool = False
     type:str=None
+    data_min_max: List[float] = field(default_factory=lambda:[0.,1.])
 
     def __post_init__(self):
         self.number_of_upper_entries = int(self.max_node_num*(self.max_node_num-1)*.5)
@@ -53,23 +55,23 @@ class GraphDataConfig:
             if self.full_adjacency:
                 if self.as_image:
                     self.shape = [1, 1, self.max_node_num*self.max_node_num]
-                    self.shape_ = self.shape
+                    self.temporal_net_expected_shape = self.shape
                     self.C, self.H, self.W = self.shape[0], self.shape[1], self.shape[2]
                     self.D = self.C * self.H * self.W
                 else:
                     self.shape = [1,1,self.max_node_num * self.max_node_num]
-                    self.shape_ = [self.max_node_num * self.max_node_num]
+                    self.temporal_net_expected_shape = [self.max_node_num * self.max_node_num]
                     self.C, self.H, self.W = self.shape[0], self.shape[1], self.shape[2]
                     self.D = self.max_node_num * self.max_node_num
             else:
                 if self.as_image:
                     self.shape = [1, 1,self.number_of_upper_entries]
-                    self.shape_ = self.shape
+                    self.temporal_net_expected_shape = self.shape
                     self.C, self.H, self.W = self.shape[0], self.shape[1], self.shape[2]
                     self.D = self.C * self.H * self.W
                 else:
                     self.shape = [1,1,self.number_of_upper_entries]
-                    self.shape_ = [self.number_of_upper_entries]
+                    self.temporal_net_expected_shape = [self.number_of_upper_entries]
 
                     self.C, self.H, self.W = self.shape[0], self.shape[1], self.shape[2]
                     self.D = self.number_of_upper_entries
@@ -77,12 +79,13 @@ class GraphDataConfig:
             if self.full_adjacency:
                 if self.as_image:
                     self.shape = [1,self.max_node_num,self.max_node_num]
-                    self.shape_ = self.shape
+                    self.temporal_net_expected_shape = self.shape
                     self.C, self.H, self.W = self.shape[0], self.shape[1], self.shape[2]
                     self.D = self.C * self.H * self.W
                 else:
-                    self.shape_ = [self.max_node_num, self.max_node_num]
                     self.shape = [1,self.max_node_num, self.max_node_num]
+                    self.temporal_net_expected_shape = [self.max_node_num, self.max_node_num]
+
                     self.H, self.W =  self.shape[0], self.shape[1]
                     self.C = None
                     self.D = self.max_node_num * self.max_node_num
@@ -93,13 +96,13 @@ class GraphDataConfig:
         self.number_of_nodes = self.max_node_num
         self.number_of_spins = self.D
         self.number_of_states = self.S
-        self.data_min_max = [0,1]
+
         if self.as_spins:
             self.doucet = False
-
+            self.data_min_max = [-1., 1.]
         if self.doucet:
             self.type = "doucet"
-
+            self.data_min_max = [0., 1.]
         self.training_proportion = 1. - self.test_split
         self.training_size = int(self.training_proportion*self.total_data_size)
         self.test_size = int(self.test_split*self.total_data_size)

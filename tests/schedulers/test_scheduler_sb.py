@@ -20,7 +20,7 @@ class TestSBScheduler(unittest.TestCase):
 
     def setUp(self) -> None:
         self.sb_config = SBConfig(delete=True,experiment_indentifier="unittest_sb_scheduler")
-        self.sb_config.stein = SteinSpinEstimatorConfig(stein_sample_size=10)
+        self.sb_config.flip_estimator = SteinSpinEstimatorConfig(stein_sample_size=10)
         self.sb_config.sampler = ParametrizedSamplerConfig(num_steps=5)
         self.sb_config.trainer = SBTrainerConfig(learning_rate=1e-3,
                                                  num_epochs=6,

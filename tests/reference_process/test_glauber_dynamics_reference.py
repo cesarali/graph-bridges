@@ -23,11 +23,11 @@ class TestGlauberDynamics(unittest.TestCase):
         from graph_bridges.configs.spin_glass.spin_glass_config_sb import SBConfig
 
         self.sb_config = SBConfig(experiment_indentifier="test_glauber")
-        self.sb_config.data = ParametrizedSpinGlassHamiltonianConfig(batch_size=23)
 
-        self.sb_config.model = BackRateMLPConfig()
+        self.sb_config.data = ParametrizedSpinGlassHamiltonianConfig(data="bernoulli_probability_0.2")
+        self.sb_config.target = ParametrizedSpinGlassHamiltonianConfig(data="bernoulli_probability_0.9")
+
         self.sb_config.temp_network = TemporalMLPConfig()
-
         self.sb_config.reference = GlauberDynamicsConfig()
         self.sb_config.initialize_new_experiment()
 
@@ -121,11 +121,10 @@ class TestGlauberDynamics(unittest.TestCase):
                                          return_path_shape=False)
         print(f"Paths Shape {paths.shape}")
         print(f"Times Shape {times_.shape}")
-        loss_ = self.sb.backward_ratio_stein_estimator.estimator(current_model, past_model, paths, times_)
+        loss_ = self.sb.backward_ratio_estimator.__call__(current_model, past_model, paths, times_)
         print(loss_.shape)
 
     def test_metrics(self):
-        from graph_bridges.models.metrics.sb_paths_metrics import paths_states_histograms
         from graph_bridges.models.metrics.sb_paths_metrics import states_paths_histograms_plots
 
         current_model = self.sb.training_model

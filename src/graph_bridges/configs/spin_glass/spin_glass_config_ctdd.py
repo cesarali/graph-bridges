@@ -68,15 +68,6 @@ class CTDDConfig(GeneralCTDDConfig):
         # data distributions matches at the end
         self.target.batch_size = self.data.batch_size
 
-        # target
-        self.target.S = self.data.S
-        self.target.D = self.data.D
-        self.target.C = self.data.C
-        self.target.H = self.data.H
-        self.target.W = self.data.W
-        self.target.shape = self.data.shape
-        self.target.shape_ = self.data.shape_
-
         # model matches reference process
         self.reference.initial_dist = self.model.initial_dist
         self.reference.rate_sigma = self.model.rate_sigma

@@ -22,8 +22,8 @@ if __name__=="__main__":
                          experiment_indentifier=None)
 
     sb_config.data = EgoConfig(batch_size=10, full_adjacency=False)
-    sb_config.stein = SteinSpinEstimatorConfig(stein_sample_size=200,
-                                               stein_epsilon=0.23)
+    sb_config.flip_estimator = SteinSpinEstimatorConfig(stein_sample_size=200,
+                                                        stein_epsilon=0.23)
     sb_config.sampler = ParametrizedSamplerConfig(num_steps=10)
     sb_config.trainer = SBTrainerConfig(learning_rate=1e-2,
                                         num_epochs=3000,

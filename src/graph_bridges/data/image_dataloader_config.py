@@ -32,7 +32,7 @@ class DiscreteCIFAR10Config:
     def __post_init__(self):
 
         self.shape = [3,32,32]
-        self.shape_ = self.shape
+        self.temporal_net_expected_shape = self.shape
         self.D = self.C * self.H * self.W
         self.S = 256
         self.data_min_max = [0,255]
@@ -83,14 +83,14 @@ class NISTLoaderConfig:
 
         if self.as_image:
             self.shape = [1, 28, 28]
-            self.shape_ = self.shape
+            self.temporal_net_expected_shape = self.shape
             self.D = self.C * self.H * self.W
             self.data_min_max = [0, 1]
             self.S = 2
         else:
             #self.C = self.H, self.W
             self.shape = [None,None,None]
-            self.shape_ = [self.D]
+            self.temporal_net_expected_shape = [self.D]
 
         if self.as_spins:
             self.data_min_max = [-1.,1.]

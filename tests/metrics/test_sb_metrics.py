@@ -29,7 +29,7 @@ class TestSB(unittest.TestCase):
     def setUp(self) -> None:
         self.sb_config = SBConfig(experiment_indentifier="sb_unittest")
         self.sb_config.data = EgoConfig(as_image=False, batch_size=5, full_adjacency=False)
-        self.sb_config.stein = SteinSpinEstimatorConfig(stein_sample_size=5)
+        self.sb_config.flip_estimator = SteinSpinEstimatorConfig(stein_sample_size=5)
         self.sb_config.sampler = ParametrizedSamplerConfig(num_steps=5)
 
         self.device = torch.device("cpu")
@@ -41,7 +41,7 @@ class TestSB(unittest.TestCase):
         self.x_features = databatch[1]
 
 
-    def test_paths_histograms(self):
+    def test_marginal_histograms(self):
         backward_histogram, forward_histogram, forward_time = paths_marginal_histograms(sb=self.sb,
                                                                                         sinkhorn_iteration=0,
                                                                                         device=self.device,

@@ -63,6 +63,10 @@ class SBPipeline(DiffusionPipeline):
         self.min_training_size = min(target_training_size,data_training_size)
         self.batch_size = self.bridge_config.data.batch_size
 
+        if self.bridge_config.data.D != self.bridge_config.target.D:
+            raise Exception("Dimensions of P_0 and P_1 do not match")
+
+
     def select_time_difference(self,sinkhorn_iteration,timesteps,idx):
         if sinkhorn_iteration % 2 == 0:
             h = timesteps[idx + 1] - timesteps[idx]
@@ -161,7 +165,8 @@ class SBPipeline(DiffusionPipeline):
             num_of_paths = spins.shape[0]
             spins = spins.to(device)
 
-            #self.min_training_size
+            initial_shape = spins.shape
+            spins = spins.reshape(num_of_paths, self.bridge_config.data.number_of_spins)
 
             if return_path:
                 full_path = [spins.unsqueeze(1)]
@@ -181,7 +186,7 @@ class SBPipeline(DiffusionPipeline):
                     times_ = t * torch.ones(num_of_paths,device=device)
 
                     if sinkhorn_iteration != 0:
-                        rates_ = generation_model.stein_binary_forward(spins, times_)
+                        rates_ = generation_model.flip_rate(spins, times_)
                     else:
                         rates_ = self.reference_process.rates_states_and_times(spins,times_)
 
@@ -299,7 +304,7 @@ class SBPipeline(DiffusionPipeline):
                 times = t * torch.ones(num_of_paths,device=device)
 
                 if sinkhorn_iteration != 0:
-                    rates_ = generation_model.stein_binary_forward(initial_spins, times)
+                    rates_ = generation_model.flip_rate(initial_spins, times)
                 else:
                     rates_ = self.reference_process.rates_states_and_times(initial_spins, times)
 

@@ -6,16 +6,14 @@ import numpy as np
 from typing import Tuple,Union
 from torchtyping import TensorType
 from torch.distributions import Exponential, Bernoulli
-
+from graph_bridges.configs.config_sb import SBConfig
+from graph_bridges.configs.config_ctdd import CTDDConfig
 
 class ReferenceProcess:
     """
 
     """
-    def __init__(self, config:SBConfig, device):
-        assert config.target.S == config.data.S
-        assert config.target.D == config.data.D
-
+    def __init__(self, config:Union[SBConfig,CTDDConfig], device):
         self.S = config.data.S
         self.D = config.data.D
         self.eps_ratio = config.sampler.eps_ratio
@@ -131,18 +129,41 @@ class ReferenceProcess:
         flip_rate = flip_rate[:, None].repeat((1, number_of_spins))
         return flip_rate
 
-    def stein_binary_forward(self,states,times):
+    def flip_rate(self,states,times):
         return self.rates_states_and_times(states,times)
+
+    def sample_path(self,start_spins:torch.Tensor,timesteps:torch.Tensor):
+        device = timesteps.device
+
+        timesteps_size = timesteps.size(0)
+        batch_size, number_of_spins = start_spins.shape
+        #timesteps_ = torch.repeat_interleave(timesteps,batch_size)
+        timesteps_ = timesteps.repeat(batch_size)
+        flipped_spin = torch.repeat_interleave(start_spins,timesteps_size,dim=0)
+        #flipped_spin = start_spins.repeat((timesteps_size,1))
+
+        # From Doucet Original Code
+        qt0 = self.transition(timesteps_.float()) # (B, S, S)
+
+        # Flips
+        flip_probabilities = qt0[:, 0, 1]
+        flip_probabilities = flip_probabilities[:, None].repeat((1, number_of_spins))
+        flips = Bernoulli(flip_probabilities).sample()
+        flips = (-1.) ** flips
+        flipped_spin = flipped_spin * flips
+
+        flipped_spin = flipped_spin.reshape(batch_size,timesteps_size,number_of_spins)
+        return flipped_spin,timesteps
 
 
 class GaussianTargetRate(ReferenceProcess):
-    def __init__(self, cfg, device,rank=None):
+    def __init__(self, cfg:Union[SBConfig,CTDDConfig], device,rank=None):
         ReferenceProcess.__init__(self,cfg,device)
         self.S = S = cfg.data.S
-        self.rate_sigma = cfg.model.rate_sigma
-        self.Q_sigma = cfg.model.Q_sigma
-        self.time_exponential = cfg.model.time_exponential
-        self.time_base = cfg.model.time_base
+        self.rate_sigma = cfg.reference.rate_sigma
+        self.Q_sigma = cfg.reference.Q_sigma
+        self.time_exponential = cfg.reference.time_exponential
+        self.time_base = cfg.reference.time_base
         self.device = device
 
         rate = np.zeros((S, S))

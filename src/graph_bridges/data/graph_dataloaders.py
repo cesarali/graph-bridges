@@ -215,13 +215,15 @@ class DoucetTargetData():
 
         self.D = self.config.data.D
         self.number_of_spins = self.D
+        self.shape = self.config.data.shape
+        self.shape_ = self.config.data.temporal_net_expected_shape
 
         self.S = self.config.data.S
         sampler_config = self.config.sampler
 
         self.initial_dist = sampler_config.initial_dist
         if self.initial_dist == 'gaussian':
-            self.initial_dist_std = self.config.model.Q_sigma
+            self.initial_dist_std = self.config.reference.Q_sigma
         else:
             self.initial_dist_std = None
 

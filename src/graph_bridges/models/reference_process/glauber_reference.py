@@ -10,6 +10,7 @@ from graph_bridges.configs.spin_glass.spin_glass_config_sb import SBConfig
 from graph_bridges.models.spin_glass.ising_parameters import ParametrizedSpinGlassHamiltonian
 from graph_bridges.data.spin_glass_dataloaders_config import ParametrizedSpinGlassHamiltonianConfig
 from graph_bridges.models.reference_process.reference_process_config import GlauberDynamicsConfig
+from graph_bridges.data.transforms import BinaryTensorToSpinsTransform
 from graph_bridges.data.transforms import SpinsToBinaryTensor
 
 spins_to_binary = SpinsToBinaryTensor()
@@ -24,6 +25,7 @@ class GlauberDynamics:
 
         self.D = cfg.data.D
         self.S = cfg.data.S
+        self.as_spins = cfg.data.as_spins
         self.gamma = cfg.reference.gamma
         self.beta = cfg.reference.beta
         self.min_t = cfg.sampler.min_t
@@ -40,13 +42,18 @@ class GlauberDynamics:
                 self.hamiltonian = ParametrizedSpinGlassHamiltonian(cfg.reference, self.device)
                 cfg.reference.fields = self.hamiltonian.fields.tolist()
                 cfg.reference.couplings = self.hamiltonian.couplings.tolist()
-
+            else:
+                from graph_bridges.data.spin_glass_dataloaders import simulate_fields_and_couplings
+                fields,couplings = simulate_fields_and_couplings(cfg.data.number_of_spins)
+                cfg.reference.fields = fields.tolist()
+                cfg.reference.couplings = couplings.tolist()
+                self.hamiltonian = ParametrizedSpinGlassHamiltonian(cfg.reference,self.device)
     def to(self,device):
         self.device = device
         self.hamiltonian.to(self.device)
         return self
 
-    def stein_binary_forward(self,states_spins,times):
+    def flip_rate(self,states_spins,times):
         all_flip_rates = self.all_flip_rates(states_spins)
         return all_flip_rates
 
@@ -78,14 +85,23 @@ class GlauberDynamics:
         return transition_rates_
 
     def selected_flip_rates(self, states, i_random):
-        H_i = self.hamiltonian.selected_hamiltonian_diagonal(states, i_random)
-        x_i = torch.diag(states[:, i_random])
+        if not self.as_spins:
+            spins_states = BinaryTensorToSpinsTransform(states)
+        else:
+            spins_states = states
+
+        H_i = self.hamiltonian.selected_hamiltonian_diagonal(spins_states, i_random)
+        x_i = torch.diag(spins_states[:, i_random])
         flip_rates_ = (self.gamma * torch.exp(-x_i * H_i)) / 2 * torch.cosh(H_i)
         return flip_rates_
 
     def all_flip_rates(self, states):
-        H_i = self.hamiltonian.all_hamiltonian_diagonal(states)
-        flip_rates_ = (self.gamma * torch.exp(-states * H_i)) / 2 * torch.cosh(H_i)
+        if not self.as_spins:
+            spins_states = BinaryTensorToSpinsTransform(states)
+        else:
+            spins_states = states
+        H_i = self.hamiltonian.all_hamiltonian_diagonal(spins_states)
+        flip_rates_ = (self.gamma * torch.exp(-spins_states * H_i)) / 2 * torch.cosh(H_i)
         return flip_rates_
 
     def rates_states_and_times(self,states,times):
@@ -124,7 +140,10 @@ class GlauberDynamics:
 
             new_states = torch.clone(states)
             index_to_change = (rows_index[torch.where(where_to_flip)], i_random[torch.where(where_to_flip)])
-            new_states[index_to_change] = states[index_to_change] * -1.
+            if self.as_spins:
+                new_states[index_to_change] = states[index_to_change] * -1.
+            else:
+                new_states[index_to_change] = (~states[index_to_change].bool()).float()
 
             paths = torch.cat([paths, new_states.unsqueeze(1)], dim=1)
 

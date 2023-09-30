@@ -83,6 +83,7 @@ def paths_marginal_histograms(sb:SB,
                                                             sinkhorn_iteration=sinkhorn_iteration,
                                                             return_path=True,
                                                             return_path_shape=True,
+                                                            sample_from_reference_native=sb.config.sampler.sample_from_reference_native,
                                                             device=device):
         end_of_path = spins_path_1[:, -1, :]
         spins_path_2, times_2 = sb.pipeline(current_model,
@@ -90,6 +91,7 @@ def paths_marginal_histograms(sb:SB,
                                             device=device,
                                             initial_spins=end_of_path,
                                             return_path=True,
+                                            sample_from_reference_native=sb.config.sampler.sample_from_reference_native,
                                             return_path_shape=True)
         spinsToBinaryTensor = SpinsToBinaryTensor()
         binary_path_1 = spinsToBinaryTensor(spins_path_1)

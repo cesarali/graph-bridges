@@ -37,7 +37,7 @@ class SB:
     past_model: GaussianTargetRateImageX0PredEMA=None
 
     reference_process: ReferenceProcess=None
-    backward_ratio_stein_estimator: BackwardRatioSteinEstimator=None
+    backward_ratio_estimator: BackwardRatioSteinEstimator=None
     scheduler: SBScheduler=None
     pipeline: SBPipeline=None
     config: SBConfig = None
@@ -47,8 +47,8 @@ class SB:
         self.target_dataloader = load_dataloader(config, type="target", device=device)
 
         self.reference_process = load_reference(config,device)
+        self.backward_ratio_estimator = BackwardRatioSteinEstimator(config, device)
 
-        self.backward_ratio_stein_estimator = BackwardRatioSteinEstimator(config, device)
         self.scheduler = SBScheduler(config, device)
         self.pipeline = SBPipeline(config,
                                    self.reference_process,
@@ -65,12 +65,23 @@ class SB:
         self.training_model = load_backward_rates(config, device)
         self.past_model = load_backward_rates(config, device)
 
-    def load_from_results_folder(self,experiment_name="graph",
+    def load_from_results_folder(self,
+                                 experiment_name="graph",
                                  experiment_type="sb",
                                  experiment_indentifier="tutorial_sb_trainer",
                                  sinkhorn_iteration_to_load=0,
                                  checkpoint=None,
                                  device=torch.device("cpu")):
+        """
+
+        :param experiment_name:
+        :param experiment_type:
+        :param experiment_indentifier:
+        :param sinkhorn_iteration_to_load:
+        :param checkpoint:
+        :param device:
+        :return:
+        """
         config_ready:SBConfig
         config_ready = get_sb_config_from_file(experiment_name=experiment_name,
                                                experiment_type=experiment_type,
@@ -88,7 +99,7 @@ class SB:
         self.set_classes_from_config(config_ready, device)
 
         if sinkhorn_iteration_to_load == 0:
-            self.training_model = results_['current_model']
+            self.training_model = results_['current_model'].to(device)
             self.past_model = load_backward_rates(config=config_ready,device=device)
         else:
             self.training_model = results_['current_model']

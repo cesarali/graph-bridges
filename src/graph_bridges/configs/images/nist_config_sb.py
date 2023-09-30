@@ -30,12 +30,17 @@ class SBConfig(GeneralSBConfig):
     num_gpus = 0
 
     def align_configurations(self):
-
         #dataloaders for training
-        self.data.as_spins = True
+        from graph_bridges.models.losses.loss_configs import GradientEstimatorConfig, SteinSpinEstimatorConfig,RealFlipConfig
 
-        if isinstance(self.reference,GlauberDynamicsConfig):
-            self.sampler.define_min_t_from_number_of_steps()
+        if isinstance(self.flip_estimator, GradientEstimatorConfig):
+            self.data.as_spins = False
+        elif isinstance(self.flip_estimator, SteinSpinEstimatorConfig):
+            self.data.as_spins = True
+        elif isinstance(self.flip_estimator, RealFlipConfig):
+            self.data.as_spins = True
+
+        self.sampler.define_min_t_from_number_of_steps()
 
         if not isinstance(self.data, NISTLoaderConfig):
             raise Exception("Data Not For the Specified Configuration")
@@ -67,13 +72,6 @@ class SBConfig(GeneralSBConfig):
         self.target.C = self.data.C
         self.target.H = self.data.H
         self.target.W = self.data.W
-
-        # model matches reference process
-        self.reference.initial_dist = self.model.initial_dist
-        self.reference.rate_sigma = self.model.rate_sigma
-        self.reference.Q_sigma = self.model.Q_sigma
-        self.reference.time_exponential = self.model.time_exponential
-        self.reference.time_base = self.model.time_base
 
 
 if __name__=="__main__":

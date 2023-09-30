@@ -16,16 +16,21 @@ class SBConfig(GeneralSBConfig):
     experiment_indentifier :str  = 'testing'
 
     def align_configurations(self):
-        from graph_bridges.models.backward_rates.sb_backward_rate_config import SchrodingerBridgeBackwardRateConfig
-
-        from graph_bridges.models.temporal_networks.mlp.temporal_mlp import TemporalMLPConfig
         from graph_bridges.models.temporal_networks.unets.unet_wrapper import UnetTauConfig
+        from graph_bridges.models.temporal_networks.mlp.temporal_mlp import TemporalMLPConfig
         from graph_bridges.models.temporal_networks.convnets.autoencoder import ConvNetAutoencoderConfig
+        from graph_bridges.models.losses.loss_configs import GradientEstimatorConfig, SteinSpinEstimatorConfig,RealFlipConfig
+        from graph_bridges.models.backward_rates.sb_backward_rate_config import SchrodingerBridgeBackwardRateConfig
         from graph_bridges.models.temporal_networks.transformers.temporal_hollow_transformers import TemporalHollowTransformerConfig
 
-        self.data.as_spins = True
-        if isinstance(self.reference,GlauberDynamicsConfig):
-            self.sampler.define_min_t_from_number_of_steps()
+        if isinstance(self.flip_estimator, GradientEstimatorConfig):
+            self.data.as_spins = False
+        elif isinstance(self.flip_estimator, SteinSpinEstimatorConfig):
+            self.data.as_spins = True
+        elif isinstance(self.flip_estimator, RealFlipConfig):
+            self.data.as_spins = True
+
+        self.sampler.define_min_t_from_number_of_steps()
 
         if isinstance(self.model,SchrodingerBridgeBackwardRateConfig):
             if isinstance(self.temp_network,TemporalMLPConfig):
@@ -47,6 +52,9 @@ class SBConfig(GeneralSBConfig):
         else:
             raise Exception("Backward Rate Exclusive for Schrodinger")
 
+        if isinstance(self.reference,GlauberDynamicsConfig):
+            self.reference.number_of_spins = self.data.number_of_spins
+
         self.data.__post_init__()
         # data distributions matches at the end
         self.target.batch_size = self.data.batch_size
@@ -58,14 +66,7 @@ class SBConfig(GeneralSBConfig):
         self.target.H = self.data.H
         self.target.W = self.data.W
         self.target.shape = self.data.shape
-        self.target.shape_ = self.data.shape_
-
-        # model matches reference process
-        self.reference.initial_dist = self.model.initial_dist
-        self.reference.rate_sigma = self.model.rate_sigma
-        self.reference.Q_sigma = self.model.Q_sigma
-        self.reference.time_exponential = self.model.time_exponential
-        self.reference.time_base = self.model.time_base
+        self.target.temporal_net_expected_shape = self.data.temporal_net_expected_shape
 
 
 if __name__=="__main__":

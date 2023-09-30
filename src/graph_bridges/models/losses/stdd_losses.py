@@ -1,7 +1,7 @@
 import os
 from torch import nn
 
-class CategoricalRationMatching():
+class CategoricalRatioMatching():
 
     def __init__(self, cfg,device,rank=None):
         self.cfg = cfg

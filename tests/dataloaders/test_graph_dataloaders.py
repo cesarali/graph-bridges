@@ -10,6 +10,10 @@ from graph_bridges.data.graph_dataloaders import DoucetTargetData
 from graph_bridges.data.graph_dataloaders import BridgeGraphDataLoaders
 from graph_bridges.data.graph_dataloaders_config import CommunityConfig
 
+from graph_bridges.models.temporal_networks.mlp.temporal_mlp import TemporalMLPConfig
+from graph_bridges.models.temporal_networks.convnets.autoencoder import ConvNetAutoencoderConfig
+from graph_bridges.models.temporal_networks.transformers.temporal_hollow_transformers import TemporalHollowTransformerConfig
+
 class TestDataDataloader(unittest.TestCase):
     config:CTDDConfig
     dataloader: BridgeGraphDataLoaders
@@ -51,3 +55,30 @@ class TestDataDataloader(unittest.TestCase):
         for databatch in self.dataloader_target.train():
             number_of_steps_target += databatch[0].shape[0]
         self.assertTrue(number_of_steps_target,self.config.data.training_size)
+
+
+    def test_shapes(self):
+        from graph_bridges.configs.graphs.graph_config_sb import SBConfig
+        from graph_bridges.data.dataloaders_utils import load_dataloader, check_sizes
+
+        self.batch_size = 12
+        self.num_time_steps = 8
+
+        # ================
+        sb_config = SBConfig(experiment_indentifier="sb_unittest")
+        sb_config.data = CommunityConfig(as_image=False, batch_size=self.batch_size, full_adjacency=True)
+        sb_config.temp_network = ConvNetAutoencoderConfig()
+        data_sizes = check_sizes(sb_config)
+
+        print(f"Shape {data_sizes.temporal_net_expected_shape}")
+        print(f"Data Size {data_sizes.training_size}")
+
+
+        # ================
+        sb_config = SBConfig(experiment_indentifier="sb_unittest")
+        sb_config.data = CommunityConfig(as_image=False, batch_size=self.batch_size, full_adjacency=True)
+        sb_config.temp_network = TemporalHollowTransformerConfig()
+        data_sizes = check_sizes(sb_config)
+
+        print(f"Shape {data_sizes.temporal_net_expected_shape}")
+        print(f"Data Size {data_sizes.training_size}")

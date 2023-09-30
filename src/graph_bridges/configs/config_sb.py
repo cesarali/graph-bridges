@@ -11,8 +11,6 @@ from pathlib import Path
 from graph_bridges.models.backward_rates.sb_backward_rate_config import SchrodingerBridgeBackwardRateConfig
 from graph_bridges.data.graph_dataloaders_config import TargetConfig, CommunityConfig, GraphDataConfig
 from graph_bridges.data.graph_dataloaders_config import all_dataloaders_configs
-from graph_bridges.models.backward_rates.ctdd_backward_rate_config import BackRateMLPConfig
-from graph_bridges.models.backward_rates.ctdd_backward_rate_config import all_backward_rates_configs
 from graph_bridges.models.reference_process.reference_process_config import GaussianTargetRateConfig
 from graph_bridges.models.reference_process.reference_process_config import all_reference_process_configs
 from graph_bridges.configs.config_files import ExperimentFiles
@@ -20,10 +18,10 @@ from pprint import pprint
 from graph_bridges.models.temporal_networks.temporal_networks_configs import all_temp_nets_configs
 from graph_bridges.models.temporal_networks.transformers.temporal_hollow_transformers import TemporalHollowTransformerConfig
 from graph_bridges.models.temporal_networks.unets.unet_wrapper import UnetTauConfig
-from graph_bridges.models.temporal_networks.mlp.temporal_mlp import TemporalMLPConfig
-
-
-
+from graph_bridges.models.temporal_networks.mlp.temporal_mlp import TemporalMLPConfig,DeepTemporalMLPConfig
+from graph_bridges.data.graph_dataloaders_config import TargetConfig
+from graph_bridges.models.losses.loss_configs import GradientEstimatorConfig,SteinSpinEstimatorConfig
+from graph_bridges.models.losses.loss_configs import all_loss_configs
 def get_git_revisions_hash():
     hashes = []
     hashes.append(subprocess.check_output(['git', 'rev-parse', 'HEAD']))
@@ -54,10 +52,10 @@ class ParametrizedSamplerConfig:
     """
     name:str = 'TauLeaping' # TauLeaping or PCTauLeaping
     type:str = 'doucet'
-    step_type:str = 'TauLeaping' # TauLeaping
+    step_type:str = 'TauLeaping' # TauLeaping, poisson
     num_steps:int = 20
     min_t:float = 0.01
-
+    sample_from_reference_native:bool = False
     eps_ratio:float = 1e-9
     initial_dist:str = 'gaussian'
     num_corrector_steps:int = 10
@@ -67,18 +65,9 @@ class ParametrizedSamplerConfig:
     def define_min_t_from_number_of_steps(self):
         self.min_t = 1./self.num_steps
 
-
 @dataclass
-class SteinSpinEstimatorConfig:
-
-    name : str = "SteinSpinEstimator"
-    stein_epsilon :float = 1e-3
-    stein_sample_size :int = 150
-
-@dataclass
-class BackwardEstimatorConfig:
-
-    name : str = "BackwardRatioSteinEstimator"
+class BackwardRatioFlipEstimatorConfig:
+    name : str = "BackwardRatioFlipEstimator"
     dimension_to_check : int = None
 
 @dataclass
@@ -99,6 +88,7 @@ class SBTrainerConfig:
     optimizer_name :str = 'AdamW'
     max_n_iters :int = 10000
     clip_grad :bool= True
+    clip_max_norm : float = 10.
     warmup :int = 50
     num_epochs :int = 50
     learning_rate :float = 2e-4
@@ -127,7 +117,7 @@ class SBConfig:
 
     # different elements configurations------------------------------------------
     model : SchrodingerBridgeBackwardRateConfig = SchrodingerBridgeBackwardRateConfig()
-    temp_network : Union[UnetTauConfig,TemporalHollowTransformerConfig,TemporalMLPConfig] = TemporalMLPConfig()
+    temp_network : Union[UnetTauConfig,TemporalHollowTransformerConfig,TemporalMLPConfig,DeepTemporalMLPConfig] = TemporalMLPConfig()
 
     data : GraphDataConfig =  CommunityConfig() # corresponds to the distributions at start time
     target : TargetConfig =  TargetConfig() # corresponds to the distribution at final time
@@ -135,8 +125,8 @@ class SBConfig:
     reference : GaussianTargetRateConfig = GaussianTargetRateConfig()
     sampler : ParametrizedSamplerConfig = ParametrizedSamplerConfig()
 
-    stein : SteinSpinEstimatorConfig= SteinSpinEstimatorConfig()
-    loss : BackwardEstimatorConfig = BackwardEstimatorConfig()
+    flip_estimator : Union[GradientEstimatorConfig,SteinSpinEstimatorConfig]= SteinSpinEstimatorConfig()
+    loss : BackwardRatioFlipEstimatorConfig = BackwardRatioFlipEstimatorConfig()
 
     scheduler : SBSchedulerConfig =  SBSchedulerConfig()
     pipeline : SBPipelineConfig =  SBPipelineConfig()
@@ -181,9 +171,9 @@ class SBConfig:
         if isinstance(self.trainer, dict):
             self.trainer = SBTrainerConfig(**self.trainer)
         if isinstance(self.loss,dict):
-            self.loss = BackwardEstimatorConfig(**self.loss)
-        if isinstance(self.stein,dict):
-            self.stein = SteinSpinEstimatorConfig(**self.stein)
+            self.loss = BackwardRatioFlipEstimatorConfig(**self.loss)
+        if isinstance(self.flip_estimator, dict):
+            self.flip_estimator = all_loss_configs[self.flip_estimator["name"]](**self.flip_estimator)
 
         self.experiment_files.data_stats = os.path.join(self.data.preprocess_datapath, "data_stats.json")
 
@@ -200,6 +190,7 @@ class SBConfig:
 
         self.align_configurations()
         self.experiment_files.create_directories()
+        self.experiment_indentifier = self.experiment_files.experiment_indentifier
         self.config_path = self.experiment_files.config_path
         self.save_config()
 
@@ -219,18 +210,12 @@ class SBConfig:
         self.target.batch_size = self.data.batch_size
 
         # target
-        self.target.S = self.data.S
-        self.target.D = self.data.D
-        self.target.C = self.data.C
-        self.target.H = self.data.H
-        self.target.W = self.data.W
-
-        # model matches reference process
-        self.reference.initial_dist = self.model.initial_dist
-        self.reference.rate_sigma = self.model.rate_sigma
-        self.reference.Q_sigma = self.model.Q_sigma
-        self.reference.time_exponential = self.model.time_exponential
-        self.reference.time_base = self.model.time_base
+        if isinstance(self.target,TargetConfig):
+            self.target.S = self.data.S
+            self.target.D = self.data.D
+            self.target.C = self.data.C
+            self.target.H = self.data.H
+            self.target.W = self.data.W
 
     def save_config(self):
         config_as_dict = asdict(self)
@@ -250,6 +235,7 @@ def get_sb_config_from_file(experiment_name, experiment_type, experiment_indenti
         config_path = os.path.join(results_dir, "config.json")
         config_path_json = json.load(open(config_path,"r"))
         config_path_json["delete"] = False
+        config_path_json['experiment_indentifier'] = experiment_indentifier
         config = SBConfig(**config_path_json)
         return config
     else:

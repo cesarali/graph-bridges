@@ -1,52 +1,81 @@
-import os
-import sys
 import torch
-from pathlib import Path
-from graph_bridges import results_path
-from graph_bridges.models.backward_rates.ctdd_backward_rate import BackRateConstant
-from graph_bridges.models.backward_rates.ctdd_backward_rate import GaussianTargetRateImageX0PredEMA
-from graph_bridges.models.backward_rates.ctdd_backward_rate_config import GaussianTargetRateImageX0PredEMAConfig
-from graph_bridges.models.generative_models.sb import SB
+import unittest
 
-results_path = Path(results_path)
-loss_study_path = results_path / "graph" / "lobster" / "contant_past_model_loss.json"
+from pprint import pprint
+
+
+from graph_bridges.models.generative_models.sb import SB
+from graph_bridges.configs.config_sb import SBTrainerConfig
+from graph_bridges.data.graph_dataloaders_config import EgoConfig
+from graph_bridges.data.spin_glass_dataloaders_config import ParametrizedSpinGlassHamiltonianConfig
+from graph_bridges.configs.graphs.graph_config_sb import SBConfig
+from graph_bridges.configs.config_sb import ParametrizedSamplerConfig, SteinSpinEstimatorConfig
+
+from graph_bridges.models.temporal_networks.mlp.temporal_mlp import TemporalMLPConfig
+from graph_bridges.models.backward_rates.ctdd_backward_rate_config import BackwardRateTemporalHollowTransformerConfig
+from graph_bridges.models.temporal_networks.transformers.temporal_hollow_transformers import TemporalHollowTransformerConfig
+from graph_bridges.models.trainers.sb_training import SBTrainer
+from graph_bridges.models.spin_glass.spin_utils import copy_and_flip_spins
+from graph_bridges.models.losses.loss_configs import RealFlipConfig
+from graph_bridges.models.losses.estimators import (
+    RealFlip,
+    GradientFlipEstimator
+)
+
+class TestSBLoss(unittest.TestCase):
+
+    def test_stein_flip(self):
+        from graph_bridges.data.transforms import SpinsToBinaryTensor
+        from graph_bridges.models.losses.loss_configs import GradientEstimatorConfig
+
+        spins_to_binary = SpinsToBinaryTensor()
+        self.sb_config = SBConfig(delete=True,
+                                  experiment_name="spin_glass",
+                                  experiment_type="sb",
+                                  experiment_indentifier=None)
+
+        batch_size = 2
+        self.sb_config.data = ParametrizedSpinGlassHamiltonianConfig(data="bernoulli_small",
+                                                                     batch_size=batch_size,
+                                                                     number_of_spins=3)
+        self.sb_config.target = ParametrizedSpinGlassHamiltonianConfig(data="bernoulli_small",
+                                                                       batch_size=batch_size,
+                                                                       number_of_spins=3)
+        self.sb_config.temp_network = TemporalMLPConfig(time_embed_dim=12,hidden_dim=250)
+
+        #self.sb_config.flip_estimator = SteinSpinEstimatorConfig(stein_sample_size=200, stein_epsilon=0.2)
+        self.sb_config.flip_estimator = GradientEstimatorConfig()
+        self.sb_config.flip_estimator = RealFlipConfig()
+
+        self.sb_config.sampler = ParametrizedSamplerConfig(num_steps=20)
+        self.device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
+
+        sb = SB()
+        sb.create_new_from_config(self.sb_config,self.device)
+        real_flip_estimator = RealFlip()
+
+        batchdata = next(sb.data_dataloader.train().__iter__())
+        X_spins =  batchdata[0].to(self.device)
+
+        current_time = torch.rand((batch_size)).to(self.device)
+
+        past_to_train = sb.reference_process
+        current_model = sb.training_model
+
+        flip_estimate_ = sb.backward_ratio_estimator.flip_estimator(current_model, X_spins, current_time)
+        real_flip = real_flip_estimator(current_model, X_spins, current_time)
+        loss = sb.backward_ratio_estimator(current_model,past_to_train,X_spins,current_time)
+
+        print("flip_estimate")
+        print(flip_estimate_)
+        print("real flip")
+        print(real_flip)
+        print("loss")
+        print(loss)
+
 
 if __name__=="__main__":
-    from graph_bridges.configs.graphs.graph_config_sb import SBConfig
-    from graph_bridges.data.graph_dataloaders_config import EgoConfig
-    from graph_bridges.models.backward_rates.ctdd_backward_rate_config import BackRateMLPConfig
-
-    config = SBConfig(experiment_indentifier="debug")
-    config.data = EgoConfig(as_image=False, batch_size=32, full_adjacency=False)
-    config.model = GaussianTargetRateImageX0PredEMAConfig(time_embed_dim=32, fix_logistic=False)
-
-    #read the model
-    device = torch.device(config.device)
-    sb = SB(config,device)
-
-    #test dataloaders
-    databatch = next(sb.data_dataloader.train().__iter__())
-    x_spins_data = databatch[0]
-    number_of_paths = x_spins_data.shape[0]
-    x_spins_noise = sb.target_dataloader.sample(number_of_paths,device)
-
-    #test scheduler
-    time_steps = sb.scheduler.set_timesteps(10,0.01,sinkhorn_iteration=1)
-    print(time_steps)
-
-    # test model
-    times = time_steps[6] * torch.ones(number_of_paths)
-    generating_model : GaussianTargetRateImageX0PredEMA
-    generating_model = sb.past_model
-    forward_ = generating_model(x_spins_data.squeeze(),times)
-    forward_stein = generating_model.stein_binary_forward(x_spins_data.squeeze(),times)
-
-    # test losses
-    estimator_ = sb.backward_ratio_stein_estimator.estimator(sb.training_model,
-                                                             sb.past_model,
-                                                             x_spins_data.squeeze(),
-                                                             times)
-
+    unittest.main()
 
 """
 from graph_bridges.models.backward_rates.backward_rate import BackRateConstant

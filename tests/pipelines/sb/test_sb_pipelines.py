@@ -9,10 +9,20 @@ from dataclasses import asdict
 
 from graph_bridges.models.generative_models.sb import SB
 from graph_bridges.utils.test_utils import check_model_devices
+
 from graph_bridges.data.graph_dataloaders_config import EgoConfig
-from graph_bridges.configs.graphs.graph_config_sb import SBConfig
+from graph_bridges.data.graph_dataloaders_config import CommunityConfig
+from graph_bridges.data.graph_dataloaders_config import CommunitySmallConfig
+from graph_bridges.data.graph_dataloaders_config import GridConfig
+
+
 from graph_bridges.configs.config_sb import ParametrizedSamplerConfig, SteinSpinEstimatorConfig
 from graph_bridges.data.spin_glass_dataloaders_config import ParametrizedSpinGlassHamiltonianConfig
+from graph_bridges.data.dataloaders_utils import load_dataloader
+
+from graph_bridges.models.temporal_networks.mlp.temporal_mlp import TemporalMLPConfig
+from graph_bridges.models.temporal_networks.convnets.autoencoder import ConvNetAutoencoderConfig
+from graph_bridges.models.temporal_networks.transformers.temporal_hollow_transformers import TemporalHollowTransformerConfig
 
 class TestSB(unittest.TestCase):
     """
@@ -20,10 +30,11 @@ class TestSB(unittest.TestCase):
 
     backward rate model
     """
-    sb_config: SBConfig
     sb: SB
 
     def setUp(self) -> None:
+        from graph_bridges.configs.graphs.graph_config_sb import SBConfig
+
         self.batch_size = 12
         self.num_time_steps = 8
         self.sb_config = SBConfig(experiment_indentifier="sb_unittest")
@@ -33,7 +44,7 @@ class TestSB(unittest.TestCase):
         self.sb_config.data = ParametrizedSpinGlassHamiltonianConfig(data="bernoulli_probability_0.2")
         self.sb_config.target = ParametrizedSpinGlassHamiltonianConfig(data="bernoulli_probability_0.9")
 
-        self.sb_config.stein = SteinSpinEstimatorConfig(stein_sample_size=5)
+        self.sb_config.flip_estimator = SteinSpinEstimatorConfig(stein_sample_size=5)
         self.sb_config.sampler = ParametrizedSamplerConfig(num_steps=self.num_time_steps, step_type="TauLeaping")
 
         if torch.cuda.is_available():
@@ -116,6 +127,52 @@ class TestSB(unittest.TestCase):
         print(times2.shape)
 
     def test_paths_generator(self):
+        number_of_states_2 = 0
+        for spins_path_2, times_2 in self.sb.pipeline.paths_iterator(self.sb.training_model,
+                                                                     device=self.device,
+                                                                     sinkhorn_iteration=1,
+                                                                     return_path_shape=True,
+                                                                     respect_batch_from_path=False):
+            number_of_states_2 += spins_path_2.shape[0]
+        self.assertTrue(number_of_states_2,self.sb_config.data.training_size*(self.num_time_steps+1))
+
+        number_of_states_1 = 0
+        for spins_path_1, times_1 in self.sb.pipeline.paths_iterator(None,
+                                                                     sinkhorn_iteration=0,
+                                                                     device=self.device,
+                                                                     return_path_shape=True,
+                                                                     respect_batch_from_path=False):
+            number_of_states_1 += spins_path_1.shape[0]
+        self.assertTrue(number_of_states_1,number_of_states_2)
+
+    def test_balanced_shape_pipelines(self):
+        from graph_bridges.configs.graphs.graph_config_sb import SBConfig
+        from graph_bridges.data.dataloaders_utils import load_dataloader,check_sizes
+
+        self.batch_size = 12
+        self.num_time_steps = 8
+
+        #================
+        sb_config = SBConfig(experiment_indentifier="sb_unittest")
+        sb_config.data = CommunityConfig(as_image=False, batch_size=self.batch_size, full_adjacency=True)
+        sb_config.temp_network = ConvNetAutoencoderConfig()
+        data_sizes = check_sizes(sb_config)
+        sb_config.target = ParametrizedSpinGlassHamiltonianConfig(number_of_paths=data_sizes.total_data_size,
+                                                                  number_of_spins=data_sizes.D,
+                                                                  data="graph_bernoulli",
+                                                                  delete_data=True,
+                                                                  bernoulli_spins=True,
+                                                                  bernoulli_probability=0.4)
+
+        self.sb_config.flip_estimator = SteinSpinEstimatorConfig(stein_sample_size=5)
+        self.sb_config.sampler = ParametrizedSamplerConfig(num_steps=self.num_time_steps, step_type="TauLeaping")
+
+        self.sb = SB()
+        self.sb.create_new_from_config(sb_config, self.device)
+
+        #==========================================
+        # PIPELINES
+        #==========================================
         number_of_states_2 = 0
         for spins_path_2, times_2 in self.sb.pipeline.paths_iterator(self.sb.training_model,
                                                                      device=self.device,

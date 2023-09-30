@@ -97,7 +97,7 @@ class BackwardRate(nn.Module,ABC):
         else:
             return self._forward(x_t, times)  # (B, D, S)
 
-    def stein_binary_forward(self,
+    def flip_rate(self,
                 x: TensorType["batch_size", "dimension"],
                 times: TensorType["batch_size"]
                 ) -> TensorType["batch_size", "dimension"]:

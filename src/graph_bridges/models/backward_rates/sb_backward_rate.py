@@ -13,8 +13,10 @@ from torchtyping import TensorType
 from graph_bridges.models.temporal_networks import networks_tau
 from graph_bridges.models.reference_process.ctdd_reference import GaussianTargetRate
 from graph_bridges.models.temporal_networks.temporal_networks_utils import load_temp_network
+from graph_bridges.models.temporal_networks.mlp.temporal_mlp import TemporalMLPConfig
 from graph_bridges.models.temporal_networks.transformers.temporal_hollow_transformers import TemporalHollowTransformerConfig
 from graph_bridges.models.temporal_networks.ema import EMA
+from torch.nn.functional import softplus,softmax
 
 
 from dataclasses import dataclass
@@ -35,14 +37,13 @@ class SchrodingerBridgeBackwardRate(EMA,nn.Module):
         nn.Module.__init__(self)
 
         self.config = config
-        self.init_ema()
 
         # DATA
-        self.temporal_network_shape = torch.Size(config.data.shape_)
+        self.temporal_network_shape = torch.Size(config.data.temporal_net_expected_shape)
         self.dimension = config.data.D
-        self.num_states = config.data.S
+        self.num_spin_states = config.data.S
 
-        if self.num_states != 2:
+        if self.num_spin_states != 2:
             raise Exception("Schrodinger Bridge Implemented for Spins Only")
 
         self.data_min_max = config.data.data_min_max
@@ -51,10 +52,15 @@ class SchrodingerBridgeBackwardRate(EMA,nn.Module):
         # TIME
         self.time_embed_dim = config.temp_network.time_embed_dim
         self.temp_network = load_temp_network(self.config,self.device)
+
         if isinstance(self.temp_network.expected_output_shape,list):
             self.expected_output_dim = math.prod(self.temp_network.expected_output_shape)
-        self.flip_rate_logits = nn.Linear(self.expected_output_dim,self.dimension).to(self.device)
 
+        if not isinstance(config.temp_network,TemporalMLPConfig):
+            self.flip_rate_logits = nn.Linear(self.expected_output_dim,self.dimension).to(self.device)
+            self.init_weights()
+
+        self.init_ema()
 
     def forward(self,
                 x: TensorType["batch_size", "dimension"],
@@ -72,13 +78,19 @@ class SchrodingerBridgeBackwardRate(EMA,nn.Module):
             x = spins_to_binary_tensor(x).long()
 
         temporal_net_logits = self.temp_network(x, times)
-        flip_rate_logits = self.flip_rate_logits(temporal_net_logits.view(batch_size,-1))
-        flip_rates = F.softplus(flip_rate_logits)
+        if not isinstance(self.config.temp_network,TemporalMLPConfig):
+            flip_rate_logits = self.flip_rate_logits(temporal_net_logits.view(batch_size,-1))
+        else:
+            flip_rate_logits = temporal_net_logits.squeeze()
+        flip_rates = softplus(flip_rate_logits)
         return flip_rates
 
-    def stein_binary_forward(self,
-                x: TensorType["batch_size", "dimension"],
-                times: TensorType["batch_size"]
-                ) -> TensorType["batch_size", "dimension"]:
+    def flip_rate(self,
+                  x: TensorType["batch_size", "dimension"],
+                  times: TensorType["batch_size"]
+                  ) -> TensorType["batch_size", "dimension"]:
         flip_rate_logits = self.forward(x,times)
         return flip_rate_logits
+
+    def init_weights(self):
+        nn.init.xavier_uniform_(self.flip_rate_logits.weight)

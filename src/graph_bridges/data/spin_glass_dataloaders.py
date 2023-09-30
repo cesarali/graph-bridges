@@ -52,11 +52,12 @@ class SpinGlassSimulationData:
     fields:List = None
     beta:float = 1.
 
-def simulate_fields_and_couplings(number_of_spins,number_of_couplings):
+def simulate_fields_and_couplings(number_of_spins):
 
     #fields = torch.full((number_of_spins,),0.2)
     #couplings = torch.full((number_of_couplings,),.1)
 
+    number_of_couplings = ParametrizedSpinGlassHamiltonian.coupling_size(number_of_spins)
     fields = torch.Tensor(size=(number_of_spins,)).normal_(0.,1./number_of_spins)
     couplings = torch.Tensor(size=(number_of_couplings,)).normal_(0.,1/number_of_spins)
 
@@ -77,10 +78,9 @@ def simulate_spin_glass_data(config:ParametrizedSpinGlassHamiltonianConfig)->Spi
         return simulation_data
     else:
         number_of_spins = config.number_of_spins
-        number_of_couplings = ParametrizedSpinGlassHamiltonian.coupling_size(number_of_spins)
 
         if config.fields is None and config.couplings is None:
-            fields, couplings = simulate_fields_and_couplings(number_of_spins, number_of_couplings)
+            fields, couplings = simulate_fields_and_couplings(number_of_spins)
             config.fields = fields.tolist()
             config.couplings = couplings.tolist()
 
@@ -108,7 +108,7 @@ def get_ising_dataset(data_config:ParametrizedSpinGlassHamiltonianConfig):
     # READ OR SIMULATE
     #==============================================
 
-    if dataloader_data_path.exists():
+    if dataloader_data_path.exists() and not data_config.delete_data:
         with open(dataloader_data_path, 'rb') as f:
             spin_glass_simulation = pickle.load(f)
             if data_config.couplings != spin_glass_simulation.couplings:

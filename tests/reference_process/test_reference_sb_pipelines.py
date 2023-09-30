@@ -34,7 +34,7 @@ class TestSB(unittest.TestCase):
         self.sb_config.model = BackRateMLPConfig(time_embed_dim=12)
         self.sb_config.temp_network = TemporalMLPConfig()
 
-        self.sb_config.stein = SteinSpinEstimatorConfig(stein_sample_size=5)
+        self.sb_config.flip_estimator = SteinSpinEstimatorConfig(stein_sample_size=5)
         self.sb_config.sampler = ParametrizedSamplerConfig(num_steps=5, step_type="TauLeaping")
 
         self.device = torch.device("cuda:0") if torch.cuda.is_available() else self.device = torch.device("cpu")

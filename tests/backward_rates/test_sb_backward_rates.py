@@ -10,9 +10,9 @@ from graph_bridges.data.spin_glass_dataloaders_config import ParametrizedSpinGla
 from graph_bridges.models.generative_models.sb import SB
 from graph_bridges.models.temporal_networks.mlp.temporal_mlp import TemporalMLPConfig
 from graph_bridges.models.temporal_networks.convnets.autoencoder import ConvNetAutoencoderConfig
+from graph_bridges.models.temporal_networks.transformers.temporal_hollow_transformers import TemporalHollowTransformerConfig
 
 from graph_bridges.models.backward_rates.sb_backward_rate_config import SchrodingerBridgeBackwardRateConfig
-from graph_bridges.models.temporal_networks.transformers.temporal_hollow_transformers import TemporalHollowTransformerConfig
 
 @unittest.skip
 class TestSBBackwardRateGraphs(unittest.TestCase):
@@ -43,7 +43,7 @@ class TestSBBackwardRateGraphs(unittest.TestCase):
         timesteps = torch.rand(x_adj_start.shape[0]).to(self.device)
 
         print(f"x_adj_start {x_adj_start.shape}")
-        print(f"expected shape {sb_config.data.shape_}")
+        print(f"expected shape {sb_config.data.temporal_net_expected_shape}")
 
         transition_rates = training_model(x_adj_start,timesteps)
         print(f"transition rates shape {transition_rates.shape}")
@@ -77,7 +77,7 @@ class TestSBBackwardRateGraphs(unittest.TestCase):
         # models
         sb_config.model = SchrodingerBridgeBackwardRateConfig()
         sb_config.temp_network = ConvNetAutoencoderConfig()
-        sb_config.stein.stein_sample_size = 2
+        sb_config.flip_estimator.stein_sample_size = 2
 
         sb = SB()
         sb.create_new_from_config(sb_config,device=self.device)
@@ -93,7 +93,7 @@ class TestSBBackwardRateGraphs(unittest.TestCase):
         timesteps = torch.rand(x_adj_start.shape[0]).to(self.device)
 
         print(f"x_adj_start {x_adj_start.shape}")
-        print(f"expected shape {sb_config.data.shape_}")
+        print(f"expected shape {sb_config.data.temporal_net_expected_shape}")
 
         transition_rates = training_model(x_adj_start,timesteps)
         print(f"transition rates shape {transition_rates.shape}")
@@ -109,10 +109,10 @@ class TestSBBackwardRateGraphs(unittest.TestCase):
         print(paths.shape)
         print(timesteps.shape)
 
-        loss_ = sb.backward_ratio_stein_estimator.estimator(training_model,
-                                                            sb.reference_process,
-                                                            paths,
-                                                            timesteps)
+        loss_ = sb.backward_ratio_estimator.__call__(training_model,
+                                                     sb.reference_process,
+                                                     paths,
+                                                     timesteps)
         print(loss_)
 
         """
@@ -160,7 +160,7 @@ class TestSBBackwardRateSpins(unittest.TestCase):
         timesteps = torch.rand(x_adj_start.shape[0]).to(self.device)
 
         print(f"x_adj_start {x_adj_start.shape}")
-        print(f"expected shape {sb_config.data.shape_}")
+        print(f"expected shape {sb_config.data.temporal_net_expected_shape}")
 
         transition_rates = training_model(x_adj_start,timesteps)
         print(f"transition rates shape {transition_rates.shape}")
@@ -251,7 +251,7 @@ class TestSBBackwardRateNIST(unittest.TestCase):
         timesteps = torch.rand(x_adj_start.shape[0]).to(self.device)
 
         print(f"x_adj_start {x_adj_start.shape}")
-        print(f"expected shape {sb_config.data.shape_}")
+        print(f"expected shape {sb_config.data.temporal_net_expected_shape}")
 
         transition_rates = training_model(x_adj_start,timesteps)
         print(f"transition rates shape {transition_rates.shape}")
@@ -274,7 +274,7 @@ class TestSBBackwardRateNIST(unittest.TestCase):
 
         # data
         sb_config.data = NISTLoaderConfig(batch_size=2)
-        sb_config.stein.stein_sample_size = 2
+        sb_config.flip_estimator.stein_sample_size = 2
 
         # models
         sb_config.model = SchrodingerBridgeBackwardRateConfig()
@@ -294,7 +294,7 @@ class TestSBBackwardRateNIST(unittest.TestCase):
         timesteps = torch.rand(x_adj_start.shape[0]).to(self.device)
 
         print(f"x_adj_start {x_adj_start.shape}")
-        print(f"expected shape {sb_config.data.shape_}")
+        print(f"expected shape {sb_config.data.temporal_net_expected_shape}")
 
         transition_rates = training_model(x_adj_start, timesteps)
         print(f"transition rates shape {transition_rates.shape}")

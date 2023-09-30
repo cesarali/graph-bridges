@@ -123,11 +123,15 @@ class SBScheduler(SchedulerMixin, ConfigMixin):
     ) -> Union[SBSchedulerOutput, Tuple]:
         """
         """
-        assert x.min() == -1. #make sure that we receive spins
+        assert x.min() >= -1. #make sure that we receive spins
         x_new = copy.deepcopy(x)
         poisson_probabilities = rates_ * h
 
-        assert (poisson_probabilities > 0.).all()
+        if (poisson_probabilities > 0.).all():
+            pass
+        else:
+            print(poisson_probabilities)
+            raise Exception("Bad Poisson ")
 
         events = Poisson(poisson_probabilities).sample()
         where_to_flip = torch.where(events > 0)
@@ -151,7 +155,7 @@ class SBScheduler(SchedulerMixin, ConfigMixin):
     ) -> Union[SBSchedulerOutput, Tuple]:
         """
         """
-        assert spins.min() == -1. #make sure that we receive spins
+        assert spins.min() >= -1. #make sure that we receive spins
         transforms = SpinsToBinaryTensor()
         x = transforms(spins)
         num_of_paths = x.shape[0]

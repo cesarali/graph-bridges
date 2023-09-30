@@ -18,6 +18,8 @@ from typing import Optional
 from graph_bridges.configs.graphs.graph_config_sb import SBConfig
 from graph_bridges.models.metrics.sb_metrics import marginal_paths_histograms_plots, graph_metrics_for_sb
 from graph_bridges.utils.plots.graph_plots import plot_graphs_list2
+from graph_bridges.models.metrics.sb_paths_metrics import states_paths_histograms_plots
+#from graph_bridges.models.reference_process.glauber_reference import GlauberDynamics
 
 def copy_models(model_to, model_from):
     model_to.load_state_dict(model_from.state_dict())
@@ -54,6 +56,8 @@ class SBTrainer:
         self.starting_sinkhorn = self.sb_config.trainer.starting_sinkhorn
         self.number_of_sinkhorn = self.sb_config.trainer.number_of_sinkhorn
         self.number_of_epochs = self.sb_config.trainer.num_epochs
+        self.clip_max_norm = self.sb_config.trainer.clip_max_norm
+        self.do_ema = self.sb_config.model.do_ema
 
         # METRICS
         self.metrics = None
@@ -97,10 +101,10 @@ class SBTrainer:
         spins_path, times = self.sb.pipeline(None, 0, self.device, return_path=True)
 
         #CHECK LOSS
-        initial_loss = self.sb.backward_ratio_stein_estimator.estimator(current_model,
-                                                                        past_to_train_model,
-                                                                        spins_path,
-                                                                        times)
+        initial_loss = self.sb.backward_ratio_estimator(current_model,
+                                                        past_to_train_model,
+                                                        spins_path,
+                                                        times)
         assert torch.isnan(initial_loss).any() == False
         assert torch.isinf(initial_loss).any() == False
 
@@ -123,10 +127,14 @@ class SBTrainer:
         X_spins = databatch[0]
         current_time = databatch[1]
         # LOSS UPDATE
-        loss = self.sb.backward_ratio_stein_estimator.estimator(current_model, past_model, X_spins, current_time)
+        loss = self.sb.backward_ratio_estimator(current_model, past_model, X_spins, current_time)
         self.optimizer.zero_grad()
         loss.backward()
+        if self.clip_max_norm is not None:
+            torch.nn.utils.clip_grad_norm_(current_model.parameters(), max_norm=self.clip_max_norm)
         self.optimizer.step()
+        if self.do_ema:
+            current_model.update_ema()
         # SUMMARIES
         self.writer.add_scalar('training loss sinkhorn {0}'.format(sinkhorn_iteration), loss, number_of_training_step)
         return loss
@@ -136,7 +144,7 @@ class SBTrainer:
             databatch = self.preprocess_data(databatch)
             X_spins = databatch[0]
             current_time = databatch[1]
-            loss = self.sb.backward_ratio_stein_estimator.estimator(current_model,past_model,X_spins,current_time)
+            loss = self.sb.backward_ratio_estimator(current_model, past_model, X_spins, current_time)
             self.writer.add_scalar('test loss sinkhorn {0}'.format(sinkhorn_iteration), loss, number_of_test_step)
         return loss
 
@@ -162,7 +170,7 @@ class SBTrainer:
 
         assert check_model_devices(training_model) == self.device
 
-        self.sb.backward_ratio_stein_estimator.set_device(self.device)
+        self.sb.backward_ratio_estimator.set_device(self.device)
 
         for sinkhorn_iteration in range(self.starting_sinkhorn,self.number_of_sinkhorn):
             if sinkhorn_iteration == 0:
@@ -186,6 +194,7 @@ class SBTrainer:
                 training_loss = []
                 for databatch in self.sb.pipeline.paths_iterator(past_model,
                                                                  sinkhorn_iteration=sinkhorn_iteration,
+                                                                 sample_from_reference_native=self.sb_config.sampler.sample_from_reference_native,
                                                                  device=self.device,
                                                                  train=True):
                     # DATA
@@ -203,6 +212,7 @@ class SBTrainer:
                 for databatch in self.sb.pipeline.paths_iterator(past_model,
                                                                  sinkhorn_iteration=sinkhorn_iteration,
                                                                  device=self.device,
+                                                                 sample_from_reference_native=self.sb_config.sampler.sample_from_reference_native,
                                                                  train=True):
                     loss = self.test_step(training_model,
                                           past_model,
@@ -294,6 +304,17 @@ class SBTrainer:
                                                        sinkhorn_iteration=1)
             plot_graphs_list2(generated_graphs,title="Generated 0",save_dir=graph_plot_path_)
 
+        if "paths_histograms":
+            if self.sb_config.data.number_of_spins < 5:
+                histograms_plot_path_2 = config.experiment_files.plot_path.format("paths_sinkhorn_{0}_{1}".format(sinkhorn_iteration,epoch))
+
+                states_paths_histograms_plots(self.sb,
+                                              sinkhorn_iteration=sinkhorn_iteration,
+                                              device=device,
+                                              current_model=current_model,
+                                              past_to_train_model=past_to_train_model,
+                                              plot_path=histograms_plot_path_2)
+
 
 
     def save_results(self,
@@ -343,8 +364,8 @@ if __name__=="__main__":
 
     sb_config.data = EgoConfig(batch_size=10, full_adjacency=False)
     sb_config.model = BackRateMLPConfig(time_embed_dim=14, hidden_layer=200)
-    sb_config.stein = SteinSpinEstimatorConfig(stein_sample_size=200,
-                                               stein_epsilon=0.23)
+    sb_config.flip_estimator = SteinSpinEstimatorConfig(stein_sample_size=200,
+                                                        stein_epsilon=0.23)
     sb_config.sampler = ParametrizedSamplerConfig(num_steps=10)
     sb_config.trainer = SBTrainerConfig(learning_rate=1e-2,
                                         num_epochs=3000,

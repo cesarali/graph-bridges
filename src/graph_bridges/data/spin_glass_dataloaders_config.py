@@ -57,7 +57,7 @@ class ParametrizedSpinGlassHamiltonianConfig(SpinGlassVariablesConfig):
 
     def __post_init__(self):
         self.D  = self.number_of_spins
-        self.number_of_states = 2**self.D
+        self.number_of_states = 2
 
         if self.as_spins:
             self.doucet = False
@@ -70,11 +70,11 @@ class ParametrizedSpinGlassHamiltonianConfig(SpinGlassVariablesConfig):
             self.H = 1
             self.W = self.D
             self.shape = [self.C,self.H,self.W]
-            self.shape_ = [self.C, self.H, self.W]
+            self.temporal_net_expected_shape = [self.C, self.H, self.W]
         else:
             #self.C = self.H, self.W
             self.shape = [None,None,None]
-            self.shape_ = [self.D]
+            self.temporal_net_expected_shape = [self.D]
 
         if not self.as_spins:
             self.data_min_max = [0.,1.]
