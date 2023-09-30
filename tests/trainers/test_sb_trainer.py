@@ -92,14 +92,15 @@ class TestSBTrainer(unittest.TestCase):
                                                  clip_max_norm=1.,
                                                  device="cuda:0",
                                                  metrics=["histograms","paths_histograms"])
+
         #["graphs_plots", "histograms"]
         self.sb_config.__post_init__()
         self.sb_trainer = SBTrainer(self.sb_config)
 
     @unittest.skip
     def test_training(self):
-        self.sb_trainer.train_schrodinger()
 
+        self.sb_trainer.train_schrodinger()
         self.sb = self.sb_trainer.sb
         current_model = self.sb_trainer.sb.training_model
 
@@ -148,7 +149,6 @@ class TestSBTrainer(unittest.TestCase):
         print("Loaded")
         pprint(sb.config.data.__dict__)
         """
-
 
     @unittest.skip
     def test_sinkhorn_initialization(self):

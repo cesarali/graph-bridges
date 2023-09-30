@@ -21,7 +21,7 @@ from graph_bridges.models.reference_process.ctdd_reference import GaussianTarget
 from graph_bridges.models.backward_rates.backward_rate_utils import load_backward_rates
 from graph_bridges.models.reference_process.reference_process_utils import load_reference
 from graph_bridges.utils.test_utils import check_model_devices
-
+import shutil
 
 @dataclass
 class SB:
@@ -69,9 +69,11 @@ class SB:
                                  experiment_name="graph",
                                  experiment_type="sb",
                                  experiment_indentifier="tutorial_sb_trainer",
+                                 new_experiment=False,
+                                 new_experiment_indentifier=None,
                                  sinkhorn_iteration_to_load=0,
                                  checkpoint=None,
-                                 device=torch.device("cpu")):
+                                 device=None):
         """
 
         :param experiment_name:
@@ -86,24 +88,55 @@ class SB:
         config_ready = get_sb_config_from_file(experiment_name=experiment_name,
                                                experiment_type=experiment_type,
                                                experiment_indentifier=experiment_indentifier)
+
+        # LOADS RESULTS
+        loaded_path = None
         if checkpoint is None:
             best_model_to_load_path = Path(config_ready.experiment_files.best_model_path.format(sinkhorn_iteration_to_load))
             if best_model_to_load_path.exists():
                 results_ = torch.load(best_model_to_load_path)
+                loaded_path = best_model_to_load_path
         else:
             check_point_to_load_path = Path(config_ready.experiment_files.best_model_path_checkpoint.format(checkpoint, sinkhorn_iteration_to_load))
             if check_point_to_load_path.exists():
                 results_ = torch.load(check_point_to_load_path)
+                loaded_path = check_point_to_load_path
 
-        config_ready.align_configurations()
-        self.set_classes_from_config(config_ready, device)
+        if loaded_path is None:
+            raise Exception("Experiment Does not Exist")
 
+        if device is None:
+            device = torch.device(config_ready.trainer.device)
+
+        # SETS MODELS
         if sinkhorn_iteration_to_load == 0:
             self.training_model = results_['current_model'].to(device)
             self.past_model = load_backward_rates(config=config_ready,device=device)
         else:
-            self.training_model = results_['current_model']
-            self.past_model = results_["past_model"]
+            self.training_model = results_['current_model'].to(device)
+            self.past_model = results_["past_model"].to(device)
+
+        # SETS ALL OTHER CLASSES FROM CONFIG AND START NEW EXPERIMENT IF REQUIERED
+        if new_experiment:
+            # Creates a folder
+            config_ready.experiment_indentifier = new_experiment_indentifier
+            config_ready.__post_init__()
+            config_ready.initialize_new_experiment()
+
+            if checkpoint is None:
+                best_model_to_load_path = Path(config_ready.experiment_files.best_model_path.format(sinkhorn_iteration_to_load))
+                to_copy_file = best_model_to_load_path
+            else:
+                check_point_to_load_path = Path(config_ready.experiment_files.best_model_path_checkpoint.format(checkpoint,sinkhorn_iteration_to_load))
+                to_copy_file = check_point_to_load_path
+
+            shutil.copy2(loaded_path, to_copy_file)
+            config_ready.align_configurations()
+            self.set_classes_from_config(config_ready, device)
+        # JUST READs
+        else:
+            config_ready.align_configurations()
+            self.set_classes_from_config(config_ready, device)
 
     def generate_graphs(self,
                         number_of_graphs,

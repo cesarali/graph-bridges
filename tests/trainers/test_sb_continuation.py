@@ -36,17 +36,53 @@ class TestSBTrainer(unittest.TestCase):
         sb.load_from_results_folder(experiment_name="graph",
                                     experiment_type="sb",
                                     experiment_indentifier="1696030913",
-                                    sinkhorn_iteration_to_load=0)
+                                    new_experiment=False,
+                                    new_experiment_indentifier="Harz2",
+                                    sinkhorn_iteration_to_load=0,
+                                    checkpoint=1500,
+                                    device=torch.device("cpu"))
+
         current_model = sb.training_model
         past_model = sb.past_model
-
-        print(check_model_devices(current_model))
-        print(check_model_devices(past_model))
+        sb.config.sampler.step_type = "poisson"
 
         marginal_paths_histograms_plots(sb,
                                         sinkhorn_iteration=0,
                                         device=check_model_devices(current_model),
                                         current_model=current_model,
+                                        past_to_train_model=None,
+                                        plot_path=None,
+                                        exact_backward=True)
+
+    def test_restart_training(self):
+        sb_trainer = SBTrainer(config=None,
+                               experiment_name="graph",
+                               experiment_type="sb",
+                               experiment_indentifier="1696030913",
+                               new_experiment_indentifier="Harz3",
+                               sinkhorn_iteration_to_load=0,
+                               next_sinkhorn=True)
+        sb_trainer.train_schrodinger()
+
+
+    @unittest.skip
+    def test_load_and_plot(self):
+        sb = SB()
+        sb.load_from_results_folder(experiment_name="graph",
+                                    experiment_type="sb",
+                                    experiment_indentifier="1696030913",
+                                    new_experiment=False,
+                                    new_experiment_indentifier="Harz",
+                                    sinkhorn_iteration_to_load=0)
+
+        current_model = sb.training_model
+        past_model = sb.past_model
+        past_model.load_state_dict(current_model.state_dict())
+
+        marginal_paths_histograms_plots(sb,
+                                        sinkhorn_iteration=0,
+                                        device=check_model_devices(current_model),
+                                        current_model=past_model,
                                         past_to_train_model=None,
                                         plot_path=None)
 

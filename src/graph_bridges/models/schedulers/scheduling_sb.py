@@ -130,8 +130,9 @@ class SBScheduler(SchedulerMixin, ConfigMixin):
         if (poisson_probabilities > 0.).all():
             pass
         else:
-            print(poisson_probabilities)
-            raise Exception("Bad Poisson ")
+            #print(poisson_probabilities)
+            poisson_probabilities += 1e-5
+            #raise Exception("Bad Poisson ")
 
         events = Poisson(poisson_probabilities).sample()
         where_to_flip = torch.where(events > 0)

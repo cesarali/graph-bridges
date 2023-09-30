@@ -35,7 +35,14 @@ class SBTrainer:
     sb_config:SBConfig
     name_ = "schrodinger_bridge"
     def __init__(self,
-                 config:SBConfig=None):
+                 config:SBConfig=None,
+                 experiment_name=None,
+                 experiment_type=None,
+                 experiment_indentifier=None,
+                 new_experiment_indentifier=None,
+                 sinkhorn_iteration_to_load=0,
+                 checkpoint=None,
+                 next_sinkhorn=True):
         """
         :param paths_dataloader: contains a data distribution and a target distribution (also possibly data)
         :param backward_estimator:
@@ -45,13 +52,34 @@ class SBTrainer:
 
              the paths_dataloader is a part of the
         """
+        if config is not None:
+            # select device
+            self.sb_config = config
+            self.device = torch.device(self.sb_config.trainer.device)
+            self.sb = SB()
+            self.sb.create_new_from_config(self.sb_config,self.device)
+        else:
+            self.sb = SB()
+            self.sb.load_from_results_folder(experiment_name=experiment_name,
+                                             experiment_type=experiment_type,
+                                             experiment_indentifier=experiment_indentifier,
+                                             new_experiment=True,
+                                             new_experiment_indentifier=new_experiment_indentifier,
+                                             sinkhorn_iteration_to_load=0,
+                                             checkpoint=checkpoint)
+            self.sb_config = self.sb.config
+            self.device = torch.device(self.sb_config.trainer.device)
 
-        # select device
-        self.sb_config = config
-        self.device = torch.device(self.sb_config.trainer.device)
+            if next_sinkhorn:
+                self.sb_config.trainer.starting_sinkhorn = sinkhorn_iteration_to_load + 1
+                self.end_of_sinkhorn()
+            else:
+                self.sb_config.trainer.starting_sinkhorn = sinkhorn_iteration_to_load
 
-        self.sb = SB()
-        self.sb.create_new_from_config(self.sb_config,self.device)
+            old_number_of_sinkhorn = self.sb_config.trainer.number_of_sinkhorn
+            starting_sinkhorn = self.sb_config.trainer.starting_sinkhorn
+            self.number_of_sinkhorn = min(old_number_of_sinkhorn,starting_sinkhorn) + 1
+            self.sb_config.trainer.number_of_sinkhorn = self.number_of_sinkhorn
 
         self.starting_sinkhorn = self.sb_config.trainer.starting_sinkhorn
         self.number_of_sinkhorn = self.sb_config.trainer.number_of_sinkhorn
@@ -96,9 +124,9 @@ class SBTrainer:
         self.writer = SummaryWriter(self.sb_config.experiment_files.tensorboard_path)
 
         # CHECK DATA
-        spins_path, times = self.sb.pipeline(None, 0, self.device,return_path=True,return_path_shape=True)
-        batch_size, total_number_of_steps, number_of_spins = spins_path.shape[0],spins_path.shape[1],spins_path.shape[2]
-        spins_path, times = self.sb.pipeline(None, 0, self.device, return_path=True)
+        #spins_path, times = self.sb.pipeline(None, 0, self.device,return_path=True,return_path_shape=True)
+        #batch_size, total_number_of_steps, number_of_spins = spins_path.shape[0],spins_path.shape[1],spins_path.shape[2]
+        spins_path, times = self.sb.pipeline(current_model, sinkhorn_iteration, self.device, return_path=True)
 
         #CHECK LOSS
         initial_loss = self.sb.backward_ratio_estimator(current_model,
@@ -259,6 +287,8 @@ class SBTrainer:
             #=====================================================
             # RESULTS FROM BEST MODEL UPDATED WITH METRICS
             #=====================================================
+            self.end_of_sinkhorn()
+
         self.writer.close()
 
         return best_loss
@@ -267,7 +297,7 @@ class SBTrainer:
         """
         :return:
         """
-        return None
+        self.sb.past_model.load_state_dict(self.sb.training_model.state_dict())
 
     def log_metrics(self, current_model, past_to_train_model, sinkhorn_iteration, epoch, device):
         """
