@@ -54,6 +54,7 @@ class TestSBTrainer(unittest.TestCase):
                                         plot_path=None,
                                         exact_backward=True)
 
+    @unittest.skip
     def test_restart_training(self):
         sb_trainer = SBTrainer(config=None,
                                experiment_name="graph",

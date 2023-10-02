@@ -1,11 +1,58 @@
 import os
 import sys
+import json
 import torch
 import numpy as np
 import networkx as nx
+from pathlib import Path
+from typing import Union,Tuple,List
+from graph_bridges.utils.test_utils import check_model_devices
 from graph_bridges.models.metrics.evaluation.stats import eval_graph_list
 from graph_bridges.models.metrics.data_metrics import SpinBernoulliMarginal
-from graph_bridges.utils.test_utils import check_model_devices
+from graph_bridges.configs.config_ctdd import CTDDConfig
+
+"""
+def read_metrics(config:CTDDConfig,checkpoint=None,best=False):
+    # HISTOGRAMS
+    results_dir = config.experiment_files.results_dir
+    all_files_results = os.listdir(results_dir)
+    [for file in all_files_results if ]
+    mat_path = list(histograms_plot_path_.glob("*.mat"))
+
+    with open(mse_metric_path, "w") as f:
+        json.dump({"mse_1": mse_1.tolist(),"mse_0": mse_0.tolist()}, f)
+
+
+    # METRICS
+    graph_metrics_path_ = config.experiment_files.metrics_file.format("graph_{0}".format(number_of_steps))
+    with open(graph_metrics_path_, "w") as f:
+        json.dump(graph_metrics, f)
+
+    return None
+"""
+
+def marginals_histograms_mse(all_marginal_histograms)->Tuple[np.array,np.array]:
+    """
+    simply calculates the mse from the marginal graph histograms
+
+    Returns
+    -------
+    mse_1,mse_0
+    """
+    marginal_0, marginal_generated_0, marginal_1, marginal_noising_1 = all_marginal_histograms
+    if isinstance(marginal_0,torch.Tensor):
+        marginal_0 = marginal_0.numpy()
+    if isinstance(marginal_generated_0,torch.Tensor):
+        marginal_generated_0 = marginal_generated_0.numpy()
+    if isinstance(marginal_1,torch.Tensor):
+        marginal_1 = marginal_1.numpy()
+    if isinstance(marginal_noising_1,torch.Tensor):
+        marginal_noising_1 = marginal_noising_1.numpy()
+
+    mse_1 = np.mean((marginal_1 - marginal_noising_1)**2.)
+    mse_0 = np.mean((marginal_0 - marginal_generated_0)**2.)
+
+    return mse_1,mse_0
 
 def marginal_histograms_for_ctdd(ctdd,config,device):
     """
@@ -40,11 +87,13 @@ def marginal_histograms_for_ctdd(ctdd,config,device):
     marginal_noising_1 = torch.zeros(config.data.number_of_spins,device=device)
 
     batch_size = config.data.batch_size
-    number_of_batches = int(size_ / batch_size)
 
-    for batch_index in range(number_of_batches):
+    current_index = 0
+    while current_index < size_:
+        remaining = min(size_ - current_index, batch_size)
         x = ctdd.pipeline(ctdd.model, batch_size,device=device)
-        marginal_generated_0 += x.sum(axis=0)
+        marginal_generated_0 += x.sum(axis=0)        # Your processing code here
+        current_index += remaining
 
     # Sample a random timestep for each image
     for batchdata in data_loader_:

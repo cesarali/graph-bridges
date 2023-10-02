@@ -27,7 +27,7 @@ class ImageX0PredBase(BackwardRate):
 
         tmp_net = load_temp_network(config=cfg, device=device)
 
-        if cfg.distributed:
+        if cfg.trainer.distributed:
             self.net = DDP(tmp_net, device_ids=[rank])
         else:
             self.net = tmp_net

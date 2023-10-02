@@ -52,15 +52,15 @@ class TestUnetGraph(unittest.TestCase):
         ctdd_config.temp_network = ConvNetAutoencoderConfig()
 
         ctdd_config.data.batch_size = 12
-        device = torch.device(ctdd_config.device)
+        device = torch.device(ctdd_config.trainer.device)
 
         ctdd = CTDD()
         ctdd.create_new_from_config(ctdd_config,device)
 
         databatch = next(ctdd.data_dataloader.train().__iter__())
-        x_adj = databatch[0]
+        x_adj = databatch[0].to(device)
         batch_size = x_adj.shape[0]
-        fake_time = torch.rand(batch_size)
+        fake_time = torch.rand(batch_size).to(device)
         print(asdict(ctdd_config.model))
         print(f"Data Sample Shape {x_adj.shape}")
         forward_ = ctdd.model(x_adj,fake_time)
@@ -88,15 +88,15 @@ class TestConvNetNist(unittest.TestCase):
         ctdd_config.temp_network = ConvNetAutoencoderConfig()
 
         ctdd_config.data.batch_size = 12
-        device = torch.device(ctdd_config.device)
+        device = torch.device(ctdd_config.trainer.device)
 
         ctdd = CTDD()
         ctdd.create_new_from_config(ctdd_config,device)
 
         databatch = next(ctdd.data_dataloader.train().__iter__())
-        x_adj = databatch[0]
+        x_adj = databatch[0].to(device)
         batch_size = x_adj.shape[0]
-        fake_time = torch.rand(batch_size)
+        fake_time = torch.rand(batch_size).to(device)
         pprint(asdict(ctdd_config.temp_network))
 
         print(f"Data Sample Shape {x_adj.shape}")
@@ -124,15 +124,15 @@ class TestMLPNist(unittest.TestCase):
         ctdd_config.model = BackRateMLPConfig()
 
         ctdd_config.data.batch_size = 12
-        device = torch.device(ctdd_config.device)
+        device = torch.device(ctdd_config.trainer.device)
 
         ctdd = CTDD()
         ctdd.create_new_from_config(ctdd_config, device)
 
         databatch = next(ctdd.data_dataloader.train().__iter__())
-        x_adj = databatch[0]
+        x_adj = databatch[0].to(device)
         batch_size = x_adj.shape[0]
-        fake_time = torch.rand(batch_size)
+        fake_time = torch.rand(batch_size).to(device)
         pprint(asdict(ctdd_config.temp_network))
 
         print(f"Data Sample Shape {x_adj.shape}")

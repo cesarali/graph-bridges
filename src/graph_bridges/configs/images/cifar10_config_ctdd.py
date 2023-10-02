@@ -25,12 +25,9 @@ class CTDDConfig(GeneralCTDDConfig):
     distributed = False
     num_gpus = 0
 
-    def __post_init__(self):
-        self.data = DiscreteCIFAR10Config()  # corresponds to the distributions at start time
-        self.model = GaussianTargetRateImageX0PredEMAConfig()
-        self.temp_network =  UnetTauConfig(input_channels=3,
-                                           ch_mult=[1, 2, 2, 2],
-                                           data_min_max=[0,255])
+    data:DiscreteCIFAR10Config = DiscreteCIFAR10Config()  # corresponds to the distributions at start time
+    model:GaussianTargetRateImageX0PredEMAConfig = GaussianTargetRateImageX0PredEMAConfig()
+    temp_network:UnetTauConfig =  UnetTauConfig(input_channels=3,ch_mult=[1, 2, 2, 2],data_min_max=[0,255])
 
     def align_configurations(self):
         #dataloaders for training

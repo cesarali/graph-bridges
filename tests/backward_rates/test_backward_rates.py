@@ -16,14 +16,14 @@ class TestUnetCifar10(unittest.TestCase):
                                  experiment_name="cifar10",
                                  experiment_type="ctdd")
         ctdd_config.data.batch_size = 12
-        device = torch.device(ctdd_config.device)
+        device = torch.device(ctdd_config.trainer.device)
         ctdd = CTDD()
         ctdd.create_new_from_config(ctdd_config,device)
 
         databatch = next(ctdd.data_dataloader.train().__iter__())
-        x_adj = databatch[0]
+        x_adj = databatch[0].to(device)
         batch_size = x_adj.shape[0]
-        fake_time = torch.rand(batch_size)
+        fake_time = torch.rand(batch_size).to(device)
         forward_net = ctdd.model.net(x_adj,fake_time)
         forward_ = ctdd.model(x_adj,fake_time)
 
@@ -49,15 +49,15 @@ class TestGraphs(unittest.TestCase):
 
         ctdd_config.data.batch_size = 12
 
-        device = torch.device(ctdd_config.device)
+        device = torch.device(ctdd_config.trainer.device)
         ctdd = CTDD()
         ctdd.create_new_from_config(ctdd_config,device)
 
         databatch = next(ctdd.data_dataloader.train().__iter__())
-        x_adj = databatch[0]
+        x_adj = databatch[0].to(device)
 
         batch_size = x_adj.shape[0]
-        fake_time = torch.rand(batch_size)
+        fake_time = torch.rand(batch_size).to(device)
         print(f"Input shape: {x_adj.shape}")
 
         forward_ = ctdd.model(x_adj,fake_time)
@@ -80,15 +80,15 @@ class TestGraphs(unittest.TestCase):
         ctdd_config.temp_network = ConvNetAutoencoderConfig()
         ctdd_config.data.batch_size = 12
 
-        device = torch.device(ctdd_config.device)
+        device = torch.device(ctdd_config.trainer.device)
         ctdd = CTDD()
         ctdd.create_new_from_config(ctdd_config,device)
 
         databatch = next(ctdd.data_dataloader.train().__iter__())
-        x_adj = databatch[0]
+        x_adj = databatch[0].to(device)
 
         batch_size = x_adj.shape[0]
-        fake_time = torch.rand(batch_size)
+        fake_time = torch.rand(batch_size).to(device)
         print(f"Input shape: {x_adj.shape}")
 
         forward_ = ctdd.model(x_adj,fake_time)
@@ -115,15 +115,15 @@ class TestGraphs(unittest.TestCase):
                                                               time_scale_factor=10)
 
 
-        device = torch.device(config.device)
+        device = torch.device(config.trainer.device)
         ctdd = CTDD()
         ctdd.create_new_from_config(config,device)
 
         databatch = next(ctdd.data_dataloader.train().__iter__())
-        x_adj = databatch[0]
+        x_adj = databatch[0].to(device)
 
         batch_size = x_adj.shape[0]
-        fake_time = torch.rand(batch_size)
+        fake_time = torch.rand(batch_size).to(device)
         print(f"Input shape: {x_adj.shape}")
 
         forward_ = ctdd.model(x_adj,fake_time)
@@ -148,16 +148,16 @@ class TestNist(unittest.TestCase):
         ctdd_config.model = BackRateMLPConfig()
         ctdd_config.data.data = "mnist"
 
-        device = torch.device(ctdd_config.device)
+        device = torch.device(ctdd_config.trainer.device)
 
         ctdd = CTDD()
         ctdd.create_new_from_config(ctdd_config,device)
 
         databatch = next(ctdd.data_dataloader.train().__iter__())
-        x_adj = databatch[0]
+        x_adj = databatch[0].to(device)
 
         batch_size = x_adj.shape[0]
-        fake_time = torch.rand(batch_size)
+        fake_time = torch.rand(batch_size).to(device)
         print(f"Input shape: {x_adj.shape}")
 
         forward_ = ctdd.model(x_adj,fake_time)

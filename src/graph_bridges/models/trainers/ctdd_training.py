@@ -8,7 +8,7 @@ from pprint import pprint
 from graph_bridges.models.generative_models.ctdd import CTDD
 from graph_bridges.configs.graphs.graph_config_ctdd import CTDDConfig
 from graph_bridges.models.metrics.ctdd_metrics import graph_metrics_for_ctdd
-from graph_bridges.models.metrics.ctdd_metrics import marginal_histograms_for_ctdd
+from graph_bridges.models.metrics.ctdd_metrics import marginal_histograms_for_ctdd,marginals_histograms_mse
 
 from graph_bridges.utils.plots.histograms_plots import plot_histograms
 from graph_bridges.utils.plots.graph_plots import plot_graphs_list2
@@ -261,6 +261,20 @@ class CTDDTrainer:
             histograms_plot_path_ = config.experiment_files.plot_path.format("histograms_{0}".format(number_of_steps))
             marginal_histograms = marginal_histograms_for_ctdd(self.ctdd,config,device)
             plot_histograms(marginal_histograms, plots_path=histograms_plot_path_)
+            if "mse_histograms" in config.trainer.metrics:
+                mse_1,mse_0 = marginals_histograms_mse(marginal_histograms)
+                mse_metric_path = config.experiment_files.metrics_file.format("marginal_histogram_mse_{0}".format(number_of_steps))
+                with open(mse_metric_path, "w") as f:
+                    json.dump({"mse_1":mse_1.tolist(),
+                                   "mse_0":mse_0.tolist()}, f)
+        else:
+            if "mse_histograms" in config.trainer.metrics:
+                marginal_histograms = marginal_histograms_for_ctdd(self.ctdd,config,device)
+                mse_1,mse_0 = marginals_histograms_mse(marginal_histograms)
+                mse_metric_path = config.experiment_files.metrics_file.format("marginal_histogram_mse_{0}".format(number_of_steps))
+                with open(mse_metric_path, "w") as f:
+                    json.dump({"mse_1":mse_1.tolist(),
+                                   "mse_0":mse_0.tolist()}, f)
 
         #METRICS
         if "graphs" in config.trainer.metrics:

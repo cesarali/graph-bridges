@@ -7,7 +7,9 @@ from graph_bridges.data.spin_glass_dataloaders_config import ParametrizedSpinGla
 
 @dataclass
 class CTDDConfig(GeneralCTDDConfig):
+    """
 
+    """
     # files, directories and naming ---------------------------------------------
     delete :bool = False
     experiment_type: str = 'ctdd'
@@ -16,20 +18,18 @@ class CTDDConfig(GeneralCTDDConfig):
 
     data:ParametrizedSpinGlassHamiltonianConfig = ParametrizedSpinGlassHamiltonianConfig()
 
-    def __post_init__(self):
-        self.data.as_spins = False
-        self.data.doucet = True
-
     def align_configurations(self):
         from graph_bridges.models.backward_rates.ctdd_backward_rate_config import GaussianTargetRateImageX0PredEMAConfig
         from graph_bridges.models.backward_rates.ctdd_backward_rate_config import BackRateMLPConfig, BackwardRateTemporalHollowTransformerConfig
 
-        from graph_bridges.models.temporal_networks.convnets.autoencoder import ConvNetAutoencoderConfig
-        from graph_bridges.models.temporal_networks.transformers.temporal_hollow_transformers import TemporalHollowTransformerConfig
+
         from graph_bridges.models.temporal_networks.unets.unet_wrapper import UnetTauConfig
         from graph_bridges.models.temporal_networks.mlp.temporal_mlp import TemporalMLPConfig
+        from graph_bridges.models.temporal_networks.convnets.autoencoder import ConvNetAutoencoderConfig
+        from graph_bridges.models.temporal_networks.transformers.temporal_hollow_transformers import TemporalHollowTransformerConfig
 
         self.data.as_spins = False
+        self.data.doucet = True
 
         #----------------------------------------------------------------------------------------
         # HERE WE PREPARE THE DATA TRANSFORMATIONS TO PIN THE TEMPORAL NETWORK ARCHITECTURE
