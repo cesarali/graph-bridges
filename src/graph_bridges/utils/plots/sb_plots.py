@@ -33,7 +33,7 @@ def sinkhorn_plot(sinkhorn_iteration,
     ax1 = axs[0]
     ax1.set_title(r"$P_0(x)$")
     ax2 = axs[1]
-    ax2.set_title("Sinkhorn Iteration {0}".format(sinkhorn_iteration))
+    ax2.set_title("Sinkhorn Iteration {0} (-) Backward (*) Forward".format(sinkhorn_iteration))
     ax3 = axs[2]
     ax3.set_title(r"$P_T(x)$")
 

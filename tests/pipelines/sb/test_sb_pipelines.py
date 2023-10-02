@@ -36,7 +36,7 @@ class TestSB(unittest.TestCase):
         from graph_bridges.configs.graphs.graph_config_sb import SBConfig
 
         self.batch_size = 12
-        self.num_time_steps = 8
+        self.num_time_steps = 4
         self.sb_config = SBConfig(experiment_indentifier="sb_unittest")
 
         #self.sb_config.data = EgoConfig(as_image=False, batch_size=self.batch_size, full_adjacency=False)
@@ -119,12 +119,13 @@ class TestSB(unittest.TestCase):
     # =============================================
 
     def test_pipeline_parametric_backward_rate_with_path_with_start(self):
-        x_end1, times1 = self.sb.pipeline(self.sb.past_model, 1, self.device, self.x_ajd, return_path=True)
+        x_end1, times1 = self.sb.pipeline(self.sb.past_model, 1, self.device, self.x_ajd, return_path=True,return_path_shape=True)
         print(x_end1.shape)
-        print(times1.shape)
-        x_end2, times2 = self.sb.pipeline(self.sb.training_model, 2, self.device, self.x_ajd, return_path=True)
+
+        print(times1)
+        x_end2, times2 = self.sb.pipeline(self.sb.training_model, 2, self.device, self.x_ajd, return_path=True,return_path_shape=True)
         print(x_end2.shape)
-        print(times2.shape)
+        print(times2)
 
     def test_paths_generator(self):
         number_of_states_2 = 0

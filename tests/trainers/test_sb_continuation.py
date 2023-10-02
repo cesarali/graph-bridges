@@ -54,37 +54,43 @@ class TestSBTrainer(unittest.TestCase):
                                         plot_path=None,
                                         exact_backward=True)
 
+
     def test_restart_training(self):
         sb_trainer = SBTrainer(config=None,
                                experiment_name="graph",
                                experiment_type="sb",
                                experiment_indentifier="1696030913",
-                               new_experiment_indentifier="Harz3",
+                               new_experiment_indentifier="1696030913_1",
                                sinkhorn_iteration_to_load=0,
                                next_sinkhorn=True)
+        sb_trainer.sb_config.trainer.save_metric_epochs = 100
+        sb_trainer.number_of_epochs = 1500
         sb_trainer.train_schrodinger()
 
 
-    @unittest.skip
     def test_load_and_plot(self):
+        device = torch.device("cpu")
+
         sb = SB()
         sb.load_from_results_folder(experiment_name="graph",
                                     experiment_type="sb",
                                     experiment_indentifier="1696030913",
                                     new_experiment=False,
-                                    new_experiment_indentifier="Harz",
-                                    sinkhorn_iteration_to_load=0)
+                                    new_experiment_indentifier=None,
+                                    sinkhorn_iteration_to_load=0,
+                                    device=device)
 
         current_model = sb.training_model
         past_model = sb.past_model
         past_model.load_state_dict(current_model.state_dict())
 
         marginal_paths_histograms_plots(sb,
-                                        sinkhorn_iteration=0,
-                                        device=check_model_devices(current_model),
-                                        current_model=past_model,
-                                        past_to_train_model=None,
-                                        plot_path=None)
+                                        sinkhorn_iteration=1,
+                                        device=device,
+                                        current_model=current_model,
+                                        past_to_train_model=past_model,
+                                        plot_path=None,
+                                        exact_backward=False)
 
     @unittest.skip
     def test_metrics_login(self):

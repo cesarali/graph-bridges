@@ -145,8 +145,8 @@ def paths_marginal_histograms(sb:SB,
     else:
         backward_time = times_1[0]
         forward_time = times_2[0]
-        backward_histogram = histogram_path_2
-        forward_histogram = histogram_path_1
+        forward_histogram = histogram_path_2
+        backward_histogram = histogram_path_1
 
     backward_histogram = torch.flip(backward_histogram, [0])
 

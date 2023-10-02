@@ -35,94 +35,73 @@ class TestSBTrainer(unittest.TestCase):
         self.sb_config = SBConfig(delete=True,
                                   experiment_name="graph",
                                   experiment_type="sb",
-                                  experiment_indentifier=None)
+                                  experiment_indentifier="bernoulli_to_bernoulli_0_stein_200_mlp_lr01_steps_50_clip_False_gradient_exact")
 
-        self.sb_config.data = EgoConfig(as_image=False,
-                                        batch_size=25,
-                                        full_adjacency=False)
+        #self.sb_config.data = EgoConfig(as_image=False,
+        #                                batch_size=25,
+        #                                full_adjacency=False)
 
-        #self.sb_config.data = ParametrizedSpinGlassHamiltonianConfig(data="bernoulli_probability_test",
-        #                                                             bernoulli_spins= True,
-        #                                                             bernoulli_probability=0.85,
-        #                                                             delete_data=True,
-        #                                                             number_of_paths = 300,
-        #                                                             number_of_spins=4,
-        #                                                             batch_size=32)
+        self.sb_config.data = ParametrizedSpinGlassHamiltonianConfig(data="bernoulli_probability_test",
+                                                                     bernoulli_spins= True,
+                                                                     bernoulli_probability=0.25,
+                                                                     delete_data=True,
+                                                                     number_of_paths=250,
+                                                                     number_of_spins=25,
+                                                                     batch_size=20)
 
         #self.sb_config.data = CommunityConfig(as_image=False, batch_size=self.batch_size, full_adjacency=True)
 
         data_sizes = check_sizes(self.sb_config)
+        print(data_sizes)
+
         self.sb_config.target = ParametrizedSpinGlassHamiltonianConfig(number_of_paths=data_sizes.total_data_size,
                                                                        number_of_spins=data_sizes.D,
-                                                                       data="graph_bernoulli",
+                                                                       data="bernoulli_probability_test_target",
                                                                        delete_data=True,
                                                                        bernoulli_spins=True,
-                                                                       bernoulli_probability=0.84)
+                                                                       bernoulli_probability=0.75)
 
         #self.sb_config.data = ParametrizedSpinGlassHamiltonianConfig(data="bernoulli_probability_0.2",
         #                                                             batch_size=10)
         #self.sb_config.target = ParametrizedSpinGlassHamiltonianConfig(data="bernoulli_probability_0.9",
         #                                                               batch_size=10)
 
-        self.sb_config.temp_network = TemporalMLPConfig(time_embed_dim=159,hidden_dim=650)
+        #self.sb_config.temp_network = TemporalMLPConfig(time_embed_dim=159,hidden_dim=650)
 
-        #self.sb_config.temp_network = DeepTemporalMLPConfig(layers_dim=[500,200],
-        #                                                    time_embed_dim=200,
-        #                                                    time_embed_hidden=300,
-        #                                                    dropout=.5)
+        self.sb_config.temp_network = DeepTemporalMLPConfig(layers_dim=[100,300],
+                                                            time_embed_dim=200,
+                                                            time_embed_hidden=100,
+                                                            data_hidden=50,
+                                                            dropout=.25)
 
         #self.sb_config.reference = GlauberDynamicsConfig(fom_data_hamiltonian=False,
         #                                                 gamma=10.)
 
-        num_epochs = 3000
+        num_epochs = 500
         self.sb_config.flip_estimator = SteinSpinEstimatorConfig(stein_sample_size=200,
                                                                  stein_epsilon=0.2)
         #self.sb_config.flip_estimator = RealFlipConfig()
 
-        self.sb_config.sampler = ParametrizedSamplerConfig(num_steps=40,
+        self.sb_config.sampler = ParametrizedSamplerConfig(num_steps=50,
                                                            step_type="TauLeaping",
                                                            sample_from_reference_native=True)
 
-        self.sb_config.trainer = SBTrainerConfig(learning_rate=0.007,
+        self.sb_config.trainer = SBTrainerConfig(learning_rate=0.001,
                                                  num_epochs=num_epochs,
-                                                 save_metric_epochs=10,
+                                                 save_metric_epochs=100,
                                                  save_model_epochs=int(num_epochs*.5),
                                                  save_image_epochs=int(num_epochs*.5),
-                                                 clip_grad=True,
-                                                 clip_max_norm=1.,
+                                                 clip_grad=False,
+                                                 clip_max_norm=10.,
                                                  device="cuda:0",
-                                                 metrics=["histograms","paths_histograms"])
+                                                 metrics=["histograms"])
 
         #["graphs_plots", "histograms"]
         self.sb_config.__post_init__()
-        self.sb_trainer = SBTrainer(self.sb_config)
+        self.sb_trainer = SBTrainer(config=self.sb_config)
 
-    @unittest.skip
     def test_training(self):
-
         self.sb_trainer.train_schrodinger()
-        self.sb = self.sb_trainer.sb
-        current_model = self.sb_trainer.sb.training_model
-
-       #past_model = None
-
-        paths, times_ = self.sb.pipeline(generation_model=None,
-                                         sinkhorn_iteration=0,
-                                         device=self.sb_trainer.device,
-                                         initial_spins=None,
-                                         sample_from_reference_native=True,
-                                         return_path=True,
-                                         return_path_shape=False)
-
-        #marginal_paths_histograms_plots(self.sb,
-        #                                sinkhorn_iteration=0,
-        #                                device=self.sb.training_model.parameters().__next__().device,
-        #                                current_model=current_model,
-        #                                past_to_train_model=None,
-        #                                plot_path=None)
-
-
-
 
     @unittest.skip
     def test_loading(self):

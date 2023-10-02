@@ -20,7 +20,7 @@ from graph_bridges.models.metrics.sb_metrics import marginal_paths_histograms_pl
 from graph_bridges.utils.plots.graph_plots import plot_graphs_list2
 from graph_bridges.models.metrics.sb_paths_metrics import states_paths_histograms_plots
 #from graph_bridges.models.reference_process.glauber_reference import GlauberDynamics
-
+from graph_bridges.models.backward_rates.backward_rate_utils import load_backward_rates
 def copy_models(model_to, model_from):
     model_to.load_state_dict(model_from.state_dict())
 
@@ -42,7 +42,7 @@ class SBTrainer:
                  new_experiment_indentifier=None,
                  sinkhorn_iteration_to_load=0,
                  checkpoint=None,
-                 next_sinkhorn=True):
+                 next_sinkhorn=False):
         """
         :param paths_dataloader: contains a data distribution and a target distribution (also possibly data)
         :param backward_estimator:
@@ -126,7 +126,7 @@ class SBTrainer:
         # CHECK DATA
         #spins_path, times = self.sb.pipeline(None, 0, self.device,return_path=True,return_path_shape=True)
         #batch_size, total_number_of_steps, number_of_spins = spins_path.shape[0],spins_path.shape[1],spins_path.shape[2]
-        spins_path, times = self.sb.pipeline(current_model, sinkhorn_iteration, self.device, return_path=True)
+        spins_path, times = self.sb.pipeline(past_to_train_model, sinkhorn_iteration, self.device, return_path=True)
 
         #CHECK LOSS
         initial_loss = self.sb.backward_ratio_estimator(current_model,
@@ -158,8 +158,8 @@ class SBTrainer:
         loss = self.sb.backward_ratio_estimator(current_model, past_model, X_spins, current_time)
         self.optimizer.zero_grad()
         loss.backward()
-        if self.clip_max_norm is not None:
-            torch.nn.utils.clip_grad_norm_(current_model.parameters(), max_norm=self.clip_max_norm)
+        if self.sb_config.trainer.clip_grad:
+            torch.nn.utils.clip_grad_norm_(current_model.parameters(), max_norm=self.sb_config.trainer.clip_max_norm)
         self.optimizer.step()
         if self.do_ema:
             current_model.update_ema()
@@ -298,6 +298,7 @@ class SBTrainer:
         :return:
         """
         self.sb.past_model.load_state_dict(self.sb.training_model.state_dict())
+        self.sb.training_model = load_backward_rates(self.sb_config, self.device)
 
     def log_metrics(self, current_model, past_to_train_model, sinkhorn_iteration, epoch, device):
         """
