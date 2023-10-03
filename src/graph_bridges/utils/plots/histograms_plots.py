@@ -33,6 +33,9 @@ def plot_histograms(marginal_histograms:Tuple[torch.Tensor],plots_path=None):
     ax2.set_ylabel('Counts')
     ax2.legend(loc="upper right")
 
+    ax2.set_ylim(0, 1.)
+    ax1.set_ylim(0, 1.)
+
     if plots_path is None:
         plt.show()
     else:

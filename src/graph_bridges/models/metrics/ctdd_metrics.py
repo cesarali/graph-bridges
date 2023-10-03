@@ -1,11 +1,41 @@
 import os
 import sys
+import json
 import torch
 import numpy as np
 import networkx as nx
+from pathlib import Path
+from dataclasses import dataclass
+from typing import Union,Tuple,List
+from graph_bridges.configs.config_ctdd import CTDDConfig
+from graph_bridges.utils.test_utils import check_model_devices
 from graph_bridges.models.metrics.evaluation.stats import eval_graph_list
 from graph_bridges.models.metrics.data_metrics import SpinBernoulliMarginal
-from graph_bridges.utils.test_utils import check_model_devices
+
+
+
+def marginals_histograms_mse(all_marginal_histograms)->Tuple[np.array,np.array]:
+    """
+    simply calculates the mse from the marginal graph histograms
+
+    Returns
+    -------
+    mse_1,mse_0
+    """
+    marginal_0, marginal_generated_0, marginal_1, marginal_noising_1 = all_marginal_histograms
+    if isinstance(marginal_0,torch.Tensor):
+        marginal_0 = marginal_0.numpy()
+    if isinstance(marginal_generated_0,torch.Tensor):
+        marginal_generated_0 = marginal_generated_0.numpy()
+    if isinstance(marginal_1,torch.Tensor):
+        marginal_1 = marginal_1.numpy()
+    if isinstance(marginal_noising_1,torch.Tensor):
+        marginal_noising_1 = marginal_noising_1.numpy()
+
+    mse_1 = np.mean((marginal_1 - marginal_noising_1)**2.)
+    mse_0 = np.mean((marginal_0 - marginal_generated_0)**2.)
+
+    return mse_1,mse_0
 
 def marginal_histograms_for_ctdd(ctdd,config,device):
     """
@@ -16,6 +46,7 @@ def marginal_histograms_for_ctdd(ctdd,config,device):
 
     :return: marginal_0,marginal_generated_0,marginal_1,marginal_noising_1
     """
+
     if config.data.name in ["NISTLoader","mnist"]:
         data_loader_ = ctdd.data_dataloader.test()
         type = "test"
@@ -40,18 +71,22 @@ def marginal_histograms_for_ctdd(ctdd,config,device):
     marginal_noising_1 = torch.zeros(config.data.number_of_spins,device=device)
 
     batch_size = config.data.batch_size
-    number_of_batches = int(size_ / batch_size)
 
-    for batch_index in range(number_of_batches):
-        x = ctdd.pipeline(ctdd.model, batch_size,device=device)
-        marginal_generated_0 += x.sum(axis=0)
+    current_index = 0
+    while current_index < size_:
+        remaining = min(size_ - current_index, batch_size)
+        x = ctdd.pipeline(ctdd.model, remaining,device=device)
+        marginal_generated_0 += x.sum(axis=0)        # Your processing code here
+        current_index += remaining
 
     # Sample a random timestep for each image
+    how_much_ = 0
     for batchdata in data_loader_:
         x_adj = batchdata[0]
         ts = torch.ones(batch_size)
         x_adj = x_adj.to(device)
         ts = ts.to(device)
+        how_much_ += x_adj.shape[0]
 
         x_t, x_tilde, qt0, rate = ctdd.scheduler.add_noise(x_adj,
                                                            ctdd.reference_process,
@@ -60,7 +95,13 @@ def marginal_histograms_for_ctdd(ctdd,config,device):
                                                            return_dict=False)
         marginal_noising_1 += x_t.sum(axis=0)
 
-    return marginal_0,marginal_generated_0.cpu(),marginal_1,marginal_noising_1.cpu()
+
+    marginal_0 = marginal_0/size_
+    marginal_generated_0 = marginal_generated_0.cpu()/size_
+    marginal_1 = marginal_1/size_
+    marginal_noising_1 = marginal_noising_1.cpu()/size_
+
+    return marginal_0,marginal_generated_0,marginal_1,marginal_noising_1
 
 def graph_metrics_for_ctdd(ctdd,device):
     x = ctdd.pipeline(ctdd.model, ctdd.data_dataloader.test_data_size,device = device)

@@ -19,15 +19,14 @@ class CTDDConfig(GeneralCTDDConfig):
     init_model_path = None
 
     # devices and parallelization ----------------------------------------------
-    device = 'cpu'
+    #device = 'cpu'
     # device_paths = 'cpu' # not used
-    distributed = False
-    num_gpus = 0
+    #distributed = False
+    #num_gpus = 0
 
-    def __post_init__(self):
-        self.data = NISTLoaderConfig()  # corresponds to the distributions at start time
-        self.model = GaussianTargetRateImageX0PredEMAConfig()
-        self.temp_network = ConvNetAutoencoderConfig()
+    data: NISTLoaderConfig = NISTLoaderConfig()  # corresponds to the distributions at start time
+    model: GaussianTargetRateImageX0PredEMAConfig = GaussianTargetRateImageX0PredEMAConfig()
+    temp_network: ConvNetAutoencoderConfig = ConvNetAutoencoderConfig()
 
     def align_configurations(self):
         from graph_bridges.models.backward_rates.ctdd_backward_rate_config import GaussianTargetRateImageX0PredEMAConfig

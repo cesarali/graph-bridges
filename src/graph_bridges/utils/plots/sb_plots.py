@@ -61,6 +61,9 @@ def sinkhorn_plot(sinkhorn_iteration,
             label="Forward",color=colors[1])
     ax3.legend(loc='upper center', bbox_to_anchor=(0.5, -0.2), fancybox=True, shadow=True, ncol=1)
 
+    ax1.set_ylim(0.,1.)
+    ax3.set_ylim(0.,1.)
+
     if save_path is None:
         plt.show()
     else:

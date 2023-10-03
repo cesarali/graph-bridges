@@ -204,6 +204,7 @@ class SpinBernoulliMarginal(SpinDataloaderMetric):
         number_of_paths = aggregation[1]
 
         paths_counts = histogram_of_spins / number_of_paths
+        print(f"from marginal {number_of_paths}")
         assert torch.all(paths_counts <= 1.).item()
 
         #spins_sample = (-1.) ** (Bernoulli(paths_counts).sample(sample_shape=(number_of_paths,)) + 1.)

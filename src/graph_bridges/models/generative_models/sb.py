@@ -18,6 +18,8 @@ from graph_bridges.data.graph_dataloaders import DoucetTargetData
 from graph_bridges.data.graph_dataloaders import BridgeGraphDataLoaders
 from graph_bridges.models.reference_process.ctdd_reference import GaussianTargetRate
 
+from graph_bridges.models.metrics.metrics_utils import read_metric
+
 from graph_bridges.models.backward_rates.backward_rate_utils import load_backward_rates
 from graph_bridges.models.reference_process.reference_process_utils import load_reference
 from graph_bridges.utils.test_utils import check_model_devices
@@ -133,10 +135,17 @@ class SB:
             shutil.copy2(loaded_path, to_copy_file)
             config_ready.align_configurations()
             self.set_classes_from_config(config_ready, device)
+
         # JUST READs
         else:
             config_ready.align_configurations()
             self.set_classes_from_config(config_ready, device)
+
+        all_metrics = {}
+        for metric_string_identifier in ["graphs","mse_histograms"]:
+            all_metrics.update(read_metric(self.config, metric_string_identifier, checkpoint=checkpoint))
+
+        return results_,all_metrics,device
 
     def generate_graphs(self,
                         number_of_graphs,

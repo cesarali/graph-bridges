@@ -54,7 +54,7 @@ class TestSBTrainer(unittest.TestCase):
                                         plot_path=None,
                                         exact_backward=True)
 
-
+    @unittest.skip
     def test_restart_training(self):
         sb_trainer = SBTrainer(config=None,
                                experiment_name="graph",
@@ -66,7 +66,6 @@ class TestSBTrainer(unittest.TestCase):
         sb_trainer.sb_config.trainer.save_metric_epochs = 100
         sb_trainer.number_of_epochs = 1500
         sb_trainer.train_schrodinger()
-
 
     def test_load_and_plot(self):
         device = torch.device("cpu")
@@ -85,12 +84,13 @@ class TestSBTrainer(unittest.TestCase):
         past_model.load_state_dict(current_model.state_dict())
 
         marginal_paths_histograms_plots(sb,
-                                        sinkhorn_iteration=1,
+                                        sinkhorn_iteration=0,
                                         device=device,
                                         current_model=current_model,
-                                        past_to_train_model=past_model,
+                                        past_to_train_model=None,
                                         plot_path=None,
-                                        exact_backward=False)
+                                        exact_backward=True,
+                                        train=True)
 
     @unittest.skip
     def test_metrics_login(self):

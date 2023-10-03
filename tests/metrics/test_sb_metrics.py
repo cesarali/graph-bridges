@@ -1,6 +1,4 @@
-
 from graph_bridges.models.metrics.sb_metrics import marginal_paths_histograms_plots, paths_marginal_histograms
-
 from graph_bridges.configs.graphs.graph_config_sb import SBConfig
 
 
@@ -10,7 +8,6 @@ import torch
 import unittest
 
 from pathlib import Path
-
 from graph_bridges.models.generative_models.sb import SB
 from graph_bridges.data.graph_dataloaders_config import EgoConfig
 from graph_bridges.models.backward_rates.ctdd_backward_rate_config import BackRateMLPConfig
@@ -57,8 +54,10 @@ class TestSB(unittest.TestCase):
 
 
     def test_graph_metrics_and_paths_histograms(self):
-        plots_paths = "./histogram_test.png"
+        from graph_bridges import results_path
+        plots_paths = os.path.join(results_path,"histogram_test.png")
         plots_paths = Path(plots_paths)
+
         expected_path_histogram_size = torch.Size([self.sb_config.sampler.num_steps+1,
                                                    self.sb_config.data.number_of_spins])
         if plots_paths.exists():

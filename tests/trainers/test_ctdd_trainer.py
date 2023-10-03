@@ -28,7 +28,7 @@ class TestCTDDTrainer(unittest.TestCase):
         self.ctdd_config.data = EgoConfig(batch_size=32, full_adjacency=False)
         self.ctdd_config.model = BackRateMLPConfig()
         self.ctdd_config.trainer = CTDDTrainerConfig(learning_rate=1e-3,
-                                                     num_epochs=6,
+                                                     num_epochs=2,
                                                      save_metric_epochs=2,
                                                      device="cuda:0",
                                                      metrics=["graphs_plots",

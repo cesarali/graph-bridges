@@ -8,7 +8,7 @@ import matplotlib.colors as mcolors
 from matplotlib import cm
 import warnings
 
-warnings.filterwarnings("ignore", category=matplotlib.cbook.MatplotlibDeprecationWarning)
+#warnings.filterwarnings("ignore", category=matplotlib.cbook.MatplotlibDeprecationWarning)
 
 
 options = {

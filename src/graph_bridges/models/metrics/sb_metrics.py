@@ -60,7 +60,8 @@ def paths_marginal_histograms(sb:SB,
                               device:torch.device,
                               current_model,
                               past_to_train_model,
-                              exact_backward=True):
+                              exact_backward=True,
+                              train=True):
     """
 
     :param sb:
@@ -77,17 +78,23 @@ def paths_marginal_histograms(sb:SB,
     number_of_spins = sb.config.data.number_of_spins
     assert device == check_model_devices(current_model)
 
+    expected_sample_size = sb.config.data.training_size if train else sb.config.data.test_size
+
     histogram_path_1 = torch.zeros(total_number_of_steps, number_of_spins,device=device)
     histogram_path_2 = torch.zeros(total_number_of_steps, number_of_spins,device=device)
+
     if sb.config.data.as_spins:
         spinsToBinaryTensor = SpinsToBinaryTensor()
 
     if exact_backward:
+        how_much_1 = 0
+        how_much_2 = 0
         for spins_path_1, times_1 in sb.pipeline.paths_iterator(past_to_train_model,
                                                                 sinkhorn_iteration=sinkhorn_iteration,
                                                                 return_path=True,
                                                                 return_path_shape=True,
                                                                 sample_from_reference_native=sb.config.sampler.sample_from_reference_native,
+                                                                train=train,
                                                                 device=device):
             end_of_path = spins_path_1[:, -1, :]
             spins_path_2, times_2 = sb.pipeline(current_model,
@@ -95,8 +102,10 @@ def paths_marginal_histograms(sb:SB,
                                                 device=device,
                                                 initial_spins=end_of_path,
                                                 return_path=True,
+                                                train=train,
                                                 sample_from_reference_native=sb.config.sampler.sample_from_reference_native,
                                                 return_path_shape=True)
+            how_much_2+= spins_path_2.shape[0]
             if sb.config.data.as_spins:
                 binary_path_1 = spinsToBinaryTensor(spins_path_1)
                 binary_path_2 = spinsToBinaryTensor(spins_path_2)
@@ -110,12 +119,15 @@ def paths_marginal_histograms(sb:SB,
             histogram_path_1 += current_sum_1
             histogram_path_2 += current_sum_2
 
+            how_much_1 += spins_path_1.shape[0]
     else:
+        how_much_1 = 0
         for spins_path_1, times_1 in sb.pipeline.paths_iterator(past_to_train_model,
                                                                 sinkhorn_iteration=sinkhorn_iteration,
                                                                 return_path=True,
                                                                 return_path_shape=True,
                                                                 sample_from_reference_native=sb.config.sampler.sample_from_reference_native,
+                                                                train=train,
                                                                 device=device):
             if sb.config.data.as_spins:
                 binary_path_1 = spinsToBinaryTensor(spins_path_1)
@@ -123,13 +135,17 @@ def paths_marginal_histograms(sb:SB,
                 binary_path_1 = spins_path_1
             current_sum_1 = binary_path_1.sum(axis=0)
             histogram_path_1 += current_sum_1
+            how_much_1 += spins_path_1.shape[0]
 
+        how_much_2 = 0
         for spins_path_2, times_2 in sb.pipeline.paths_iterator(current_model,
                                                                 sinkhorn_iteration + 1,
                                                                 device=device,
                                                                 return_path=True,
+                                                                train=train,
                                                                 sample_from_reference_native=sb.config.sampler.sample_from_reference_native,
                                                                 return_path_shape=True):
+            how_much_2 += spins_path_2.shape[0]
             if sb.config.data.as_spins:
                 binary_path_2 = spinsToBinaryTensor(spins_path_2)
             else:
@@ -148,7 +164,10 @@ def paths_marginal_histograms(sb:SB,
         forward_histogram = histogram_path_2
         backward_histogram = histogram_path_1
 
+    print(f"how much 1 {how_much_1}")
+    print(f"how much 3 {how_much_2}")
     backward_histogram = torch.flip(backward_histogram, [0])
+    assert  how_much_1 == how_much_2 == expected_sample_size
 
     return backward_histogram,forward_histogram,forward_time
 
@@ -159,7 +178,8 @@ def marginal_paths_histograms_plots(sb:SB,
                                     current_model,
                                     past_to_train_model,
                                     plot_path:str,
-                                    exact_backward=True):
+                                    exact_backward=True,
+                                    train=True):
     """
 
     :param sb:
@@ -168,23 +188,31 @@ def marginal_paths_histograms_plots(sb:SB,
     # CHECK DATA METRICS
     from graph_bridges.models.metrics.data_metrics import SpinBernoulliMarginal
 
-    marginal_0 = SpinBernoulliMarginal(spin_dataloader=sb.data_dataloader)()
-    marginal_1 = SpinBernoulliMarginal(spin_dataloader=sb.target_dataloader)()
+    type_ = "train" if train else "test"
+    marginal_0 = SpinBernoulliMarginal(spin_dataloader=sb.data_dataloader)(type=type_)
+    marginal_1 = SpinBernoulliMarginal(spin_dataloader=sb.target_dataloader)(type=type_)
 
     backward_histogram,forward_histogram,forward_time = paths_marginal_histograms(sb,
                                                                                   sinkhorn_iteration,
                                                                                   device,
                                                                                   current_model,
                                                                                   past_to_train_model,
-                                                                                  exact_backward)
+                                                                                  exact_backward,
+                                                                                  train)
 
     state_legends = [str(i) for i in range(backward_histogram.shape[-1])]
 
+    expected_sample_size = sb.config.data.training_size if train else sb.config.data.test_size
+    marginal_0 = marginal_0.cpu()/expected_sample_size
+    marginal_1 = marginal_1.cpu()/expected_sample_size
+    backward_histogram = backward_histogram.cpu()/expected_sample_size
+    forward_histogram = forward_histogram.cpu()/expected_sample_size
+
     sinkhorn_plot(sinkhorn_iteration,
-                  marginal_0.cpu(),
-                  marginal_1.cpu(),
-                  backward_histogram=backward_histogram.cpu(),
-                  forward_histogram=forward_histogram.cpu(),
+                  marginal_0,
+                  marginal_1,
+                  backward_histogram=backward_histogram,
+                  forward_histogram=forward_histogram,
                   time_=forward_time.cpu(),
                   states_legends=state_legends,
                   save_path=plot_path)

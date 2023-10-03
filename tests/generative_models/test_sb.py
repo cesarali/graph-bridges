@@ -58,6 +58,8 @@ class TestSB(unittest.TestCase):
         self.assertTrue(len(data_graph_list) == number_of_graph_to_generate)
         self.assertIsInstance(data_graph_list[0],nx.Graph)
 
+
+
 if __name__ == '__main__':
     unittest.main()
 

@@ -2,7 +2,9 @@ import os
 from pprint import pprint
 from dataclasses import asdict
 from graph_bridges.configs.config_ctdd import CTDDConfig as GeneralCTDDConfig
+from dataclasses import dataclass
 
+@dataclass
 class CTDDConfig(GeneralCTDDConfig):
 
     # files, directories and naming ---------------------------------------------

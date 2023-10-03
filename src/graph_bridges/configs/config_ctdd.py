@@ -57,6 +57,7 @@ class CTDDTrainerConfig:
     device: str = "cuda:0"
     number_of_paths : int = 10
     num_epochs :int = 200
+    distributed: bool = False
 
     optimizer_name :str = 'AdamW'
     max_n_iters :int = 10000
@@ -72,8 +73,22 @@ class CTDDTrainerConfig:
     save_model_global_iter :int = 1000
     log_loss: int = 500
 
-    metrics:List[str] = field(default_factory=lambda: ["graphs", "graphs_plots", "histograms"])
+    metrics:List[str] = field(default_factory=lambda: ["graphs", "graphs_plots", "histograms","mse_histograms"])
 
+@dataclass
+class CTDDExperimentsFiles(ExperimentFiles):
+    best_model_path_checkpoint:str = None
+    best_model_path:str = None
+    plot_path:str = None
+    graph_plot_path:str = None
+
+    def __post_init__(self):
+        super().__post_init__()
+
+        self.best_model_path_checkpoint = os.path.join(self.results_dir, "model_checkpoint_{0}.tr")
+        self.best_model_path = os.path.join(self.results_dir, "best_model.tr")
+        self.plot_path = os.path.join(self.results_dir, "marginal_at_site_{0}.png")
+        self.graph_plot_path = os.path.join(self.results_dir, "graph_plots_{0}.png")
 
 
 @dataclass
@@ -94,7 +109,7 @@ class CTDDConfig:
     scheduler : CTDDSchedulerConfig = CTDDSchedulerConfig()
     pipeline : CTDDPipelineConfig = CTDDPipelineConfig()
     trainer : CTDDTrainerConfig = CTDDTrainerConfig()
-    experiment_files: ExperimentFiles = None
+    experiment_files: CTDDExperimentsFiles = None
 
     number_of_paths : int = 10
 
@@ -104,13 +119,13 @@ class CTDDConfig:
     experiment_indentifier :str  = 'testing'
     init_model_path = None
 
-    # devices and parallelization ----------------------------------------------
-    device = 'cpu'
-    # device_paths = 'cpu' # not used
-    distributed = False
-    num_gpus = 0
-
     def __post_init__(self):
+        self.experiment_files = CTDDExperimentsFiles(delete=self.delete,
+                                                     experiment_name=self.experiment_name,
+                                                     experiment_indentifier=self.experiment_indentifier,
+                                                     experiment_type=self.experiment_type)
+        #self.experiment_files.data_stats = os.path.join(self.data.preprocess_datapath, "data_stats.json")
+
         if isinstance(self.model,dict):
             self.model = all_backward_rates_configs[self.model["name"]](**self.model)
         if isinstance(self.temp_network,dict):
@@ -144,7 +159,7 @@ class CTDDConfig:
             self.experiment_indentifier = experiment_indentifier
 
         self.align_configurations()
-        self.create_directories()
+        self.experiment_files.create_directories()
         self.config_path = self.experiment_files.config_path
         self.save_config()
 
@@ -159,18 +174,61 @@ class CTDDConfig:
         with open(self.experiment_files.config_path, "w") as file:
             json.dump(config_as_dict, file)
 
-    def create_directories(self):
-        self.experiment_files = ExperimentFiles(experiment_indentifier=self.experiment_indentifier,
-                                                experiment_name=self.experiment_name,
-                                                experiment_type=self.experiment_type,
-                                                delete=self.delete)
-        self.results_dir = self.experiment_files.results_dir
+    #def create_directories(self):
+    #    self.experiment_files = ExperimentFiles(experiment_indentifier=self.experiment_indentifier,
+    #                                            experiment_name=self.experiment_name,
+    #                                            experiment_type=self.experiment_type,
+    #                                            delete=self.delete)
+    #    self.results_dir = self.experiment_files.results_dir
 
-        self.experiment_files.data_stats = os.path.join(self.data.preprocess_datapath, "data_stats.json")
-        self.experiment_files.best_model_path_checkpoint = os.path.join(self.results_dir, "model_checkpoint_{0}.tr")
-        self.experiment_files.best_model_path = os.path.join(self.results_dir, "best_model.tr")
-        self.experiment_files.plot_path = os.path.join(self.results_dir, "marginal_at_site_{0}.png")
-        self.experiment_files.graph_plot_path = os.path.join(self.results_dir, "graph_plots_{0}.png")
+    def align_configurations(self):
+        from graph_bridges.models.backward_rates.ctdd_backward_rate_config import BackRateMLPConfig, BackwardRateTemporalHollowTransformerConfig
+        from graph_bridges.models.temporal_networks.transformers.temporal_hollow_transformers import TemporalHollowTransformerConfig
+        from graph_bridges.models.backward_rates.ctdd_backward_rate_config import GaussianTargetRateImageX0PredEMAConfig
+
+        from graph_bridges.models.temporal_networks.convnets.autoencoder import ConvNetAutoencoderConfig
+        from graph_bridges.models.temporal_networks.mlp.temporal_mlp import TemporalMLPConfig
+        from graph_bridges.models.temporal_networks.unets.unet_wrapper import UnetTauConfig
+
+        if isinstance(self.model,BackRateMLPConfig):
+            self.data.as_image = False
+            self.data.as_spins = False
+            if not isinstance(self.temp_network,TemporalMLPConfig):
+                self.temp_network = TemporalMLPConfig()
+
+        elif isinstance(self.model,GaussianTargetRateImageX0PredEMAConfig):
+            if isinstance(self.temp_network,ConvNetAutoencoderConfig):
+                #dataloaders for training
+                self.data.as_spins = False
+                self.data.as_image = True
+                self.data.flatten_adjacency = False
+            elif isinstance(self.temp_network, UnetTauConfig):
+                raise Exception("Unet Network not implemented for Graphs (Yet)")
+
+        elif isinstance(self.model, BackwardRateTemporalHollowTransformerConfig):
+            self.data.as_spins = False
+            self.data.as_image = False
+            self.data.flatten_adjacency = True
+            if not isinstance(self.temp_network,TemporalHollowTransformerConfig):
+                self.temp_network = TemporalHollowTransformerConfig(input_vocab_size=2,
+                                                                    output_vocab_size=2,
+                                                                    max_seq_length=self.data.D)
+            else:
+                self.temp_network : TemporalHollowTransformerConfig
+                self.temp_network.input_vocab_size = 2
+                self.temp_network.output_vocab_size = 2
+                self.temp_network.max_seq_length = self.data.D
+
+        self.data.__post_init__()
+        # data distributions matches at the end
+        self.target.batch_size = self.data.batch_size
+
+        # model matches reference process
+        self.reference.initial_dist = self.model.initial_dist
+        self.reference.rate_sigma = self.model.rate_sigma
+        self.reference.Q_sigma = self.model.Q_sigma
+        self.reference.time_exponential = self.model.time_exponential
+        self.reference.time_base = self.model.time_base
 
 def get_config_from_file(experiment_name,experiment_type,experiment_indentifier)->CTDDConfig:
     from graph_bridges import results_path
