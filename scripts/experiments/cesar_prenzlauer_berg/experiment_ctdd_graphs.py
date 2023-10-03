@@ -14,7 +14,7 @@ if __name__=="__main__":
     from graph_bridges.models.backward_rates.ctdd_backward_rate_config import BackwardRateTemporalHollowTransformerConfig
     from graph_bridges.models.temporal_networks.transformers.temporal_hollow_transformers import TemporalHollowTransformerConfig
 
-    ctdd_config = CTDDConfig(experiment_indentifier="mlp_test_5_community",
+    ctdd_config = CTDDConfig(experiment_indentifier="alejandro_community",
                              experiment_name="graph",
                              experiment_type="ctdd")
 
@@ -26,7 +26,7 @@ if __name__=="__main__":
 
     # MLP
     ctdd_config.model = BackRateMLPConfig()
-    #ctdd_config.temp_network = TemporalMLPConfig()
+    ctdd_config.temp_network = TemporalMLPConfig()
 
     # CONVNET
     #ctdd_config.model = GaussianTargetRateImageX0PredEMAConfig()
@@ -48,7 +48,7 @@ if __name__=="__main__":
                                             save_metric_epochs=10,
                                             save_model_epochs=10,
                                             save_image_epochs=10,
-                                            learning_rate=1e-3,
+                                            learning_rate=0.01,
                                             metrics=["mse_histograms",
                                                      "histograms"])
     ctdd_trainer = CTDDTrainer(ctdd_config)

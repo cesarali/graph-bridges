@@ -143,7 +143,10 @@ class SB:
 
         all_metrics = {}
         for metric_string_identifier in ["graphs","mse_histograms"]:
-            all_metrics.update(read_metric(self.config, metric_string_identifier, checkpoint=checkpoint))
+            all_metrics.update(read_metric(self.config,
+                                           metric_string_identifier,
+                                           sinkhorn_iteration=sinkhorn_iteration_to_load,
+                                           checkpoint=checkpoint))
 
         return results_,all_metrics,device
 

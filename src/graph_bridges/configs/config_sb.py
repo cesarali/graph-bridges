@@ -100,7 +100,9 @@ class SBTrainerConfig:
     save_metric_epochs: int = 25
     save_model_epochs :int = 25
 
-    metrics: List[str] = field(default_factory=lambda: ["graphs", "graphs_plots", "histograms"])
+    metrics: List[str] = field(default_factory=lambda: ["graphs", "graphs_plots", "histograms","mse_histograms"])
+    exact_backward:bool=True
+    histograms_on_train:bool = True
     #metrics = ["graphs","histograms"]
 
 @dataclass

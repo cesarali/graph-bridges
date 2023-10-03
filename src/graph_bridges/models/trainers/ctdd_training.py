@@ -8,44 +8,14 @@ from pprint import pprint
 from graph_bridges.models.generative_models.ctdd import CTDD
 from graph_bridges.configs.graphs.graph_config_ctdd import CTDDConfig
 from graph_bridges.models.metrics.ctdd_metrics import graph_metrics_for_ctdd
-from graph_bridges.models.metrics.ctdd_metrics import marginal_histograms_for_ctdd,marginals_histograms_mse
+from graph_bridges.models.metrics.ctdd_metrics import marginal_histograms_for_ctdd
+from graph_bridges.models.metrics.histograms_metrics import marginals_histograms_mse
 
 from graph_bridges.utils.plots.histograms_plots import plot_histograms
 from graph_bridges.utils.plots.graph_plots import plot_graphs_list2
 from datetime import datetime
 from tqdm import tqdm
-
-class Standard():
-    def __init__(self, cfg):
-        self.do_ema = 'ema_decay' in cfg.model
-        self.clip_grad = cfg.training.clip_grad
-        self.warmup = cfg.training.warmup
-        self.lr = cfg.trainer.lr
-
-    def step(self, state, minibatch, loss, writer):
-        state['optimizer'].zero_grad()
-        l = loss.calc_loss(minibatch, state, writer)
-
-        if l.isnan().any() or l.isinf().any():
-            print("Loss is nan")
-            assert False
-        l.backward()
-
-        if self.clip_grad:
-            torch.nn.utils.clip_grad_norm_(state['model'].parameters(), 1.0)
-
-        if self.warmup > 0:
-            for g in state['optimizer'].param_groups:
-                g['lr'] = self.lr * np.minimum(state['n_iter'] / self.warmup, 1.0)
-
-        state['optimizer'].step()
-
-        if self.do_ema:
-            state['model'].update_ema()
-
-        writer.add_scalar('loss', l.detach(), state['n_iter'])
-
-        return l.detach()
+from graph_bridges.models.metrics.ctdd_metrics_utils import log_metrics
 
 class CTDDTrainer:
     """
@@ -117,7 +87,7 @@ class CTDDTrainer:
         assert torch.isinf(initial_loss).any() == False
 
         # METRICS
-        self.log_metrics(0,self.device)
+        log_metrics(self.ctdd,0,self.device)
 
         #SAVE INITIAL STUFF
         return initial_loss
@@ -219,6 +189,7 @@ class CTDDTrainer:
             if epoch % self.config.trainer.save_model_epochs == 0:
                 self.save_results(current_model=training_model,
                                   initial_loss=initial_loss,
+                                  best_loss=best_loss,
                                   training_loss_average=training_loss_average,
                                   validation_loss_average=validation_loss_average,
                                   LOSS=LOSS,
@@ -226,19 +197,19 @@ class CTDDTrainer:
                                   checkpoint=True)
 
             if (epoch + 1) % self.config.trainer.save_metric_epochs == 0:
-                self.log_metrics(epoch, self.device)
+                log_metrics(self.ctdd, epoch, self.device)
 
             # SAVE RESULTS IF LOSS DECREASES IN VALIDATION
             if validation_loss_average < best_loss:
                 self.save_results(current_model=training_model,
                                   initial_loss=initial_loss,
+                                  best_loss=best_loss,
                                   training_loss_average=training_loss_average,
                                   validation_loss_average=validation_loss_average,
                                   LOSS=LOSS,
                                   number_of_training_step=number_of_training_step,
                                   checkpoint=False)
-
-
+                best_loss = validation_loss_average
 
         self.time1 = datetime.now()
         #=====================================================
@@ -248,56 +219,10 @@ class CTDDTrainer:
         self.writer.close()
         return best_loss
 
-    def log_metrics(self,number_of_steps,device):
-        """
-        After the training procedure is done, the model is updated
-
-        :return:
-        """
-        config = self.config
-
-        #HISTOGRAMS
-        metric_string_name = "histograms"
-        if metric_string_name in config.trainer.metrics:
-            histograms_plot_path_ = config.experiment_files.plot_path.format("histograms_{0}".format(number_of_steps))
-            marginal_histograms = marginal_histograms_for_ctdd(self.ctdd,config,device)
-            plot_histograms(marginal_histograms, plots_path=histograms_plot_path_)
-            metric_string_name = "mse_histograms"
-            if metric_string_name in config.trainer.metrics:
-                mse_1,mse_0 = marginals_histograms_mse(marginal_histograms)
-                mse_metric_path = config.experiment_files.metrics_file.format(metric_string_name+"_{0}".format(number_of_steps))
-                with open(mse_metric_path, "w") as f:
-                    json.dump({"mse_histograms_1":mse_1.tolist(),
-                                   "mse_histograms_0":mse_0.tolist()}, f)
-                    
-        else:
-            metric_string_name = "mse_histograms"
-            if metric_string_name in config.trainer.metrics:
-                marginal_histograms = marginal_histograms_for_ctdd(self.ctdd,config,device)
-                mse_1,mse_0 = marginals_histograms_mse(marginal_histograms)
-                mse_metric_path = config.experiment_files.metrics_file.format(metric_string_name+"_{0}".format(number_of_steps))
-                with open(mse_metric_path, "w") as f:
-                    json.dump({"mse_histograms_1":mse_1.tolist(),
-                                   "mse_histograms_0":mse_0.tolist()}, f)
-
-        #METRICS
-        metric_string_name = "graphs"
-        if metric_string_name in config.trainer.metrics:
-            graph_metrics_path_ = config.experiment_files.metrics_file.format(metric_string_name+"_{0}".format(number_of_steps))
-            graph_metrics = graph_metrics_for_ctdd(self.ctdd, device)
-            with open(graph_metrics_path_, "w") as f:
-                json.dump(graph_metrics, f)
-
-        #PLOTS
-        metric_string_name = "graph_plot"
-        if metric_string_name in config.trainer.metrics:
-            graph_plot_path_ = config.experiment_files.graph_plot_path.format("generative_{0}".format(number_of_steps))
-            generated_graphs = self.ctdd.generate_graphs(number_of_graphs=36)
-            plot_graphs_list2(generated_graphs,title="Generated 0",save_dir=graph_plot_path_)
-
     def save_results(self,
                      current_model,
                      initial_loss,
+                     best_loss,
                      training_loss_average,
                      validation_loss_average,
                      LOSS,
@@ -306,8 +231,9 @@ class CTDDTrainer:
         RESULTS = {"current_model": current_model,
                    "initial_loss": initial_loss.item(),
                    "LOSS": LOSS,
-                   "best_loss": validation_loss_average,
-                   "training_loss": training_loss_average}
+                   "best_loss": best_loss,
+                   "validation_loss_average":validation_loss_average,
+                   "training_loss_average": training_loss_average}
         if checkpoint:
             best_model_path_checkpoint = self.config.experiment_files.best_model_path_checkpoint.format(number_of_training_step)
             torch.save(RESULTS,best_model_path_checkpoint)

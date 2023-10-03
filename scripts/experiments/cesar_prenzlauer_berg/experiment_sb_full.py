@@ -51,10 +51,12 @@ def test_loading(sb):
 
 
 if __name__ == '__main__':
+
     sb_config = SBConfig(delete=True,
-                              experiment_name="graph",
-                              experiment_type="sb",
-                              experiment_indentifier="community_small_equal_time_and_data")
+                         experiment_name="graph",
+                         experiment_type="sb",
+                         experiment_indentifier="community_bernoulli_mse")
+
     # experiment_indentifier="bernoulli_to_bernoulli_0_stein_200_mlp_lr01_steps_50_clip_False_gradient_exact")
 
     #=====================================
@@ -63,7 +65,7 @@ if __name__ == '__main__':
 
     sb_config.data = CommunitySmallConfig(as_image=False,
                                           batch_size=25,
-                                               full_adjacency=False)
+                                          full_adjacency=False)
 
     # sb_config.data = ParametrizedSpinGlassHamiltonianConfig(data="bernoulli_probability_test",
     #                                                             bernoulli_spins= True,
@@ -73,13 +75,8 @@ if __name__ == '__main__':
     #                                                             number_of_spins=25,
     #                                                             batch_size=20)
 
-    # sb_config.data = CommunityConfig(as_image=False, batch_size=batch_size, full_adjacency=True)
-
     data_sizes = check_sizes(sb_config)
     print(data_sizes)
-
-    # sb_config.data = ParametrizedSpinGlassHamiltonianConfig(data="bernoulli_probability_0.2",
-    #                                                             batch_size=10)
 
     #=====================================
     # TARGET
@@ -88,18 +85,16 @@ if __name__ == '__main__':
     # sb_config.target = ParametrizedSpinGlassHamiltonianConfig(data="bernoulli_probability_0.9",
     #                                                               batch_size=10)
 
-    # sb_config.target = ParametrizedSpinGlassHamiltonianConfig(number_of_paths=data_sizes.total_data_size,
-    #                                                               number_of_spins=data_sizes.D,
-    #                                                               data="bernoulli_probability_test_target",
-    #                                                               delete_data=True,
-    #                                                               bernoulli_spins=True,
-    #                                                               bernoulli_probability=0.75)
-
+    sb_config.target = ParametrizedSpinGlassHamiltonianConfig(number_of_paths=data_sizes.total_data_size,
+                                                              number_of_spins=data_sizes.D,
+                                                              data="bernoulli_probability_test_target",
+                                                              delete_data=True,
+                                                              bernoulli_spins=True,
+                                                              bernoulli_probability=0.79)
 
     #=====================================
     # ARCHITECTURES
     #=====================================
-
     sb_config.temp_network = TemporalMLPConfig(time_embed_dim=250,hidden_dim=250)
 
     # sb_config.temp_network = DeepTemporalMLPConfig(layers_dim=[100,300],
@@ -114,25 +109,24 @@ if __name__ == '__main__':
     #==================================
     # LOSS
     #==================================
-
-    num_epochs = 300
+    num_epochs = 100
     sb_config.flip_estimator = SteinSpinEstimatorConfig(stein_sample_size=200,
-                                                             stein_epsilon=0.2)
+                                                        stein_epsilon=0.2)
     # sb_config.flip_estimator = RealFlipConfig()
 
     sb_config.sampler = ParametrizedSamplerConfig(num_steps=40,
-                                                       step_type="TauLeaping",
-                                                       sample_from_reference_native=True)
+                                                  step_type="TauLeaping",
+                                                  sample_from_reference_native=True)
 
     sb_config.trainer = SBTrainerConfig(learning_rate=0.01,
-                                             num_epochs=num_epochs,
-                                             save_metric_epochs=int(num_epochs * .25),
-                                             save_model_epochs=int(num_epochs * .5),
-                                             save_image_epochs=int(num_epochs * .5),
-                                             clip_grad=False,
-                                             clip_max_norm=10.,
-                                             device="cuda:0",
-                                             metrics=["histograms"])
+                                        num_epochs=num_epochs,
+                                        save_metric_epochs=int(num_epochs * .25),
+                                        save_model_epochs=int(num_epochs * .5),
+                                        save_image_epochs=int(num_epochs * .5),
+                                        clip_grad=False,
+                                        clip_max_norm=10.,
+                                        device="cuda:0",
+                                        metrics=["histograms","mse_histograms"])
 
     # ["graphs_plots", "histograms"]
     sb_config.__post_init__()

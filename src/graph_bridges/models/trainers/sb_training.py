@@ -16,10 +16,14 @@ from torch.optim import Adam
 
 from typing import Optional
 from graph_bridges.configs.graphs.graph_config_sb import SBConfig
-from graph_bridges.models.metrics.sb_metrics import marginal_paths_histograms_plots, graph_metrics_for_sb
+from graph_bridges.models.metrics.sb_metrics import  graph_metrics_for_sb
 from graph_bridges.utils.plots.graph_plots import plot_graphs_list2
 from graph_bridges.models.metrics.sb_paths_metrics import states_paths_histograms_plots
 #from graph_bridges.models.reference_process.glauber_reference import GlauberDynamics
+from graph_bridges.models.metrics.histograms_metrics import marginals_histograms_mse
+
+from graph_bridges.models.metrics.sb_metrics import paths_marginal_histograms
+from graph_bridges.models.metrics.sb_metrics_utils import log_metrics
 from graph_bridges.models.backward_rates.backward_rate_utils import load_backward_rates
 def copy_models(model_to, model_from):
     model_to.load_state_dict(model_from.state_dict())
@@ -141,11 +145,12 @@ class SBTrainer:
         # histogram_path_plot_path = self.config.experiment_files.plot_path.format("initial_plot")
 
         # METRICS
-        self.log_metrics(current_model=current_model,
-                         past_to_train_model=past_to_train_model,
-                         sinkhorn_iteration=sinkhorn_iteration,
-                         epoch=0,
-                         device=self.device)
+        log_metrics(sb=self.sb,
+                    current_model=current_model,
+                    past_to_train_model=past_to_train_model,
+                    sinkhorn_iteration=sinkhorn_iteration,
+                    epoch=0,
+                    device=self.device)
         # INFO
         #self.parameters_info(sinkhorn_iteration)
         return initial_loss
@@ -252,11 +257,13 @@ class SBTrainer:
                 validation_loss_average = np.asarray(validation_loss).mean()
                 # SAVE RESULTS IF LOSS DECREASES IN VALIDATION ---------------------------------------------------------
                 if validation_loss_average < best_loss:
+                    best_loss = validation_loss_average
                     self.save_results(current_model=training_model,
                                       past_model=past_model,
                                       initial_loss=initial_loss,
                                       training_loss_average=training_loss_average,
-                                      validation_loss_average=0.,
+                                      validation_loss_average=validation_loss_average,
+                                      best_loss=best_loss,
                                       LOSS=LOSS,
                                       epoch=epoch+1,
                                       sinkhorn_iteration=sinkhorn_iteration,
@@ -270,18 +277,20 @@ class SBTrainer:
                                       past_model=past_model,
                                       initial_loss=initial_loss,
                                       training_loss_average=training_loss_average,
-                                      validation_loss_average=0.,
+                                      validation_loss_average=validation_loss_average,
+                                      best_loss=best_loss,
                                       LOSS=LOSS,
                                       epoch=epoch+1,
                                       sinkhorn_iteration=sinkhorn_iteration,
                                       checkpoint=True)
 
                 if (epoch + 1) % self.sb_config.trainer.save_metric_epochs == 0:
-                    self.log_metrics(current_model=training_model,
-                                     past_to_train_model=past_model,
-                                     sinkhorn_iteration=sinkhorn_iteration,
-                                     epoch=epoch+1,
-                                     device=self.device)
+                    log_metrics(sb=self.sb,
+                                current_model=training_model,
+                                past_to_train_model=past_model,
+                                sinkhorn_iteration=sinkhorn_iteration,
+                                epoch=epoch+1,
+                                device=self.device)
 
             self.time1 = datetime.now()
             #=====================================================
@@ -300,60 +309,13 @@ class SBTrainer:
         self.sb.past_model.load_state_dict(self.sb.training_model.state_dict())
         self.sb.training_model = load_backward_rates(self.sb_config, self.device)
 
-    def log_metrics(self, current_model, past_to_train_model, sinkhorn_iteration, epoch, device):
-        """
-        After the training procedure is done, the model is updated
-
-        :return:
-        """
-        config = self.sb_config
-
-        #HISTOGRAMS
-        if "histograms" in config.trainer.metrics:
-            histograms_plot_path_ = config.experiment_files.plot_path.format("sinkhorn_{0}_{1}".format(sinkhorn_iteration,
-                                                                                                                  epoch))
-            marginal_paths_histograms_plots(self.sb,
-                                            sinkhorn_iteration,
-                                            device,
-                                            current_model,
-                                            past_to_train_model,
-                                            plot_path=histograms_plot_path_)
-
-        #METRICS
-        if "graphs" in config.trainer.metrics:
-            graph_metrics_path_ = config.experiment_files.metrics_file.format("graph_sinkhorn_{0}_{1}".format(sinkhorn_iteration,
-                                                                                                              epoch))
-            graph_metrics = graph_metrics_for_sb(self.sb, current_model,device)
-            with open(graph_metrics_path_, "w") as f:
-                json.dump(graph_metrics, f)
-
-        #PLOTS
-        if "graphs_plots" in config.trainer.metrics:
-            graph_plot_path_ = config.experiment_files.graph_plot_path.format("generative_sinkhorn_{0}_{1}".format(sinkhorn_iteration,epoch))
-            generated_graphs = self.sb.generate_graphs(number_of_graphs=20,
-                                                       generating_model=current_model,
-                                                       sinkhorn_iteration=1)
-            plot_graphs_list2(generated_graphs,title="Generated 0",save_dir=graph_plot_path_)
-
-        if "paths_histograms":
-            if self.sb_config.data.number_of_spins < 5:
-                histograms_plot_path_2 = config.experiment_files.plot_path.format("paths_sinkhorn_{0}_{1}".format(sinkhorn_iteration,epoch))
-
-                states_paths_histograms_plots(self.sb,
-                                              sinkhorn_iteration=sinkhorn_iteration,
-                                              device=device,
-                                              current_model=current_model,
-                                              past_to_train_model=past_to_train_model,
-                                              plot_path=histograms_plot_path_2)
-
-
-
     def save_results(self,
                      current_model,
                      past_model,
                      initial_loss,
-                     training_loss_average,
                      validation_loss_average,
+                     training_loss_average,
+                     best_loss,
                      LOSS,
                      epoch,
                      sinkhorn_iteration,
@@ -362,8 +324,9 @@ class SBTrainer:
                    "past_model": past_model,
                    "initial_loss": initial_loss.item(),
                    "LOSS": LOSS,
-                   "best_loss": validation_loss_average,
+                   "best_loss": best_loss,
                    "training_loss": training_loss_average,
+                   "validation_loss_average":validation_loss_average,
                    "sinkhorn_iteration":sinkhorn_iteration}
         if checkpoint:
             best_model_path_checkpoint = self.sb_config.experiment_files.best_model_path_checkpoint.format(epoch, sinkhorn_iteration)

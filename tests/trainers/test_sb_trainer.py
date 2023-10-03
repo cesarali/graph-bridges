@@ -16,12 +16,11 @@ from graph_bridges.models.backward_rates.ctdd_backward_rate_config import Backwa
 from graph_bridges.models.temporal_networks.transformers.temporal_hollow_transformers import TemporalHollowTransformerConfig
 from graph_bridges.models.trainers.sb_training import SBTrainer
 from graph_bridges.models.losses.loss_configs import RealFlipConfig
-from graph_bridges.models.metrics.sb_metrics import marginal_paths_histograms_plots, paths_marginal_histograms
+from graph_bridges.models.metrics.sb_metrics import  paths_marginal_histograms
 from graph_bridges.models.reference_process.reference_process_config import GlauberDynamicsConfig
-
+from graph_bridges.utils.plots.sb_plots import sinkhorn_plot
 
 from graph_bridges.models.metrics.sb_paths_metrics import states_paths_histograms_plots
-from graph_bridges.models.metrics.sb_metrics import marginal_paths_histograms_plots
 
 class TestSBTrainer(unittest.TestCase):
 
@@ -63,31 +62,35 @@ class TestSBTrainer(unittest.TestCase):
     def test_training(self):
         self.sb_trainer.train_schrodinger()
 
-    @unittest.skip
     def test_loading(self):
         sb = SB()
-        sb.load_from_results_folder(experiment_name="graph",
-                                    experiment_type="sb",
-                                    experiment_indentifier="1695991977",
-                                    sinkhorn_iteration_to_load=0)
+        results,metrics,device = sb.load_from_results_folder(experiment_name="graph",
+                                                             experiment_type="sb",
+                                                             experiment_indentifier="community_small_to_bernoulli",
+                                                             sinkhorn_iteration_to_load=0)
         current_model = sb.training_model
-        past_model = sb.past_model
-        pprint(sb.config)
+        past_to_train_model = None# sb.past_model
+        #pprint(sb.config)
         sb.config.sampler.step_type = "TauLeaping"
-        marginal_paths_histograms_plots(sb,
-                                        sinkhorn_iteration=0,
-                                        device=sb.training_model.parameters().__next__().device,
-                                        current_model=current_model,
-                                        past_to_train_model=None,
-                                        plot_path=None)
-        """
-        if hasattr(sb.data_dataloader,"transform_to_graph"):
-            x_adj = sb.data_dataloader,"transform_to_graph"(x_end)
-        print("Original")
-        pprint(self.sb_config.data.__dict__)
-        print("Loaded")
-        pprint(sb.config.data.__dict__)
-        """
+        sinkhorn_iteration = 0
+
+        all_histograms = paths_marginal_histograms(sb,
+                                                   sinkhorn_iteration,
+                                                   device,
+                                                   current_model,
+                                                   past_to_train_model,
+                                                   exact_backward=True,
+                                                   train=True)
+
+        marginal_0, marginal_1, backward_histogram, forward_histogram, forward_time, state_legends = all_histograms
+
+        sinkhorn_plot(sinkhorn_iteration,
+                      marginal_0,
+                      marginal_1,
+                      backward_histogram=backward_histogram,
+                      forward_histogram=forward_histogram,
+                      time_=forward_time,
+                      states_legends=state_legends)
 
     @unittest.skip
     def test_sinkhorn_initialization(self):
@@ -95,17 +98,21 @@ class TestSBTrainer(unittest.TestCase):
         past_model = self.sb_trainer.sb.reference_process
         self.sb_trainer.initialize_sinkhorn(current_model,past_model,sinkhorn_iteration=0)
 
-    @unittest.skip
     def test_metrics_login(self):
-        sinkhorn_iteration = 0
-        current_model = self.sb_trainer.sb.training_model
-        past_model = self.sb_trainer.sb.reference_process
+        from graph_bridges.models.metrics.sb_metrics_utils import log_metrics
 
-        self.sb_trainer.log_metrics(current_model=current_model,
-                                    past_to_train_model=past_model,
-                                    sinkhorn_iteration=sinkhorn_iteration,
-                                    epoch=10,
-                                    device=self.sb_trainer.device)
+        sb = SB()
+        sinkhorn_iteration = 0
+        results, metrics, device = sb.load_from_results_folder(experiment_name="graph",
+                                                               experiment_type="sb",
+                                                               experiment_indentifier="community_bernoulli_mse",
+                                                               sinkhorn_iteration_to_load=sinkhorn_iteration)
+
+        current_model = sb.training_model
+        past_model = None
+
+        log_metrics(sb,current_model,past_model,sinkhorn_iteration,"best",device,["mse_histograms"])
+        print(metrics)
 
 if __name__ == '__main__':
     unittest.main()

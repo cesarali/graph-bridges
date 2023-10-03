@@ -74,12 +74,23 @@ def paths_marginal_histograms(sb:SB,
     :return: backward_histogram,forward_histogram,forward_time
 
     """
+    type_ = "train" if train else "test"
+    expected_sample_size = sb.config.data.training_size if train else sb.config.data.test_size
+
+    #================================
+    # HISTOGRAMS OF DATA
+    #================================
+
+    marginal_0 = SpinBernoulliMarginal(spin_dataloader=sb.data_dataloader)(type=type_)
+    marginal_1 = SpinBernoulliMarginal(spin_dataloader=sb.target_dataloader)(type=type_)
+
     total_number_of_steps = sb.config.sampler.num_steps + 1
     number_of_spins = sb.config.data.number_of_spins
     assert device == check_model_devices(current_model)
 
-    expected_sample_size = sb.config.data.training_size if train else sb.config.data.test_size
-
+    #================================
+    # HISTOGRAMS OF PATHS
+    #================================
     histogram_path_1 = torch.zeros(total_number_of_steps, number_of_spins,device=device)
     histogram_path_2 = torch.zeros(total_number_of_steps, number_of_spins,device=device)
 
@@ -166,55 +177,38 @@ def paths_marginal_histograms(sb:SB,
 
     print(f"how much 1 {how_much_1}")
     print(f"how much 3 {how_much_2}")
+
     backward_histogram = torch.flip(backward_histogram, [0])
+
     assert  how_much_1 == how_much_2 == expected_sample_size
-
-    return backward_histogram,forward_histogram,forward_time
-
-
-def marginal_paths_histograms_plots(sb:SB,
-                                    sinkhorn_iteration:int,
-                                    device:torch.device,
-                                    current_model,
-                                    past_to_train_model,
-                                    plot_path:str,
-                                    exact_backward=True,
-                                    train=True):
-    """
-
-    :param sb:
-    :return: marginal_0,marginal_1,backward_histogram,forward_histogram,forward_time
-    """
-    # CHECK DATA METRICS
-    from graph_bridges.models.metrics.data_metrics import SpinBernoulliMarginal
-
-    type_ = "train" if train else "test"
-    marginal_0 = SpinBernoulliMarginal(spin_dataloader=sb.data_dataloader)(type=type_)
-    marginal_1 = SpinBernoulliMarginal(spin_dataloader=sb.target_dataloader)(type=type_)
-
-    backward_histogram,forward_histogram,forward_time = paths_marginal_histograms(sb,
-                                                                                  sinkhorn_iteration,
-                                                                                  device,
-                                                                                  current_model,
-                                                                                  past_to_train_model,
-                                                                                  exact_backward,
-                                                                                  train)
 
     state_legends = [str(i) for i in range(backward_histogram.shape[-1])]
 
-    expected_sample_size = sb.config.data.training_size if train else sb.config.data.test_size
-    marginal_0 = marginal_0.cpu()/expected_sample_size
-    marginal_1 = marginal_1.cpu()/expected_sample_size
-    backward_histogram = backward_histogram.cpu()/expected_sample_size
-    forward_histogram = forward_histogram.cpu()/expected_sample_size
+    marginal_0 = marginal_0.cpu() / expected_sample_size
+    marginal_1 = marginal_1.cpu() / expected_sample_size
+    backward_histogram = backward_histogram.cpu() / expected_sample_size
+    forward_histogram = forward_histogram.cpu() / expected_sample_size
+
+    return marginal_0,marginal_1,backward_histogram,forward_histogram,forward_time.cpu(), state_legends
+
+def marginal_paths_histograms_plots(sb,sinkhorn_iteration,device,current_model,past_to_train_model,save_path,exact_backward=True,train=True):
+    all_histograms = paths_marginal_histograms(sb,
+                                               sinkhorn_iteration,
+                                               device,
+                                               current_model,
+                                               past_to_train_model,
+                                               exact_backward=exact_backward,
+                                               train=train)
+
+    marginal_0, marginal_1, backward_histogram, forward_histogram, forward_time, state_legends = all_histograms
 
     sinkhorn_plot(sinkhorn_iteration,
                   marginal_0,
                   marginal_1,
                   backward_histogram=backward_histogram,
                   forward_histogram=forward_histogram,
-                  time_=forward_time.cpu(),
+                  time_=forward_time,
                   states_legends=state_legends,
-                  save_path=plot_path)
+                  save_path=save_path)
 
-    return marginal_0,marginal_1,backward_histogram,forward_histogram,forward_time
+    return marginal_0, marginal_1, backward_histogram, forward_histogram, forward_time, state_legends

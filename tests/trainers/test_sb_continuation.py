@@ -10,18 +10,18 @@ from graph_bridges.data.graph_dataloaders_config import EgoConfig,CommunityConfi
 from graph_bridges.data.spin_glass_dataloaders_config import ParametrizedSpinGlassHamiltonianConfig
 from graph_bridges.configs.graphs.graph_config_sb import SBConfig
 from graph_bridges.configs.config_sb import ParametrizedSamplerConfig, SteinSpinEstimatorConfig
+from graph_bridges.models.metrics.sb_metrics import marginal_paths_histograms_plots
 
 from graph_bridges.models.temporal_networks.mlp.temporal_mlp import TemporalMLPConfig,DeepTemporalMLPConfig
 from graph_bridges.models.backward_rates.ctdd_backward_rate_config import BackwardRateTemporalHollowTransformerConfig
 from graph_bridges.models.temporal_networks.transformers.temporal_hollow_transformers import TemporalHollowTransformerConfig
 from graph_bridges.models.trainers.sb_training import SBTrainer
 from graph_bridges.models.losses.loss_configs import RealFlipConfig
-from graph_bridges.models.metrics.sb_metrics import marginal_paths_histograms_plots, paths_marginal_histograms
+from graph_bridges.models.metrics.sb_metrics import  paths_marginal_histograms
 from graph_bridges.models.reference_process.reference_process_config import GlauberDynamicsConfig
 
 
 from graph_bridges.models.metrics.sb_paths_metrics import states_paths_histograms_plots
-from graph_bridges.models.metrics.sb_metrics import marginal_paths_histograms_plots
 from graph_bridges.utils.test_utils import check_model_devices
 
 class TestSBTrainer(unittest.TestCase):
@@ -46,13 +46,6 @@ class TestSBTrainer(unittest.TestCase):
         past_model = sb.past_model
         sb.config.sampler.step_type = "poisson"
 
-        marginal_paths_histograms_plots(sb,
-                                        sinkhorn_iteration=0,
-                                        device=check_model_devices(current_model),
-                                        current_model=current_model,
-                                        past_to_train_model=None,
-                                        plot_path=None,
-                                        exact_backward=True)
 
     @unittest.skip
     def test_restart_training(self):
@@ -88,7 +81,7 @@ class TestSBTrainer(unittest.TestCase):
                                         device=device,
                                         current_model=current_model,
                                         past_to_train_model=None,
-                                        plot_path=None,
+                                        save_path=None,
                                         exact_backward=True,
                                         train=True)
 

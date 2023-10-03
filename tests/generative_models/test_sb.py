@@ -59,7 +59,6 @@ class TestSB(unittest.TestCase):
         self.assertIsInstance(data_graph_list[0],nx.Graph)
 
 
-
 if __name__ == '__main__':
     unittest.main()
 

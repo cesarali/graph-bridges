@@ -116,7 +116,6 @@ class CTDD:
         self.set_classes_from_config(self.config, device)
 
         # READ METRICS IF AVAILABLE
-
         all_metrics = {}
         for metric_string_identifier in ["graphs","mse_histograms"]:
             all_metrics.update(read_metric(self.config, metric_string_identifier, checkpoint=checkpoint))
