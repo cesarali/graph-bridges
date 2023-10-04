@@ -1,3 +1,4 @@
+import sys
 import json
 
 from typing import List,Union,Tuple,Optional,Dict
@@ -236,40 +237,73 @@ class TableOfResults(ABC):
         """
         pass
 
-    @abstractmethod
-    def read_experiment_dir(self,
-                            experiment_dir:Union[Union[str,Path],List[Union[str,Path]]],
-                            dataset_name:str = None,
-                            metric_name:str = None,
-                            method_name:str = None,
-                            **kwargs):
-        """
-        this function loads the results from an experiment folder
+    #=================================================================
+    # READ AND CHANGE ENTRIES
+    #=================================================================
 
-        :return: sb,config,results,all_metrics,device
-        """
-        pass
+    def fill_table(self,base_folder,overwrite=False,info=False):
+        if isinstance(base_folder,str):
+            base_folder = [base_folder]
+        for base_folder_ in base_folder:
+            base_path = Path(base_folder_)
+            # Iterate through all subfolders
+            for subfolder in base_path.iterdir():
+                if subfolder.is_dir():
+                    print(subfolder)
+                    self.experiment_dir_to_table(subfolder,overwrite,info)
 
-    @abstractmethod
-    def experiment_dir_to_model(self,
-                                dataset_id:int,
-                                metric_id:int,
-                                method_id:int,
-                                experiment_dir:Union[str,Path]):
+
+    def experiment_dir_to_table(self,experiment_dir: Union[str, Path],overwrite=False,info=False):
         """
-        if a trained model exist in the experiment folder, and the results file does not have the metrics
-        generates the missing metric
+        modify table
 
         :param experiment_dir:
-        :return:
+
+        :return: dataset_id,method_id,metrics_in_file,missing_in_file
         """
-        pass
+        results_of_reading = self.read_experiment_dir(experiment_dir)
+        if results_of_reading is not None:
+            generative_model,configs, results, all_metrics, device = results_of_reading
+
+            dataset_name = self.config_to_dataset_name(configs)
+            methods_name = self.config_to_method_name(configs)
+            metrics_in_file,missing_in_file = self.results_to_metrics(configs,results,all_metrics)
+
+            if dataset_name is not None and methods_name is not None:
+                dataset_id = self.datasets_to_id[dataset_name]
+                method_id = self.methods_to_id[methods_name]
+
+                if info:
+                    print("Metrics found in {0}".format(experiment_dir))
+                    print(metrics_in_file)
+
+                for key,new_posible_value in metrics_in_file.items():
+                    metrics_to_id_keys = self.metrics_to_id.keys()
+                    if key in metrics_to_id_keys:
+                        metric_id = self.metrics_to_id[key]
+                        if isinstance(new_posible_value, torch.Tensor):
+                            new_posible_value = new_posible_value.cpu().item()
+                        self.change_entry_id(dataset_id,metric_id,method_id,new_posible_value,overwrite)
+
+                return dataset_id,method_id,metrics_in_file,missing_in_file
+
+    #=================================================================
+    # RUNNING EXPERIMENTS
+    #=================================================================
 
     @abstractmethod
     def run_config(self,config:Union[Dict,dataclass]):
         pass
 
     def run_table(self, base_methods_configs, base_dataset_args,fill_table=True):
+        """
+        Using base configuration files run experiments necesary to fill the table
+
+        :param base_methods_configs:
+        :param base_dataset_args:
+        :param fill_table:
+        :return:
+        """
         for dataset_name in self.datasets_names:
             for method_name in self.methods_names:
                 if method_name in base_methods_configs:
@@ -288,57 +322,34 @@ class TableOfResults(ABC):
                     #current_value = self.return_entry_names(dataset_name=dataset_name,
                     #                                        metric_name=metric_name,
                     #                                        method_name=method_name)
+
                     #====================
                     # RUN CONFIG
                     #====================
-                    results,all_metrics = self.run_config(base_method_config)
-                    if fill_table:
+
+                    try:
+                        results, all_metrics = self.run_config(base_method_config)
+                    except Exception as e:
+                        results = None
+                        all_metrics = None
+                        print(f"An error occurred: {e}")
+                        print(f"Exception details: {sys.exc_info()}")
+
+                    if fill_table and results is not None:
                         metrics_in_file, missing_ = self.results_to_metrics(base_method_config,results, all_metrics)
                         for metric_name_ in metrics_in_file:
                             new_posible_value = metrics_in_file[metric_name_]
                             if isinstance(new_posible_value,torch.Tensor):
                                 new_posible_value = new_posible_value.cpu().item()
-
                             self.change_entry_names(dataset_name=dataset_name,
                                                     metric_name=metric_name_,
                                                     method_name=method_name,
                                                     value=new_posible_value,
                                                     overwrite=False)
 
-    def obtain_string_in_experiments(self,
-                                     model_name,
-                                     sinkhorn_iteration=0,
-                                     strings_in_results=["training_time"]):
-        """
-        Checks in a results folder file for RESULTS with a given string
-
-        :param model_name:
-        :param sinkhorn_iteration:
-        :param strings_in_results:
-        :return:
-        """
-        from graph_bridges import results_path
-        all_experiments_dir = os.path.join(results_path, model_name)
-        all_experiments = os.listdir(all_experiments_dir)
-        file_to_result = {}
-
-        for experiment_dir_local in all_experiments:
-            experiment_dir = os.path.join(all_experiments_dir, experiment_dir_local)
-            if check_for_file(experiment_dir, 'sinkhorn_{0}.tr'.format(sinkhorn_iteration)):
-                best_results_path = os.path.join(experiment_dir, "sinkhorn_{0}.tr".format(sinkhorn_iteration))
-
-                RESULTS = torch.load(best_results_path)
-                results_from_strings = {}
-                for string_ in strings_in_results:
-                    try:
-                        results_ = RESULTS.get(string_)
-                        results_from_strings[string_] = results_
-                    except:
-                        results_from_strings[string_] = None
-            else:
-                results_from_strings = False
-            file_to_result[experiment_dir_local] = results_from_strings
-        return file_to_result
+    #====================================================================
+    # SAVE AND READ TABLE
+    #====================================================================
 
     def save_table(self,save_dir:Union[str,Path]=None):
         if save_dir is None:
@@ -356,5 +367,3 @@ class TableOfResults(ABC):
     def read_table(self):
         pass
 
-    def register_config_entry(self,data_id:int,method_id:int,config):
-        return None

@@ -126,10 +126,14 @@ class CTDDConfig:
     init_model_path = None
 
     def __post_init__(self):
-        self.experiment_files = CTDDExperimentsFiles(delete=self.delete,
-                                                     experiment_name=self.experiment_name,
-                                                     experiment_indentifier=self.experiment_indentifier,
-                                                     experiment_type=self.experiment_type)
+        if isinstance(self.experiment_files,dict):
+            self.experiment_files = CTDDExperimentsFiles(delete=self.delete,
+                                                       results_dir=self.experiment_files["results_dir"])
+        else:
+            self.experiment_files = CTDDExperimentsFiles(delete=self.delete,
+                                                       experiment_name=self.experiment_name,
+                                                       experiment_indentifier=self.experiment_indentifier,
+                                                       experiment_type=self.experiment_type)
         #self.experiment_files.data_stats = os.path.join(self.data.preprocess_datapath, "data_stats.json")
 
         if isinstance(self.model,dict):

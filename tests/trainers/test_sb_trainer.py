@@ -100,18 +100,16 @@ class TestSBTrainer(unittest.TestCase):
 
     def test_metrics_login(self):
         from graph_bridges.models.metrics.sb_metrics_utils import log_metrics
-
+        results_dir = "C:/Users/cesar/Desktop/Projects/DiffusiveGenerativeModelling/Codes/sb_experiment"
         sb = SB()
         sinkhorn_iteration = 0
-        results, metrics, device = sb.load_from_results_folder(experiment_name="graph",
-                                                               experiment_type="sb",
-                                                               experiment_indentifier="community_bernoulli_mse",
+        results, metrics, device = sb.load_from_results_folder(results_dir=results_dir,
                                                                sinkhorn_iteration_to_load=sinkhorn_iteration)
 
         current_model = sb.training_model
         past_model = None
-
         log_metrics(sb,current_model,past_model,sinkhorn_iteration,"best",device,["mse_histograms"])
+
         print(metrics)
 
 if __name__ == '__main__':

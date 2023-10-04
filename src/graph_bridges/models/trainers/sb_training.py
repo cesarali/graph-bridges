@@ -350,9 +350,7 @@ if __name__=="__main__":
     # DATA CONFIGS
     from graph_bridges.data.graph_dataloaders_config import CommunitySmallConfig, EgoConfig
     # BACKWARD RATES CONFIGS
-    from graph_bridges.models.backward_rates.ctdd_backward_rate_config import BackRateMLPConfig, \
-        GaussianTargetRateImageX0PredEMAConfig
-
+    from graph_bridges.models.backward_rates.ctdd_backward_rate_config import BackRateMLPConfig, GaussianTargetRateImageX0PredEMAConfig
     # ===========================================
     # MODEL SET UP
     # ===========================================
@@ -374,6 +372,7 @@ if __name__=="__main__":
                                         device="cuda:0",
                                         metrics=["graphs_plots",
                                                  "histograms"])
+
     # ========================================
     # TRAIN
     # ========================================

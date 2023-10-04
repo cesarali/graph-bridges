@@ -60,9 +60,9 @@ class TableOfResultsReport(TableOfResults):
     def __init__(self,sinkhorn_to_read:int=0):
 
         #datasets_names = ['Community','Ego']
-        datasets_names = ['Community']
+        datasets_names = ['Community','Ego']
         metrics_names = ['Best Loss','MSE']
-        methods_names = ["CTDD lr .05","SB lr: 0.01"] # 'CTDD lr .001', "CTDD lr .01",
+        methods_names = ["CTDD lr .05",'CTDD lr .001', "CTDD lr .01","SB lr: 0.01","SB lr: 0.007"] # 'CTDD lr .001', "CTDD lr .01",
         #methods_names = ["SB lr: 0.01"]
 
         self.sinkhorn_to_read = sinkhorn_to_read
@@ -115,8 +115,7 @@ class TableOfResultsReport(TableOfResults):
             config.trainer.learning_rate = .05
         if method_name == "SB lr: 0.01":
             assert isinstance(config,SBConfig)
-            config.trainer.learning_rate = .05
-
+            config.trainer.learning_rate = .01
         return config
 
     def config_to_dataset_name(self,config:Union[SBConfig,CTDDConfig])->str:
@@ -126,35 +125,37 @@ class TableOfResultsReport(TableOfResults):
         """
         if isinstance(config.data,EgoConfig):
             name_to_return = "Ego"
-            assert name_to_return in self.datasets_names
-            return name_to_return
+            return name_to_return if name_to_return in self.datasets_names else None
         if isinstance(config.data,CommunitySmallConfig):
             name_to_return = "Community"
-            assert name_to_return in self.datasets_names
-            return name_to_return
+            return name_to_return if name_to_return in self.datasets_names else None
         if isinstance(config.data, GridConfig):
             name_to_return = "Grid"
-            assert name_to_return in self.datasets_names
-            return name_to_return
-
-        return None
+            return name_to_return if name_to_return in self.datasets_names else None
 
     def config_to_method_name(self,config:Union[SBConfig,CTDDConfig])->str:
-        methods_names = ['CTDD lr .001', "CTDD lr .01", "CTDD lr .05"]
+        methods_names = ['CTDD lr .001', "CTDD lr .01", "CTDD lr .05","SB lr: 0.01","SB lr: 0.007"]
         def check_and_return(name_to_return):
-            assert name_to_return in self.methods_names
-            return name_to_return
+            return name_to_return if name_to_return in self.methods_names else None
 
-        if config.trainer.learning_rate == 0.001:
-            name_to_return = 'CTDD lr .001'
-            check_and_return(name_to_return)
-        elif config.trainer.learning_rate == 0.01:
-            name_to_return = 'CTDD lr .01'
-            check_and_return(name_to_return)
-        elif config.trainer.learning_rate == 0.05:
-            name_to_return = 'CTDD lr .05'
-            check_and_return(name_to_return)
-        return None
+        if isinstance(config,CTDDConfig):
+            if config.trainer.learning_rate == 0.001:
+                name_to_return = 'CTDD lr .001'
+                return check_and_return(name_to_return)
+            elif config.trainer.learning_rate == 0.01:
+                name_to_return = 'CTDD lr .01'
+                return check_and_return(name_to_return)
+            elif config.trainer.learning_rate == 0.05:
+                name_to_return = 'CTDD lr .05'
+                return check_and_return(name_to_return)
+        if isinstance(config,SBConfig):
+            if config.trainer.learning_rate == 0.01:
+                name_to_return = "SB lr: 0.01"
+                return check_and_return(name_to_return)
+            elif config.trainer.learning_rate == 0.007:
+                name_to_return = "SB lr: 0.007"
+                if name_to_return in self.methods_names:
+                    return name_to_return
 
     def results_to_metrics(self,config:Union[SBConfig,CTDDConfig],results_,all_metrics:Dict)->Tuple[Dict[str,float],List[str]]:
         """
@@ -179,7 +180,7 @@ class TableOfResultsReport(TableOfResults):
         return metrics_in_file,missing_in_file
 
     #===============================================================
-    # TABLE STUFF
+    # FILLING STUFF
     #===============================================================
     def read_experiment_dir(self, experiment_dir: Union[str, Path]):
         """
@@ -193,48 +194,25 @@ class TableOfResultsReport(TableOfResults):
             experiment_dir = Path(experiment_dir)
 
         if experiment_dir.exists():
-            config = get_config_from_file(experiment_dir)
+            config = get_config_from_file(results_dir=experiment_dir)
             if isinstance(config,CTDDConfig):
                 ctdd = CTDD()
-                results,all_metrics,device = ctdd.load_from_results_folder(results_dir=experiment_dir)
-                return ctdd,config,results,all_metrics,device
+                all_results = ctdd.load_from_results_folder(results_dir=experiment_dir)
+                if all_results is not None:
+                    results,all_metrics,device = all_results
+                    return ctdd,config,results,all_metrics,device
+                else:
+                    return None
             elif isinstance(config,SBConfig):
                 sb = SB()
-                results,all_metrics,device = sb.load_from_results_folder(results_dir=experiment_dir)
-                return sb,config,results,all_metrics,device
+                all_results = sb.load_from_results_folder(results_dir=experiment_dir)
+                if all_results is not None:
+                    results, all_metrics, device = all_results
+                    return sb,config,results,all_metrics,device
+                else:
+                    return None
         else:
             return None
-
-    def experiment_dir_to_table(self,experiment_dir: Union[str, Path],overwrite=False,info=False):
-        """
-        modify table
-
-        :param experiment_dir:
-
-        :return: dataset_id,method_id,metrics_in_file,missing_in_file
-        """
-        results_of_reading = self.read_experiment_dir(experiment_dir)
-        if results_of_reading is not None:
-            generative_model,configs, results, all_metrics, device = results_of_reading
-
-            dataset_name = self.config_to_dataset_name(configs)
-            methods_name = self.config_to_method_name(configs)
-            metrics_in_file,missing_in_file = self.results_to_metrics(results,all_metrics)
-
-            dataset_id = self.datasets_to_id[dataset_name]
-            method_id = self.methods_to_id[methods_name]
-
-            if info:
-                print("Metrics found in {0}".format(experiment_dir))
-                print(metrics_in_file)
-
-            for key,new_value in metrics_in_file.items():
-                metrics_to_id_keys = self.metrics_to_id.keys()
-                if key in metrics_to_id_keys:
-                    metric_id = self.metrics_to_id[key]
-                    self.change_entry_id(dataset_id,metric_id,method_id,new_value,overwrite)
-
-            return dataset_id,method_id,metrics_in_file,missing_in_file
 
     def experiment_dir_to_model(self, metric_name: str, experiment_dir: Union[str, Path]):
         """
@@ -252,7 +230,7 @@ class TableOfResultsReport(TableOfResults):
         return sb
 
     #===============================================================
-    # RUN TABLE
+    # RUNNIG TABLE
     #===============================================================
 
     def run_config(self, config: Union[SBConfig,CTDDConfig]):
@@ -282,7 +260,7 @@ if __name__=="__main__":
     # ===================================================================
     # DESIGN OF EXPERIMENTS
     # ===================================================================
-
+    """
     from graph_bridges.configs.graphs.graph_config_ctdd import CTDDConfig
     from graph_bridges.configs.graphs.graph_config_sb import SBConfig
 
@@ -293,6 +271,7 @@ if __name__=="__main__":
     config = CTDDConfig(experiment_name="table",
                         experiment_type="table_report_0",
                         delete=True)
+    
     config.trainer.metrics = []
     config.trainer.num_epochs = 2
     config.trainer.__post_init__()
@@ -300,6 +279,7 @@ if __name__=="__main__":
     sb_config = SBConfig(experiment_name="table",
                          experiment_type="table_report_0",
                          delete=True)
+    
     sb_config.trainer.metrics = []
     sb_config.trainer.num_epochs = 5
     sb_config.trainer.__post_init__()
@@ -318,10 +298,18 @@ if __name__=="__main__":
     print("Final Table")
     pandas_table = table_of_results.create_pandas()
     pprint(pandas_table)
-
+    
+    """
     # ===================================================================
     # READ EXPERIMENT AND CHANGE TABLE
     # ===================================================================
+    parent_experiment_folder = "C:/Users/cesar/Desktop/Projects/DiffusiveGenerativeModelling/Codes"
+    parent_experiment_folder2 = "C:/Users/cesar/Desktop/Projects/DiffusiveGenerativeModelling/Codes/graph-bridges/results/table/table_report_0"
+
+    table_of_results.fill_table([parent_experiment_folder,parent_experiment_folder2])
+
+    pandas_table = table_of_results.create_pandas()
+    pprint(pandas_table)
 
     """
     

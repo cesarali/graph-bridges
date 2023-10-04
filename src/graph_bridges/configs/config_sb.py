@@ -149,10 +149,14 @@ class SBConfig:
     num_gpus = 0
 
     def __post_init__(self):
-        self.experiment_files = SBExperimentsFiles(delete=self.delete,
-                                                   experiment_name=self.experiment_name,
-                                                   experiment_indentifier=self.experiment_indentifier,
-                                                   experiment_type=self.experiment_type)
+        if isinstance(self.experiment_files,dict):
+            self.experiment_files = SBExperimentsFiles(delete=self.delete,
+                                                       results_dir=self.experiment_files["results_dir"])
+        else:
+            self.experiment_files = SBExperimentsFiles(delete=self.delete,
+                                                       experiment_name=self.experiment_name,
+                                                       experiment_indentifier=self.experiment_indentifier,
+                                                       experiment_type=self.experiment_type)
         if isinstance(self.model,dict):
             self.model = SchrodingerBridgeBackwardRateConfig(**self.model)
         if isinstance(self.temp_network,dict):

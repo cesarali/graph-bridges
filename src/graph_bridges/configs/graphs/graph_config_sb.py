@@ -16,7 +16,7 @@ class SBConfig(GeneralSBConfig):
     experiment_name :str = 'graph'
     experiment_indentifier :str  = 'testing'
 
-    data = CommunitySmallConfig()
+    data:CommunitySmallConfig = CommunitySmallConfig()
 
     def align_configurations(self):
         from graph_bridges.models.temporal_networks.unets.unet_wrapper import UnetTauConfig

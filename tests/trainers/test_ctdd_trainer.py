@@ -18,8 +18,8 @@ from graph_bridges.configs.config_ctdd import CTDDTrainerConfig
 from graph_bridges.models.trainers.ctdd_training import CTDDTrainer
 from graph_bridges.models.generative_models.ctdd import CTDD
 
-
 class TestCTDDTrainer(unittest.TestCase):
+
     ctdd_config: CTDDConfig
     ctdd: CTDD
 
@@ -35,7 +35,6 @@ class TestCTDDTrainer(unittest.TestCase):
                                                      metrics=["graphs_plots",
                                                               "histograms"])
         self.ctdd_trainer = CTDDTrainer(self.ctdd_config)
-
         print("Test Initialization")
         original_determinism = torch.use_deterministic_algorithms(False)
         self.ctdd_trainer.train_ctdd()

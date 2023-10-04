@@ -1,6 +1,5 @@
-from graph_bridges.models.backward_rates.ctdd_backward_rate import GaussianTargetRateImageX0PredEMA
 from graph_bridges.models.reference_process.ctdd_reference import ReferenceProcess
-
+from graph_bridges.models.backward_rates.sb_backward_rate_config import SchrodingerBridgeBackwardRateConfig
 from dataclasses import dataclass
 from graph_bridges.models.pipelines.sb.pipeline_sb import SBPipeline
 from graph_bridges.models.schedulers.scheduling_sb import SBScheduler
@@ -35,14 +34,16 @@ class SB:
     data_dataloader: BridgeGraphDataLoaders = None
     target_dataloader: DoucetTargetData = None
 
-    training_model: GaussianTargetRateImageX0PredEMA=None
-    past_model: GaussianTargetRateImageX0PredEMA=None
+    training_model: SchrodingerBridgeBackwardRateConfig=None
+    past_model: SchrodingerBridgeBackwardRateConfig=None
 
-    reference_process: ReferenceProcess=None
-    backward_ratio_estimator: BackwardRatioSteinEstimator=None
+    reference_process: ReferenceProcess = None
+    backward_ratio_estimator: BackwardRatioSteinEstimator= None
     scheduler: SBScheduler=None
     pipeline: SBPipeline=None
     config: SBConfig = None
+
+    metrics_registered = ["graphs", "mse_histograms"]
 
     def set_classes_from_config(self,config,device):
         self.data_dataloader = load_dataloader(config, type="data", device=device)
@@ -70,6 +71,7 @@ class SB:
                                  experiment_name="graph",
                                  experiment_type="sb",
                                  experiment_indentifier="tutorial_sb_trainer",
+                                 results_dir=None,
                                  new_experiment=False,
                                  new_experiment_indentifier=None,
                                  sinkhorn_iteration_to_load=0,
@@ -85,10 +87,13 @@ class SB:
         :param device:
         :return:
         """
+        from graph_bridges.configs.utils import get_config_from_file
+
         config_ready:SBConfig
-        config_ready = get_sb_config_from_file(experiment_name=experiment_name,
-                                               experiment_type=experiment_type,
-                                               experiment_indentifier=experiment_indentifier)
+        config_ready = get_config_from_file(experiment_name=experiment_name,
+                                            experiment_type=experiment_type,
+                                            experiment_indentifier=experiment_indentifier,
+                                            results_dir=results_dir)
 
         # LOADS RESULTS
         loaded_path = None
@@ -104,7 +109,9 @@ class SB:
                 loaded_path = check_point_to_load_path
 
         if loaded_path is None:
-            raise Exception("Experiment Does not Exist")
+            print("Experiment Empty")
+            return None
+
 
         if device is None:
             device = torch.device(config_ready.trainer.device)
@@ -141,7 +148,7 @@ class SB:
             self.set_classes_from_config(config_ready, device)
 
         all_metrics = {}
-        for metric_string_identifier in ["graphs","mse_histograms"]:
+        for metric_string_identifier in self.metrics_registered:
             all_metrics.update(read_metric(self.config,
                                            metric_string_identifier,
                                            sinkhorn_iteration=sinkhorn_iteration_to_load,

@@ -103,7 +103,9 @@ class CTDD:
                 loaded_path = check_point_to_load_path
 
         if loaded_path is None:
-            raise Exception("Experiment Does not Exist")
+            print("Experiment Empty")
+            return None
+
 
         if device is None:
             device = torch.device(self.config.trainer.device)
