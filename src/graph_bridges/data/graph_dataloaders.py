@@ -118,7 +118,6 @@ class BridgeGraphDataLoaders:
         train_adjs_tensor = self.composed_transform(train_adjs_tensor)
         self.train_dataloader_ = self.create_dataloaders(train_adjs_tensor,train_x_tensor)
 
-
         test_adjs_tensor = self.composed_transform(test_adjs_tensor)
         self.test_dataloader_ = self.create_dataloaders(test_adjs_tensor,test_x_tensor)
 
@@ -193,6 +192,11 @@ class BridgeGraphDataLoaders:
         with open(file_path + '.pkl', 'rb') as f:
             graph_list = pickle.load(f)
         test_size = int(self.graph_data_config.test_split * len(graph_list))
+
+        all_node_numbers = list(map(lambda x: x.number_of_nodes(), graph_list))
+
+        max_number_of_nodes = max(all_node_numbers)
+        min_number_of_nodes = min(all_node_numbers)
 
         train_graph_list, test_graph_list = graph_list[test_size:], graph_list[:test_size]
 

@@ -100,12 +100,11 @@ class SBTrainer:
         print("# START OF BACKWARD RATIO TRAINING SINKHORN {0}".format(sinkhorn_iteration))
         print("# ==================================================")
         if sinkhorn_iteration == 0:
-            print("# Current Model ************************************")
-            pprint(self.sb_config.model.__dict__)
-            print("# Reference Parameters **********************************")
-            pprint(self.sb_config.reference.__dict__)
-            print("# Trainer Parameters")
-            pprint(self.sb_config.trainer.__dict__)
+            print("Identifiers ")
+
+            print(self.config.experiment_type)
+            print(self.config.experiment_name)
+            print(self.config.experiment_indentifier)
 
         print("# ==================================================")
         print("# Number of Epochs {0}".format(self.number_of_epochs))
@@ -222,6 +221,9 @@ class SBTrainer:
             number_of_test_step = 0
             number_of_training_step = 0
             self.time0 = datetime.now()
+            results = []
+            all_metrics = {}
+
             for epoch in tqdm(range(self.number_of_epochs)):
                 #TRAINING ----------------------------------------------------------------------------------------------
                 training_loss = []
@@ -258,39 +260,39 @@ class SBTrainer:
                 # SAVE RESULTS IF LOSS DECREASES IN VALIDATION ---------------------------------------------------------
                 if validation_loss_average < best_loss:
                     best_loss = validation_loss_average
-                    self.save_results(current_model=training_model,
-                                      past_model=past_model,
-                                      initial_loss=initial_loss,
-                                      training_loss_average=training_loss_average,
-                                      validation_loss_average=validation_loss_average,
-                                      best_loss=best_loss,
-                                      LOSS=LOSS,
-                                      epoch=epoch+1,
-                                      sinkhorn_iteration=sinkhorn_iteration,
-                                      checkpoint=False)
+                    results = self.save_results(current_model=training_model,
+                                                past_model=past_model,
+                                                initial_loss=initial_loss,
+                                                training_loss_average=training_loss_average,
+                                                validation_loss_average=validation_loss_average,
+                                                best_loss=best_loss,
+                                                LOSS=LOSS,
+                                                epoch=epoch+1,
+                                                sinkhorn_iteration=sinkhorn_iteration,
+                                                checkpoint=False)
 
                 if epoch % 10 == 0:
                     print("Epoch: {}, Loss: {}".format(epoch + 1, training_loss_average))
 
                 if (epoch + 1) % self.sb_config.trainer.save_model_epochs == 0:
-                    self.save_results(current_model=training_model,
-                                      past_model=past_model,
-                                      initial_loss=initial_loss,
-                                      training_loss_average=training_loss_average,
-                                      validation_loss_average=validation_loss_average,
-                                      best_loss=best_loss,
-                                      LOSS=LOSS,
-                                      epoch=epoch+1,
-                                      sinkhorn_iteration=sinkhorn_iteration,
-                                      checkpoint=True)
+                    results = self.save_results(current_model=training_model,
+                                                past_model=past_model,
+                                                initial_loss=initial_loss,
+                                                training_loss_average=training_loss_average,
+                                                validation_loss_average=validation_loss_average,
+                                                best_loss=best_loss,
+                                                LOSS=LOSS,
+                                                epoch=epoch+1,
+                                                sinkhorn_iteration=sinkhorn_iteration,
+                                                checkpoint=True)
 
                 if (epoch + 1) % self.sb_config.trainer.save_metric_epochs == 0:
-                    log_metrics(sb=self.sb,
-                                current_model=training_model,
-                                past_to_train_model=past_model,
-                                sinkhorn_iteration=sinkhorn_iteration,
-                                epoch=epoch+1,
-                                device=self.device)
+                    all_metrics = log_metrics(sb=self.sb,
+                                              current_model=training_model,
+                                              past_to_train_model=past_model,
+                                              sinkhorn_iteration=sinkhorn_iteration,
+                                              epoch=epoch+1,
+                                              device=self.device)
 
             self.time1 = datetime.now()
             #=====================================================
@@ -300,7 +302,7 @@ class SBTrainer:
 
         self.writer.close()
 
-        return best_loss
+        return results,all_metrics
 
     def end_of_sinkhorn(self):
         """
@@ -334,6 +336,8 @@ class SBTrainer:
             torch.save(RESULTS,best_model_path_checkpoint)
         else:
             torch.save(RESULTS, self.sb_config.experiment_files.best_model_path.format(sinkhorn_iteration))
+
+        return RESULTS
 
 
 if __name__=="__main__":

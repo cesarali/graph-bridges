@@ -41,6 +41,7 @@ def log_metrics(ctdd:CTDD, number_of_steps, device, metrics_to_log=None):
             marginal_histograms = marginal_histograms_for_ctdd(ctdd, config, device)
             mse_1, mse_0 = marginals_histograms_mse(marginal_histograms)
             mse_metrics = {"mse_histograms_1": mse_1.tolist(), "mse_histograms_0": mse_0.tolist()}
+            all_metrics.update(mse_metrics)
             mse_metric_path = config.experiment_files.metrics_file.format(
                 metric_string_name + "_{0}".format(number_of_steps))
             with open(mse_metric_path, "w") as f:

@@ -47,7 +47,6 @@ class SB:
     def set_classes_from_config(self,config,device):
         self.data_dataloader = load_dataloader(config, type="data", device=device)
         self.target_dataloader = load_dataloader(config, type="target", device=device)
-
         self.reference_process = load_reference(config,device)
         self.backward_ratio_estimator = BackwardRatioSteinEstimator(config, device)
 

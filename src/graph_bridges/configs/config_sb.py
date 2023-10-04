@@ -90,20 +90,26 @@ class SBTrainerConfig:
     clip_grad :bool= True
     clip_max_norm : float = 10.
     warmup :int = 50
-    num_epochs :int = 50
+    num_epochs :int = 2
     learning_rate :float = 2e-4
 
     gradient_accumulation_steps :int = 1
-    lr_warmup_steps :int = 500
-    save_image_epochs :int = 10
-    save_model_global_iter :int = 1000
-    save_metric_epochs: int = 25
-    save_model_epochs :int = 25
+    lr_warmup_steps :int = 2
+    save_image_epochs :int = None
+    save_model_global_iter :int = None
+    save_metric_epochs: int = None
+    save_model_epochs :int = None
 
     metrics: List[str] = field(default_factory=lambda: ["graphs", "graphs_plots", "histograms","mse_histograms"])
     exact_backward:bool=True
     histograms_on_train:bool = True
     #metrics = ["graphs","histograms"]
+
+    def __post_init__(self):
+        self.save_image_epochs = max(int(.25*self.num_epochs),1)
+        self.save_model_global_iter = max(int(.25*self.num_epochs),1)
+        self.save_metric_epochs = max(int(.25*self.num_epochs),1)
+        self.save_model_epochs = max(int(.25*self.num_epochs),1)
 
 @dataclass
 class SBConfig:

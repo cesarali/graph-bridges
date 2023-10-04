@@ -78,7 +78,7 @@ class TableOfResults(ABC):
                  datasets_names:List[str],
                  metric_names:List[str],
                  methods_names:List[str],
-                 bigger_is_better: Union[bool, List] = True,
+                 bigger_is_better: Union[bool, List] = False,
                  table_file: Union[str, Path] = None,
                  table_file_configs: Union[str, Path] = None,
                  data:Dict[Tuple[str,str],List[float]] = None,
@@ -269,7 +269,7 @@ class TableOfResults(ABC):
     def run_config(self,config:Union[Dict,dataclass]):
         pass
 
-    def run_table(self, base_methods_configs, base_dataset_args):
+    def run_table(self, base_methods_configs, base_dataset_args,fill_table=True):
         for dataset_name in self.datasets_names:
             for method_name in self.methods_names:
                 if method_name in base_methods_configs:
@@ -279,22 +279,31 @@ class TableOfResults(ABC):
                     base_method_config.__post_init__()
 
                     base_method_config = self.dataset_name_to_config(dataset_name,base_method_config,base_dataset_args)
+                    base_method_config = self.method_name_to_config(method_name,base_method_config)
 
                     #set metrics
                     for metric_name in self.metric_names:
                         base_method_config = self.metric_name_to_config(metric_name,base_method_config)
 
-                    #====================
-                    # CHECK VALUE
-                    #====================
-                    current_value = self.return_entry_names(dataset_name=dataset_name,
-                                                            metric_name=metric_name,
-                                                            method_name=method_name)
+                    #current_value = self.return_entry_names(dataset_name=dataset_name,
+                    #                                        metric_name=metric_name,
+                    #                                        method_name=method_name)
                     #====================
                     # RUN CONFIG
                     #====================
+                    results,all_metrics = self.run_config(base_method_config)
+                    if fill_table:
+                        metrics_in_file, missing_ = self.results_to_metrics(base_method_config,results, all_metrics)
+                        for metric_name_ in metrics_in_file:
+                            new_posible_value = metrics_in_file[metric_name_]
+                            if isinstance(new_posible_value,torch.Tensor):
+                                new_posible_value = new_posible_value.cpu().item()
 
-                    self.run_config(base_method_config)
+                            self.change_entry_names(dataset_name=dataset_name,
+                                                    metric_name=metric_name_,
+                                                    method_name=method_name,
+                                                    value=new_posible_value,
+                                                    overwrite=False)
 
     def obtain_string_in_experiments(self,
                                      model_name,

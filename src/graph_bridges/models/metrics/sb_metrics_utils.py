@@ -14,6 +14,8 @@ def log_metrics(sb:SB, current_model, past_to_train_model, sinkhorn_iteration, e
 
     :return:
     """
+    all_metrics = {}
+
     config = sb.config
     if metrics_to_log is None:
         metrics_to_log = config.trainer.metrics
@@ -47,11 +49,11 @@ def log_metrics(sb:SB, current_model, past_to_train_model, sinkhorn_iteration, e
         if metric_string_name in metrics_to_log:
             marginal_histograms = marginal_0, backward_histogram[0, :], marginal_1, forward_histogram[-1, :]
             mse_1, mse_0 = marginals_histograms_mse(marginal_histograms)
-            mse_metric_path = config.experiment_files.metrics_file.format(
-                metric_string_name + "_sinkhorn_{0}_{1}".format(sinkhorn_iteration, epoch))
+            mse_metrics = {"mse_histograms_1": mse_1.tolist(),"mse_histograms_0": mse_0.tolist()}
+            all_metrics.update(mse_metrics)
+            mse_metric_path = config.experiment_files.metrics_file.format(metric_string_name + "_sinkhorn_{0}_{1}".format(sinkhorn_iteration, epoch))
             with open(mse_metric_path, "w") as f:
-                json.dump({"mse_histograms_1": mse_1.tolist(),
-                           "mse_histograms_0": mse_0.tolist()}, f)
+                json.dump(mse_metrics, f)
 
     else:
         metric_string_name = "mse_histograms"
@@ -67,11 +69,11 @@ def log_metrics(sb:SB, current_model, past_to_train_model, sinkhorn_iteration, e
             marginal_0, marginal_1, backward_histogram, forward_histogram, forward_time, state_legends = all_histograms
             marginal_histograms = marginal_0, backward_histogram[0, :], marginal_1, forward_histogram[-1, :]
             mse_1, mse_0 = marginals_histograms_mse(marginal_histograms)
-            mse_metric_path = config.experiment_files.metrics_file.format(
-                metric_string_name + "_sinkhorn_{0}_{1}".format(sinkhorn_iteration,epoch))
+            mse_metrics = {"mse_histograms_1": mse_1.tolist(),"mse_histograms_0": mse_0.tolist()}
+            mse_metric_path = config.experiment_files.metrics_file.format(metric_string_name + "_sinkhorn_{0}_{1}".format(sinkhorn_iteration,epoch))
+            all_metrics.update(mse_metrics)
             with open(mse_metric_path, "w") as f:
-                json.dump({"mse_histograms_1": mse_1.tolist(),
-                           "mse_histograms_0": mse_0.tolist()}, f)
+                json.dump(mse_metrics, f)
 
     # METRICS
     metric_string_name = "graphs"
@@ -79,6 +81,7 @@ def log_metrics(sb:SB, current_model, past_to_train_model, sinkhorn_iteration, e
         graph_metrics_path_ = config.experiment_files.metrics_file.format("_sinkhorn_{0}_{1}".format(sinkhorn_iteration,
                                                                                                      epoch))
         graph_metrics = graph_metrics_for_sb(sb, current_model, device)
+        all_metrics.update(graph_metrics)
         with open(graph_metrics_path_, "w") as f:
             json.dump(graph_metrics, f)
 
@@ -103,3 +106,5 @@ def log_metrics(sb:SB, current_model, past_to_train_model, sinkhorn_iteration, e
                                           current_model=current_model,
                                           past_to_train_model=past_to_train_model,
                                           plot_path=histograms_plot_path_2)
+
+    return all_metrics

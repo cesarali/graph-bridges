@@ -53,24 +53,17 @@ parameters_keys = ['dataloader_parameters',
 
 models_keys = ['current_model','past_model']
 
-@dataclass
-class BaseConfig:
-
-    base_ctdd : CTDDConfig = None
-    base_sb: SBConfig = None
-    base_dataset_args: dict = None
-    base_method_args: dict = None
 
 class TableOfResultsReport(TableOfResults):
     """
     """
     def __init__(self,sinkhorn_to_read:int=0):
 
-        datasets_names = ['Community','Ego','Grid']
-
+        #datasets_names = ['Community','Ego']
+        datasets_names = ['Community']
         metrics_names = ['Best Loss','MSE']
-
-        methods_names = ['CTDD lr .001', "CTDD lr .01", "CTDD lr .05"]
+        methods_names = ["CTDD lr .05","SB lr: 0.01"] # 'CTDD lr .001', "CTDD lr .01",
+        #methods_names = ["SB lr: 0.01"]
 
         self.sinkhorn_to_read = sinkhorn_to_read
 
@@ -113,10 +106,17 @@ class TableOfResultsReport(TableOfResults):
     def method_name_to_config(self,method_name,config:Union[SBConfig,CTDDConfig]) -> Dict[int, Union[dict, dataclass]]:
         if method_name == 'CTDD lr .001':
             config.trainer.learning_rate = .001
+            #config.trainer.num_epochs = 150
         if method_name == "CTDD lr .01":
             config.trainer.learning_rate = .01
+            #config.trainer.num_epochs = 50
+            config.trainer.__post_init__()
         if method_name == "CTDD lr .05":
             config.trainer.learning_rate = .05
+        if method_name == "SB lr: 0.01":
+            assert isinstance(config,SBConfig)
+            config.trainer.learning_rate = .05
+
         return config
 
     def config_to_dataset_name(self,config:Union[SBConfig,CTDDConfig])->str:
@@ -254,22 +254,17 @@ class TableOfResultsReport(TableOfResults):
     #===============================================================
     # RUN TABLE
     #===============================================================
-    def set_baselines(self,base_config:BaseConfig):
-        self.base_method_config = base_config.base_ctdd
-        self.base_sb_config = base_config.base_sb
-
-        self.base_dataset_args = base_config.base_dataset_args
-        self.base_method_args = base_config.base_method_args
 
     def run_config(self, config: Union[SBConfig,CTDDConfig]):
         if isinstance(config,CTDDConfig):
             from graph_bridges.models.trainers.ctdd_training import CTDDTrainer
             ctdd_trainer = CTDDTrainer(config)
-            ctdd_trainer.train_ctdd()
+            results_,all_metrics = ctdd_trainer.train_ctdd()
         elif isinstance(config,SBConfig):
             from graph_bridges.models.trainers.sb_training import SBTrainer
             sb_trainer = SBTrainer(config)
-            sb_trainer.train_schrodinger()
+            results_,all_metrics = sb_trainer.train_schrodinger()
+        return results_,all_metrics
 
 
 if __name__=="__main__":
@@ -282,6 +277,8 @@ if __name__=="__main__":
     table_of_results = TableOfResultsReport()
     pandas_table = table_of_results.create_pandas()
 
+    pprint(pandas_table)
+
     # ===================================================================
     # DESIGN OF EXPERIMENTS
     # ===================================================================
@@ -291,24 +288,40 @@ if __name__=="__main__":
 
     #datasets_names = ['Community', 'Ego', 'Grid']
     #metrics_names = ['Best Loss', 'MSE']
-    #methods_names = ['CTDD lr .001', "CTDD lr .01", "CTDD lr .05"]
+    #methods_names = ['CTDD lr .001', "CTDD lr .01", "CTDD lr .05", "SB lr: 0.01"]
 
     config = CTDDConfig(experiment_name="table",
                         experiment_type="table_report_0",
                         delete=True)
     config.trainer.metrics = []
-    config.trainer.num_epochs = 5
+    config.trainer.num_epochs = 2
     config.trainer.__post_init__()
-    config = table_of_results.dataset_name_to_config("Community", config)
+
+    sb_config = SBConfig(experiment_name="table",
+                         experiment_type="table_report_0",
+                         delete=True)
+    sb_config.trainer.metrics = []
+    sb_config.trainer.num_epochs = 5
+    sb_config.trainer.__post_init__()
+
+    sb_config.sampler.num_steps = 5
+    sb_config.flip_estimator.stein_sample_size = 200
 
     base_methods_configs = {'CTDD lr .001':copy.deepcopy(config),
                             "CTDD lr .01":copy.deepcopy(config),
-                            "CTDD lr .05":copy.deepcopy(config)}
+                            "CTDD lr .05":copy.deepcopy(config),
+                            "SB lr: 0.01":copy.deepcopy(sb_config)}
 
     base_dataset_args = {"batch_size":32,"full_adjacency":False}
-
     table_of_results.run_table(base_methods_configs,base_dataset_args)
-    #table_of_results.run_config(config)
+
+    print("Final Table")
+    pandas_table = table_of_results.create_pandas()
+    pprint(pandas_table)
+
+    # ===================================================================
+    # READ EXPERIMENT AND CHANGE TABLE
+    # ===================================================================
 
     """
     

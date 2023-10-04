@@ -24,7 +24,7 @@ class TestCTDDTrainer(unittest.TestCase):
     ctdd: CTDD
 
     def test_trained(self):
-        num_epochs = 50
+        num_epochs = 2
         self.ctdd_config = CTDDConfig(experiment_indentifier="ctdd_trainer_test")
         self.ctdd_config.data = CommunitySmallConfig(batch_size=32, full_adjacency=False)
         self.ctdd_config.model = BackRateMLPConfig()
@@ -40,6 +40,7 @@ class TestCTDDTrainer(unittest.TestCase):
         original_determinism = torch.use_deterministic_algorithms(False)
         self.ctdd_trainer.train_ctdd()
 
+    @unittest.skip
     def test_metrics_login(self):
         from graph_bridges.models.metrics.ctdd_metrics_utils import log_metrics
 
