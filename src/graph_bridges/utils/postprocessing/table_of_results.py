@@ -50,16 +50,17 @@ class TableOfResults(ABC):
 
     1.  Read results which are ready:
 
-        from results of training AI models, we expect
+        from results of training AI models, typically we expect
         for every data experiment:
 
         1. a configuration file
         2. a results file
         3. a models file (results and models can coincide)
+        4. metrics file
 
         The idea is to read results and configs and fill the tables one uses the abstract methods
 
-    2. We can also generate config files that can be sued to run experiments
+    2. We can also generate config files that can be used to run experiments
 
         For especifics places of the table, in case we need to fill a
         particular entry
@@ -185,6 +186,21 @@ class TableOfResults(ABC):
                 all_row_values[method_id] = value
                 self.data[(self.datasets_names[dataset_id], self.metric_names[metric_id])] = all_row_values
 
+    def return_entry_names(self,
+                           dataset_name:str,
+                           metric_name:str,
+                           method_name:str):
+        dataset_id = self.datasets_to_id[dataset_name]
+        metric_id = self.metrics_to_id[metric_name]
+        method_id = self.methods_to_id[method_name]
+        return self.return_entry_ids(dataset_id,metric_id,method_id)
+
+    def return_entry_ids(self,
+                         dataset_id:int,
+                         metric_id:int,
+                         method_id:int):
+        return self.data[(self.datasets_names[dataset_id], self.metric_names[metric_id])][method_id]
+
     @abstractmethod
     def dataset_name_to_config(self,dataset_name,config)->Dict[int,Union[dict,dataclass]]:
         pass
@@ -210,9 +226,9 @@ class TableOfResults(ABC):
         pass
 
     @abstractmethod
-    def results_to_metrics(self,results_metrics:Dict)->Tuple[Dict[str,float],List[str]]:
+    def results_to_metrics(self,config,results_,all_metrics)->Tuple[Dict[str,float],List[str]]:
         """
-        metrics_names = ['training_time','best_loss','Degree','Cluster','Orbit']
+        metrics_names =
 
         :param results_metrics:
 
@@ -230,7 +246,7 @@ class TableOfResults(ABC):
         """
         this function loads the results from an experiment folder
 
-        :return: configs,metrics
+        :return: sb,config,results,all_metrics,device
         """
         pass
 
@@ -252,6 +268,33 @@ class TableOfResults(ABC):
     @abstractmethod
     def run_config(self,config:Union[Dict,dataclass]):
         pass
+
+    def run_table(self, base_methods_configs, base_dataset_args):
+        for dataset_name in self.datasets_names:
+            for method_name in self.methods_names:
+                if method_name in base_methods_configs:
+
+                    base_method_config = base_methods_configs[method_name]
+                    base_method_config.experiment_indentifier = None
+                    base_method_config.__post_init__()
+
+                    base_method_config = self.dataset_name_to_config(dataset_name,base_method_config,base_dataset_args)
+
+                    #set metrics
+                    for metric_name in self.metric_names:
+                        base_method_config = self.metric_name_to_config(metric_name,base_method_config)
+
+                    #====================
+                    # CHECK VALUE
+                    #====================
+                    current_value = self.return_entry_names(dataset_name=dataset_name,
+                                                            metric_name=metric_name,
+                                                            method_name=method_name)
+                    #====================
+                    # RUN CONFIG
+                    #====================
+
+                    self.run_config(base_method_config)
 
     def obtain_string_in_experiments(self,
                                      model_name,
@@ -300,7 +343,6 @@ class TableOfResults(ABC):
             table_file = save_dir / table_file_name
             with open(table_file,"r") as file:
                 json.dump(self.data,file)
-
 
     def read_table(self):
         pass

@@ -52,11 +52,10 @@ class CTDDTrainer:
         print("# ==================================================")
 
         print("# Current Model ************************************")
-        pprint(self.config.model.__dict__)
-        print("# Reference Parameters **********************************")
-        pprint(self.config.reference.__dict__)
-        print("# Trainer Parameters")
-        pprint(self.config.trainer.__dict__)
+
+        print(self.config.experiment_type)
+        print(self.config.experiment_name)
+        print(self.config.experiment_indentifier)
 
         print("# ==================================================")
         print("# Number of Epochs {0}".format(self.number_of_epochs))
@@ -71,6 +70,7 @@ class CTDDTrainer:
         :param sinkhorn_iteration:
         :return:
         """
+        self.parameters_info()
 
         from torch.utils.tensorboard import SummaryWriter
         self.writer = SummaryWriter(self.config.experiment_files.tensorboard_path)
@@ -95,7 +95,11 @@ class CTDDTrainer:
     def train_step(self, current_model, databatch, number_of_training_step):
         with torch.autograd.set_detect_anomaly(True):
             databatch = self.preprocess_data(databatch)
-            x_adj, x_features = databatch[0],databatch[1]
+            if len(databatch) > 1:
+                x_adj, x_features = databatch[0],databatch[1]
+            else:
+                x_adj = databatch[0]
+
             B = x_adj.shape[0]
 
             # Sample a random timestep for each image
@@ -116,7 +120,11 @@ class CTDDTrainer:
     def test_step(self, current_model, databatch, number_of_test_step):
         with torch.no_grad():
             databatch = self.preprocess_data(databatch)
-            x_adj, x_features = databatch[0], databatch[1]
+            if len(databatch) > 1:
+                x_adj, x_features = databatch[0], databatch[1]
+            else:
+                x_adj = databatch[0]
+
             B = x_adj.shape[0]
 
             # Sample a random timestep for each image
@@ -129,8 +137,12 @@ class CTDDTrainer:
         return loss_
 
     def preprocess_data(self, databatch):
-        return [databatch[0].float().to(self.device),
-                databatch[1].float().to(self.device)]
+        if len(databatch) == 2:
+            return [databatch[0].float().to(self.device),
+                    databatch[1].float().to(self.device)]
+        else:
+            x = databatch[0]
+            return [x.float().to(self.device)]
 
     def train_ctdd(self):
         """
@@ -145,6 +157,8 @@ class CTDDTrainer:
         # INITIATE LOSS
         initial_loss = self.initialize()
         best_loss = initial_loss
+        all_metrics = {}
+        results_ = {}
 
         LOSS = []
         number_of_test_step = 0
@@ -187,37 +201,36 @@ class CTDDTrainer:
             validation_loss_average = np.asarray(validation_loss).mean()
 
             if epoch % self.config.trainer.save_model_epochs == 0:
-                self.save_results(current_model=training_model,
-                                  initial_loss=initial_loss,
-                                  best_loss=best_loss,
-                                  training_loss_average=training_loss_average,
-                                  validation_loss_average=validation_loss_average,
-                                  LOSS=LOSS,
-                                  number_of_training_step=number_of_training_step,
-                                  checkpoint=True)
+                results_ = self.save_results(current_model=training_model,
+                                             initial_loss=initial_loss,
+                                             best_loss=best_loss,
+                                             training_loss_average=training_loss_average,
+                                             validation_loss_average=validation_loss_average,
+                                             LOSS=LOSS,
+                                             number_of_training_step=number_of_training_step,
+                                             checkpoint=True)
 
             if (epoch + 1) % self.config.trainer.save_metric_epochs == 0:
-                log_metrics(self.ctdd, epoch, self.device)
+                all_metrics = log_metrics(self.ctdd, epoch, self.device)
 
             # SAVE RESULTS IF LOSS DECREASES IN VALIDATION
             if validation_loss_average < best_loss:
-                self.save_results(current_model=training_model,
-                                  initial_loss=initial_loss,
-                                  best_loss=best_loss,
-                                  training_loss_average=training_loss_average,
-                                  validation_loss_average=validation_loss_average,
-                                  LOSS=LOSS,
-                                  number_of_training_step=number_of_training_step,
-                                  checkpoint=False)
+                results_ = self.save_results(current_model=training_model,
+                                             initial_loss=initial_loss,
+                                             best_loss=best_loss,
+                                             training_loss_average=training_loss_average,
+                                             validation_loss_average=validation_loss_average,
+                                             LOSS=LOSS,
+                                             number_of_training_step=number_of_training_step,
+                                             checkpoint=False)
                 best_loss = validation_loss_average
 
         self.time1 = datetime.now()
         #=====================================================
         # RESULTS FROM BEST MODEL UPDATED WITH METRICS
         #=====================================================
-
         self.writer.close()
-        return best_loss
+        return results_,all_metrics
 
     def save_results(self,
                      current_model,
@@ -234,10 +247,13 @@ class CTDDTrainer:
                    "best_loss": best_loss,
                    "validation_loss_average":validation_loss_average,
                    "training_loss_average": training_loss_average}
+
         if checkpoint:
             best_model_path_checkpoint = self.config.experiment_files.best_model_path_checkpoint.format(number_of_training_step)
             torch.save(RESULTS,best_model_path_checkpoint)
         else:
             torch.save(RESULTS, self.config.experiment_files.best_model_path)
+
+        return RESULTS
 
 

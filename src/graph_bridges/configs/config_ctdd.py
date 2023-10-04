@@ -56,7 +56,7 @@ class CTDDPipelineConfig:
 class CTDDTrainerConfig:
     device: str = "cuda:0"
     number_of_paths : int = 10
-    num_epochs :int = 200
+    num_epochs :int = 5
     distributed: bool = False
 
     optimizer_name :str = 'AdamW'
@@ -67,13 +67,19 @@ class CTDDTrainerConfig:
 
     gradient_accumulation_steps :int = 1
     lr_warmup_steps :int = 500
-    save_metric_epochs: int = 50
-    save_image_epochs :int = 50
-    save_model_epochs :int = 50
-    save_model_global_iter :int = 1000
+    save_metric_epochs: int = None
+    save_image_epochs :int = None
+    save_model_epochs :int = None
+    save_model_global_iter :int = None
     log_loss: int = 500
 
     metrics:List[str] = field(default_factory=lambda: ["graphs", "graphs_plots", "histograms","mse_histograms"])
+
+    def __post_init__(self):
+        self.save_metric_epochs = int(.25*self.num_epochs)
+        self.save_image_epochs = int(.25*self.num_epochs)
+        self.save_model_epochs = int(.25*self.num_epochs)
+        self.save_model_global_iter = int(.25*self.num_epochs)
 
 @dataclass
 class CTDDExperimentsFiles(ExperimentFiles):

@@ -320,6 +320,7 @@ class SBTrainer:
                      epoch,
                      sinkhorn_iteration,
                      checkpoint=True):
+
         RESULTS = {"current_model": current_model,
                    "past_model": past_model,
                    "initial_loss": initial_loss.item(),

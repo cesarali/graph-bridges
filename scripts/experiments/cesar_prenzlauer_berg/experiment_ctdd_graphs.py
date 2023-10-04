@@ -22,7 +22,7 @@ if __name__=="__main__":
     #                             full_adjacency=True)
 
     ctdd_config.data = CommunitySmallConfig(batch_size=24,
-                                       full_adjacency=True)
+                                            full_adjacency=False)
 
     # MLP
     ctdd_config.model = BackRateMLPConfig()
