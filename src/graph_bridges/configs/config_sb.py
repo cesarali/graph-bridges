@@ -14,7 +14,6 @@ from graph_bridges.data.graph_dataloaders_config import all_dataloaders_configs
 from graph_bridges.models.reference_process.reference_process_config import GaussianTargetRateConfig
 from graph_bridges.models.reference_process.reference_process_config import all_reference_process_configs
 from graph_bridges.configs.config_files import ExperimentFiles
-from pprint import pprint
 from graph_bridges.models.temporal_networks.temporal_networks_configs import all_temp_nets_configs
 from graph_bridges.models.temporal_networks.transformers.temporal_hollow_transformers import TemporalHollowTransformerConfig
 from graph_bridges.models.temporal_networks.unets.unet_wrapper import UnetTauConfig
@@ -22,6 +21,9 @@ from graph_bridges.models.temporal_networks.mlp.temporal_mlp import TemporalMLPC
 from graph_bridges.data.graph_dataloaders_config import TargetConfig
 from graph_bridges.models.losses.loss_configs import GradientEstimatorConfig,SteinSpinEstimatorConfig
 from graph_bridges.models.losses.loss_configs import all_loss_configs
+from pprint import pprint
+
+
 def get_git_revisions_hash():
     hashes = []
     hashes.append(subprocess.check_output(['git', 'rev-parse', 'HEAD']))

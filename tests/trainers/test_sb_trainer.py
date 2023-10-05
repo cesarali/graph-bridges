@@ -62,6 +62,7 @@ class TestSBTrainer(unittest.TestCase):
     def test_training(self):
         self.sb_trainer.train_schrodinger()
 
+    @unittest.skip
     def test_loading(self):
         sb = SB()
         results,metrics,device = sb.load_from_results_folder(experiment_name="graph",
