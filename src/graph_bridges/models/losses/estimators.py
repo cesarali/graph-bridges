@@ -149,6 +149,10 @@ class BackwardRatioSteinEstimator:
                  config:SBConfig,
                  device):
         self.dimension = config.loss.dimension_to_check
+
+        self.flip_old_time = config.loss.flip_old_time
+        self.flip_current_time =  config.loss.flip_current_time
+
         if isinstance(config.flip_estimator,SteinSpinEstimatorConfig):
             self.flip_estimator = SteinSpinEstimator(config, device)
         elif isinstance(config.flip_estimator,GradientEstimatorConfig):
@@ -167,16 +171,29 @@ class BackwardRatioSteinEstimator:
                  current_model: SchrodingerBridgeBackwardRate,
                  past_model: SchrodingerBridgeBackwardRate,
                  X_spins: TensorType["batch_size", "dimension"],
-                 current_time: TensorType["batch_size"]):
+                 current_time: TensorType["batch_size"],
+                 sinkhorn_iteration=0):
         """
         :param current_model:
         :param X_spins:
         :return:
         """
 
+        if self.flip_old_time:
+            if sinkhorn_iteration % 2 == 0:
+                old_time = current_time
+            else:
+                old_time = 1. - current_time
+
+        if self.flip_current_time:
+            if sinkhorn_iteration % 2 == 0:
+                current_time = current_time
+            else:
+                current_time = 1. - current_time
+
         phi_new_d = current_model.flip_rate(X_spins, current_time).squeeze()
         with torch.no_grad():
-            phi_old_d = past_model.flip_rate(X_spins, current_time)
+            phi_old_d = past_model.flip_rate(X_spins, old_time)
             phi_old_d = phi_old_d.squeeze()
 
         # stein estimate
@@ -200,7 +217,6 @@ if __name__=="__main__":
 
     config = SBConfig
     config.data.number_of_spins = 2
-
 
     number_of_spins = 2
     batch_size = 3

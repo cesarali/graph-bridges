@@ -70,6 +70,9 @@ class BackwardRatioFlipEstimatorConfig:
     name : str = "BackwardRatioFlipEstimator"
     dimension_to_check : int = None
 
+    flip_old_time: bool = False
+    flip_current_time: bool = False
+
 @dataclass
 class SBSchedulerConfig:
     name :str = 'SBScheduler'
@@ -77,6 +80,10 @@ class SBSchedulerConfig:
 @dataclass
 class SBPipelineConfig:
     name : str = 'SBPipeline'
+    flip_time:bool = False
+    flip_pairs:bool = False
+    start_flip:int = 0
+
 
 @dataclass
 class SBTrainerConfig:

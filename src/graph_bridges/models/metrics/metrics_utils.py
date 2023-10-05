@@ -1,6 +1,9 @@
 import json
 from pathlib import Path
 
+#import tracemalloc
+#tracemalloc.start()
+
 def read_metric(config,metric_string_identifier,sinkhorn_iteration=None,checkpoint=None):
     obtain_number = lambda x: int(x.name.split("_")[-1].split(".")[0]) if x.name.split("_")[-1].split(".")[0].isdigit() else None
 

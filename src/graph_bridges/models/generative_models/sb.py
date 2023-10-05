@@ -85,7 +85,7 @@ class SB:
         :param sinkhorn_iteration_to_load:
         :param checkpoint:
         :param device:
-        :return:
+        :return: results_,all_metrics,device
         """
         from graph_bridges.configs.utils import get_config_from_file
 

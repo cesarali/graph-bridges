@@ -46,14 +46,12 @@ class TestSBTrainer(unittest.TestCase):
         past_model = sb.past_model
         sb.config.sampler.step_type = "poisson"
 
-
-    @unittest.skip
     def test_restart_training(self):
         sb_trainer = SBTrainer(config=None,
                                experiment_name="graph",
                                experiment_type="sb",
-                               experiment_indentifier="1696030913",
-                               new_experiment_indentifier="1696030913_1",
+                               experiment_indentifier="community_small_to_bernoulli",
+                               new_experiment_indentifier="community_small_to_bernoulli_reverse_pipeline_5",
                                sinkhorn_iteration_to_load=0,
                                next_sinkhorn=True)
         sb_trainer.sb_config.trainer.save_metric_epochs = 100
@@ -66,7 +64,7 @@ class TestSBTrainer(unittest.TestCase):
         sb = SB()
         sb.load_from_results_folder(experiment_name="graph",
                                     experiment_type="sb",
-                                    experiment_indentifier="1696030913",
+                                    experiment_indentifier="community_small_to_bernoulli",
                                     new_experiment=False,
                                     new_experiment_indentifier=None,
                                     sinkhorn_iteration_to_load=0,
@@ -74,7 +72,7 @@ class TestSBTrainer(unittest.TestCase):
 
         current_model = sb.training_model
         past_model = sb.past_model
-        past_model.load_state_dict(current_model.state_dict())
+        #past_model.load_state_dict(current_model.state_dict())
 
         marginal_paths_histograms_plots(sb,
                                         sinkhorn_iteration=0,
@@ -82,7 +80,7 @@ class TestSBTrainer(unittest.TestCase):
                                         current_model=current_model,
                                         past_to_train_model=None,
                                         save_path=None,
-                                        exact_backward=True,
+                                        exact_backward=False,
                                         train=True)
 
     @unittest.skip

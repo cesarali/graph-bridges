@@ -172,8 +172,8 @@ def paths_marginal_histograms(sb:SB,
     else:
         backward_time = times_1[0]
         forward_time = times_2[0]
-        forward_histogram = histogram_path_2
         backward_histogram = histogram_path_1
+        forward_histogram = histogram_path_2
 
     print(f"how much 1 {how_much_1}")
     print(f"how much 3 {how_much_2}")

@@ -57,6 +57,10 @@ class SBPipeline(DiffusionPipeline):
         self.bridge_config = config
         self.D = self.bridge_config.data.D
 
+        self.flip_time = self.bridge_config.pipeline.flip_time
+        self.start_flip = self.bridge_config.pipeline.start_flip
+        self.flip_pairs = self.bridge_config.pipeline.flip_pairs
+
         data_training_size = self.bridge_config.data.training_size
         target_training_size = self.bridge_config.target.training_size
 
@@ -185,6 +189,20 @@ class SBPipeline(DiffusionPipeline):
                         print(h)
                     times_ = t * torch.ones(num_of_paths,device=device)
 
+                    if self.flip_time:
+                        if self.flip_pairs:
+                            if sinkhorn_iteration >= self.start_flip:
+                                if sinkhorn_iteration % 2 == 0:
+                                    times_ = 1. - times_
+                                else:
+                                    times_ = times_
+                        else:
+                            if sinkhorn_iteration >= self.start_flip:
+                                if sinkhorn_iteration % 2 == 0:
+                                    times_ = times_
+                                else:
+                                    times_ = 1.- times_
+
                     if sinkhorn_iteration != 0:
                         rates_ = generation_model.flip_rate(spins, times_)
                     else:
@@ -302,6 +320,20 @@ class SBPipeline(DiffusionPipeline):
 
                 h = self.select_time_difference(sinkhorn_iteration, timesteps, idx)
                 times = t * torch.ones(num_of_paths,device=device)
+
+                if self.flip_time:
+                    if self.flip_pairs:
+                        if sinkhorn_iteration >= self.start_flip:
+                            if sinkhorn_iteration % 2 == 0:
+                                times = 1. - times
+                            else:
+                                times = times
+                    else:
+                        if sinkhorn_iteration >= self.start_flip:
+                            if sinkhorn_iteration % 2 == 0:
+                                times = times
+                            else:
+                                times = 1. - times
 
                 if sinkhorn_iteration != 0:
                     rates_ = generation_model.flip_rate(initial_spins, times)

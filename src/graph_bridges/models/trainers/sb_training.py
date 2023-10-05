@@ -69,7 +69,7 @@ class SBTrainer:
                                              experiment_indentifier=experiment_indentifier,
                                              new_experiment=True,
                                              new_experiment_indentifier=new_experiment_indentifier,
-                                             sinkhorn_iteration_to_load=0,
+                                             sinkhorn_iteration_to_load=sinkhorn_iteration_to_load,
                                              checkpoint=checkpoint)
             self.sb_config = self.sb.config
             self.device = torch.device(self.sb_config.trainer.device)
@@ -159,7 +159,7 @@ class SBTrainer:
         X_spins = databatch[0]
         current_time = databatch[1]
         # LOSS UPDATE
-        loss = self.sb.backward_ratio_estimator(current_model, past_model, X_spins, current_time)
+        loss = self.sb.backward_ratio_estimator(current_model, past_model, X_spins, current_time,sinkhorn_iteration=sinkhorn_iteration)
         self.optimizer.zero_grad()
         loss.backward()
         if self.sb_config.trainer.clip_grad:

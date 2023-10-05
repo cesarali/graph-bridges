@@ -135,6 +135,7 @@ class TableOfResultsReport(TableOfResults):
 
     def config_to_method_name(self,config:Union[SBConfig,CTDDConfig])->str:
         methods_names = ['CTDD lr .001', "CTDD lr .01", "CTDD lr .05","SB lr: 0.01","SB lr: 0.007"]
+        
         def check_and_return(name_to_return):
             return name_to_return if name_to_return in self.methods_names else None
 
