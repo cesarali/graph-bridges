@@ -7,8 +7,9 @@ from graph_bridges.models.metrics.sb_metrics import paths_marginal_histograms,si
 from graph_bridges.models.metrics.sb_paths_metrics import states_paths_histograms_plots
 from graph_bridges.models.metrics.histograms_metrics import marginals_histograms_mse
 from graph_bridges.models.temporal_networks.graphs_networks.graph_plots import plot_graphs_list2
+import torchvision
 
-def log_metrics(sb:SB, current_model, past_to_train_model, sinkhorn_iteration, epoch, device, metrics_to_log=None):
+def log_metrics(sb:SB, current_model, past_to_train_model, sinkhorn_iteration, epoch, device, metrics_to_log=None,writer=None):
     """
     After the training procedure is done, the model is updated
 
@@ -44,6 +45,11 @@ def log_metrics(sb:SB, current_model, past_to_train_model, sinkhorn_iteration, e
                       time_=forward_time.cpu(),
                       states_legends=state_legends,
                       save_path=histograms_plot_path_)
+
+        # Read the saved image using torchvision
+        image = torchvision.io.read_image(histograms_plot_path_)
+        # Add the image to TensorBoard
+        writer.add_image("matplotlib_plot", image, global_step=epoch)
 
         metric_string_name = "mse_histograms"
         if metric_string_name in metrics_to_log:

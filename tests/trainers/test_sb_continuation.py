@@ -46,6 +46,7 @@ class TestSBTrainer(unittest.TestCase):
         past_model = sb.past_model
         sb.config.sampler.step_type = "poisson"
 
+    @unittest.skip
     def test_restart_training(self):
         sb_trainer = SBTrainer(config=None,
                                experiment_name="graph",

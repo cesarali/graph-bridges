@@ -6,6 +6,7 @@ from datetime import datetime
 from tqdm import tqdm
 
 import numpy as np
+from dataclasses import asdict
 from graph_bridges.models.generative_models.sb import SB
 from graph_bridges.configs.graphs.graph_config_sb import SBConfig
 from graph_bridges.utils.plots.sb_plots import sinkhorn_plot
@@ -29,6 +30,40 @@ def copy_models(model_to, model_from):
     model_to.load_state_dict(model_from.state_dict())
 
 check_model_devices = lambda x: x.parameters().__next__().device
+
+from torch.utils.tensorboard import SummaryWriter
+import numpy as np
+
+def log_dict(writer, prefix, dictionary, step):
+    for key, value in dictionary.items():
+        if value is None:
+            writer.add_text(f"{prefix}/{key}", "None", step)
+        else:
+            if isinstance(value, dict):
+                log_dict(writer, f"{prefix}/{key}", value, step)
+            elif isinstance(value, list):
+                for i, v in enumerate(value):
+                    if v is None:
+                        writer.add_text(f"{prefix}/{key}", "None", step)
+                    else:
+                        if isinstance(v,str):
+                            writer.add_text(f"{prefix}/{key}/{i}", v, step)
+                        else:
+                            writer.add_text(f"{prefix}/{key}", str(v), step)
+            elif isinstance(value,str):
+                writer.add_text(f"{prefix}/{key}", value, step)
+            else:
+                writer.add_text(f"{prefix}/{key}", str(value), step)
+
+def convert_paths_to_strings(data):
+    if isinstance(data, dict):
+        return {key: convert_paths_to_strings(value) for key, value in data.items()}
+    elif isinstance(data, list):
+        return [convert_paths_to_strings(item) for item in data]
+    elif isinstance(data, Path):
+        return str(data)
+    else:
+        return data
 
 class SBTrainer:
     """
@@ -125,6 +160,10 @@ class SBTrainer:
 
         from torch.utils.tensorboard import SummaryWriter
         self.writer = SummaryWriter(self.sb_config.experiment_files.tensorboard_path)
+        my_dict = asdict(self.sb_config)
+        converted_dict = convert_paths_to_strings(my_dict)
+        #json_str = json.dumps(converted_dict, indent=2)
+        log_dict(self.writer,"config",converted_dict,0)
 
         # CHECK DATA
         #spins_path, times = self.sb.pipeline(None, 0, self.device,return_path=True,return_path_shape=True)
@@ -149,7 +188,8 @@ class SBTrainer:
                     past_to_train_model=past_to_train_model,
                     sinkhorn_iteration=sinkhorn_iteration,
                     epoch=0,
-                    device=self.device)
+                    device=self.device,
+                    writer=self.writer)
         # INFO
         #self.parameters_info(sinkhorn_iteration)
         return initial_loss
@@ -292,7 +332,8 @@ class SBTrainer:
                                               past_to_train_model=past_model,
                                               sinkhorn_iteration=sinkhorn_iteration,
                                               epoch=epoch+1,
-                                              device=self.device)
+                                              device=self.device,
+                                              writer=self.writer)
 
             self.time1 = datetime.now()
             #=====================================================

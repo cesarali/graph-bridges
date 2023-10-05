@@ -55,7 +55,7 @@ if __name__ == '__main__':
     sb_config = SBConfig(delete=True,
                          experiment_name="graph",
                          experiment_type="sb",
-                         experiment_indentifier="community_bernoulli_mse")
+                         experiment_indentifier="community_bernoulli_probability_test_for_reverse_table_3")
 
     # experiment_indentifier="bernoulli_to_bernoulli_0_stein_200_mlp_lr01_steps_50_clip_False_gradient_exact")
 
@@ -109,7 +109,7 @@ if __name__ == '__main__':
     #==================================
     # LOSS
     #==================================
-    num_epochs = 100
+    num_epochs = 50
     sb_config.flip_estimator = SteinSpinEstimatorConfig(stein_sample_size=200,
                                                         stein_epsilon=0.2)
     # sb_config.flip_estimator = RealFlipConfig()

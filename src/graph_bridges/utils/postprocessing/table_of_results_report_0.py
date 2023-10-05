@@ -60,6 +60,7 @@ class TableOfResultsGraphBridges(TableOfResults):
 
         :param dataset_name:
         :param config:
+        :param base_dataset_args: arguments shared across data specifications
         :return: config
         """
         #'MNIST', 'EMNIST', "Fashion"
@@ -129,8 +130,7 @@ class TableOfResultsGraphBridges(TableOfResults):
             return name_to_return if name_to_return in self.datasets_names else None
 
     def config_to_method_name(self,config:Union[SBConfig,CTDDConfig])->str:
-        methods_names = ['CTDD lr .001', "CTDD lr .01", "CTDD lr .05","SB lr: 0.01","SB lr: 0.007"]
-        
+
         def check_and_return(name_to_return):
             return name_to_return if name_to_return in self.methods_names else None
 
@@ -208,7 +208,8 @@ class TableOfResultsGraphBridges(TableOfResults):
                     return None
             elif isinstance(config,SBConfig):
                 sb = SB()
-                all_results = sb.load_from_results_folder(results_dir=experiment_dir)
+                all_results = sb.load_from_results_folder(results_dir=experiment_dir,
+                                                          sinkhorn_iteration_to_load=self.sinkhorn_to_read)
                 if all_results is not None:
                     results, all_metrics, device = all_results
                     return sb,config,results,all_metrics,device

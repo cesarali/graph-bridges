@@ -184,6 +184,8 @@ class BackwardRatioSteinEstimator:
                 old_time = current_time
             else:
                 old_time = 1. - current_time
+        else:
+            old_time = current_time
 
         if self.flip_current_time:
             if sinkhorn_iteration % 2 == 0:

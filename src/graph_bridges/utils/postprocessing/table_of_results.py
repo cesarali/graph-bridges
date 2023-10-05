@@ -15,7 +15,8 @@ import os
 from graph_bridges import results_path
 
 from abc import ABC, abstractmethod
-
+from graph_bridges.configs.config_sb import SBConfig
+from graph_bridges.configs.config_ctdd import CTDDConfig
 def get_git_revisions_hash():
     hashes = []
     hashes.append(subprocess.check_output(['git', 'rev-parse', 'HEAD']))
@@ -135,6 +136,7 @@ class TableOfResults(ABC):
 
     def create_empty_table(self):
         empty_results = [self.place_holder] * self.number_of_methods
+        empty_files = [None] * self.number_of_methods
 
         self.id_to_datasets = {i: self.datasets_names[i] for i in range(self.number_of_datasets)}
         self.id_to_metrics = {i: self.metric_names[i] for i in range(self.number_of_metrics)}
@@ -149,32 +151,47 @@ class TableOfResults(ABC):
             for results_j in range(self.number_of_metrics):
                 data[(self.datasets_names[dataset_i], self.metric_names[results_j])] = empty_results[:]
 
+        files_names = {}
+        for dataset_i in range(self.number_of_datasets):
+            for results_j in range(self.number_of_metrics):
+                files_names[(self.datasets_names[dataset_i], self.metric_names[results_j])] = empty_files[:]
+
         self.data = data
+        self.files_names = files_names
+
 
     def create_pandas(self):
         index = pd.MultiIndex.from_product([['Real'], self.methods_names])
         empty_results_dataframe = pd.DataFrame(self.data, index=index)
         return empty_results_dataframe
 
+    def create_files_pandas(self):
+        index = pd.MultiIndex.from_product([['Real'], self.methods_names])
+        empty_results_dataframe = pd.DataFrame(self.files_names, index=index)
+        return empty_results_dataframe
+
+
     def change_entry_names(self,
                            dataset_name:str,
                            metric_name:str,
                            method_name:str,
                            value:float,
-                           overwrite:bool):
+                           overwrite:bool,
+                           where_is_it:str=None):
 
         dataset_id = self.datasets_to_id[dataset_name]
         metric_id = self.metrics_to_id[metric_name]
         method_id = self.methods_to_id[method_name]
 
-        self.change_entry_id(dataset_id,metric_id,method_id,value,overwrite)
+        self.change_entry_id(dataset_id,metric_id,method_id,value,overwrite,where_is_it)
 
     def change_entry_id(self,
                         dataset_id:int,
                         metric_id:int,
                         method_id:int,
                         value:float,
-                        overwrite:bool=False):
+                        overwrite:bool=False,
+                        where_is_it:str=None):
 
         if overwrite:
             self.data[(self.datasets_names[dataset_id], self.metric_names[metric_id])][method_id] = value
@@ -182,10 +199,20 @@ class TableOfResults(ABC):
             current_value = self.data[(self.datasets_names[dataset_id], self.metric_names[metric_id])][method_id]
             bigger_is_better = self.bigger_is_better[metric_id]
             change = lambda current_value, value: value > current_value if bigger_is_better else value < current_value
+
             if change(current_value,value):
                 all_row_values = self.data[(self.datasets_names[dataset_id], self.metric_names[metric_id])]
                 all_row_values[method_id] = value
                 self.data[(self.datasets_names[dataset_id], self.metric_names[metric_id])] = all_row_values
+
+                if where_is_it is not None:
+                    if isinstance(where_is_it,str):
+                        where_is_it = Path(where_is_it)
+                    if isinstance(where_is_it,Path):
+                        all_row_values = self.files_names[(self.datasets_names[dataset_id], self.metric_names[metric_id])]
+                        all_row_values[method_id] = where_is_it.name
+                        self.files_names[(self.datasets_names[dataset_id], self.metric_names[metric_id])] = all_row_values
+
 
     def return_entry_names(self,
                            dataset_name:str,
@@ -276,6 +303,7 @@ class TableOfResults(ABC):
                 if info:
                     print("Metrics found in {0}".format(experiment_dir))
                     print(metrics_in_file)
+                    #results_of_reading = self.read_experiment_dir(experiment_dir)
 
                 for key,new_posible_value in metrics_in_file.items():
                     metrics_to_id_keys = self.metrics_to_id.keys()
@@ -283,7 +311,7 @@ class TableOfResults(ABC):
                         metric_id = self.metrics_to_id[key]
                         if isinstance(new_posible_value, torch.Tensor):
                             new_posible_value = new_posible_value.cpu().item()
-                        self.change_entry_id(dataset_id,metric_id,method_id,new_posible_value,overwrite)
+                        self.change_entry_id(dataset_id,metric_id,method_id,new_posible_value,overwrite,experiment_dir)
 
                 return dataset_id,method_id,metrics_in_file,missing_in_file
 
@@ -308,6 +336,13 @@ class TableOfResults(ABC):
             for method_name in self.methods_names:
                 if method_name in base_methods_configs:
 
+                    print("MEMORY INFORMATION")
+                    free, total = torch.cuda.mem_get_info()
+                    free_mb = round(free / 1024 ** 2,2)
+                    total_mb = round(total / 1024 ** 2,2)
+                    print(f'Free: {free_mb} MB, Total: {total_mb} MB')
+
+                    base_method_config : Union[SBConfig,CTDDConfig]
                     base_method_config = base_methods_configs[method_name]
                     base_method_config.experiment_indentifier = None
                     base_method_config.__post_init__()
@@ -337,6 +372,7 @@ class TableOfResults(ABC):
 
                     if fill_table and results is not None:
                         metrics_in_file, missing_ = self.results_to_metrics(base_method_config,results, all_metrics)
+
                         for metric_name_ in metrics_in_file:
                             new_posible_value = metrics_in_file[metric_name_]
                             if isinstance(new_posible_value,torch.Tensor):
@@ -345,7 +381,9 @@ class TableOfResults(ABC):
                                                     metric_name=metric_name_,
                                                     method_name=method_name,
                                                     value=new_posible_value,
-                                                    overwrite=False)
+                                                    overwrite=False,
+                                                    where_is_it=base_method_config.experiment_files.results_dir)
+
 
     #====================================================================
     # SAVE AND READ TABLE

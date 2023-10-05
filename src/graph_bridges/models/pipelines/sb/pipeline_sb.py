@@ -59,7 +59,7 @@ class SBPipeline(DiffusionPipeline):
 
         self.flip_time = self.bridge_config.pipeline.flip_time
         self.start_flip = self.bridge_config.pipeline.start_flip
-        self.flip_pairs = self.bridge_config.pipeline.flip_pairs
+        self.flip_even = self.bridge_config.pipeline.flip_even
 
         data_training_size = self.bridge_config.data.training_size
         target_training_size = self.bridge_config.target.training_size
@@ -190,7 +190,7 @@ class SBPipeline(DiffusionPipeline):
                     times_ = t * torch.ones(num_of_paths,device=device)
 
                     if self.flip_time:
-                        if self.flip_pairs:
+                        if self.flip_even:
                             if sinkhorn_iteration >= self.start_flip:
                                 if sinkhorn_iteration % 2 == 0:
                                     times_ = 1. - times_
@@ -322,7 +322,7 @@ class SBPipeline(DiffusionPipeline):
                 times = t * torch.ones(num_of_paths,device=device)
 
                 if self.flip_time:
-                    if self.flip_pairs:
+                    if self.flip_even:
                         if sinkhorn_iteration >= self.start_flip:
                             if sinkhorn_iteration % 2 == 0:
                                 times = 1. - times

@@ -138,6 +138,11 @@ class SB:
                 check_point_to_load_path = Path(config_ready.experiment_files.best_model_path_checkpoint.format(checkpoint,sinkhorn_iteration_to_load))
                 to_copy_file = check_point_to_load_path
 
+            print("New Experiment Created ")
+            print(to_copy_file.parent)
+            print("Origin")
+            print(loaded_path.parent)
+
             shutil.copy2(loaded_path, to_copy_file)
             config_ready.align_configurations()
             self.set_classes_from_config(config_ready, device)
@@ -146,6 +151,7 @@ class SB:
         else:
             config_ready.align_configurations()
             self.set_classes_from_config(config_ready, device)
+            self.config = config_ready
 
         all_metrics = {}
         for metric_string_identifier in self.metrics_registered:

@@ -111,7 +111,7 @@ class GraphDataConfig:
 class EgoConfig(GraphDataConfig):
     data: str =  "ego_small"
     dir: Path = graph_data_path
-    batch_size: int = 128
+    batch_size: int = 20
     test_split: float = 0.2
     max_node_num: int = 18
     max_feat_num: int = 17
@@ -122,7 +122,7 @@ class EgoConfig(GraphDataConfig):
 class CommunitySmallConfig(GraphDataConfig):
     data: str = 'community_small'
     dir: Path = graph_data_path
-    batch_size: int = 128
+    batch_size: int = 20
     test_split: float = 0.2
     max_node_num: int = 20
     max_feat_num: int = 10

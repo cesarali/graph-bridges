@@ -83,7 +83,7 @@ class SBSchedulerConfig:
 class SBPipelineConfig:
     name : str = 'SBPipeline'
     flip_time:bool = False
-    flip_pairs:bool = False
+    flip_even:bool = False
     start_flip:int = 0
 
 
