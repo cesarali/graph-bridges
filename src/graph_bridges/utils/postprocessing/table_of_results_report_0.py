@@ -18,57 +18,34 @@ from  graph_bridges.data.graph_dataloaders_config import (
     GridConfig
 )
 
+from typing import List
 import numpy as np
-import yaml
+
 from graph_bridges.models.generative_models.sb import SB
 from dataclasses import dataclass
+from graph_bridges.data.image_dataloader_config import NISTLoaderConfig
+
+import yaml
 import copy
 
-def get_experiment_dir(results_path,
-                       experiment_name,
-                       experiment_type,
-                       experiment_indentifier=None):
-
-    if experiment_indentifier is None:
-        experiment_indentifier = str(int(time.time()))
-
-    results_path = Path(results_path)
-
-    all_experiments_dir = results_path / experiment_name
-    experiment_type_dir = all_experiments_dir / experiment_type
-    experiment_dir = experiment_type_dir / experiment_indentifier
-
-    return (all_experiments_dir, experiment_type_dir, experiment_dir)
-
-
-metrics_keys = ['initial_loss','LOSS','best_loss','training_loss','wasserstein','kl_distances','marginal_at_spins','training_time']
-
-parameters_keys = ['dataloader_parameters',
-                   'past_model_parameters',
-                   'current_model_parameters',
-                   'trainer_parameters',
-                   'backward_estimator_parameters',
-                   'sinkhorn_iteration',
-                   'git_last_commit']
-
-models_keys = ['current_model','past_model']
-
-
-class TableOfResultsReport(TableOfResults):
+class TableOfResultsGraphBridges(TableOfResults):
     """
     """
-    def __init__(self,sinkhorn_to_read:int=0):
+    def __init__(self,
+                 table_name,
+                 datasets_names,
+                 metrics_names,
+                 methods_names,
+                 sinkhorn_to_read:int=0):
 
-        #datasets_names = ['Community','Ego']
-        datasets_names = ['Community','Ego']
-        metrics_names = ['Best Loss','MSE']
-        methods_names = ["CTDD lr .05",'CTDD lr .001', "CTDD lr .01","SB lr: 0.01","SB lr: 0.007"] # 'CTDD lr .001', "CTDD lr .01",
-        #methods_names = ["SB lr: 0.01"]
+        self.datasets_names_available = ['Community','Ego','Grid','MNIST','EMNIST',"Fashion"]
+        self.metrics_names_available = ['Best Loss','MSE']
+        self.methods_names_available = ["CTDD lr .05",'CTDD lr .001', "CTDD lr .01","SB lr: 0.01","SB lr: 0.007"]
 
         self.sinkhorn_to_read = sinkhorn_to_read
 
         TableOfResults.__init__(self,
-                                "first_report",
+                                table_name,
                                 datasets_names,
                                 metrics_names,
                                 methods_names,
@@ -85,6 +62,7 @@ class TableOfResultsReport(TableOfResults):
         :param config:
         :return: config
         """
+        #'MNIST', 'EMNIST', "Fashion"
         assert dataset_name in self.datasets_names
 
         if dataset_name == "Community":
@@ -93,6 +71,12 @@ class TableOfResultsReport(TableOfResults):
             config.data = EgoConfig(**base_dataset_args)
         elif dataset_name == "Grid":
             config.data = GridConfig(**base_dataset_args)
+        elif dataset_name == "MNIST":
+            config.data = NISTLoaderConfig(**base_dataset_args)
+        elif dataset_name == "EMNIST":
+            config.data = NISTLoaderConfig(**base_dataset_args)
+        elif dataset_name == "Fashion":
+            config.data = NISTLoaderConfig(**base_dataset_args)
 
         return config
 
@@ -116,6 +100,9 @@ class TableOfResultsReport(TableOfResults):
         if method_name == "SB lr: 0.01":
             assert isinstance(config,SBConfig)
             config.trainer.learning_rate = .01
+        if method_name == "SB lr: 0.007":
+            assert isinstance(config,SBConfig)
+            config.trainer.learning_rate = .007
         return config
 
     def config_to_dataset_name(self,config:Union[SBConfig,CTDDConfig])->str:
@@ -132,12 +119,23 @@ class TableOfResultsReport(TableOfResults):
         if isinstance(config.data, GridConfig):
             name_to_return = "Grid"
             return name_to_return if name_to_return in self.datasets_names else None
+        if isinstance(config.data, NISTLoaderConfig):
+            if config.data.data == "mnist":
+                name_to_return = "MNIST"
+            if config.data.data == "emnist":
+                name_to_return = "EMNIST"
+            if config.data.data == "fashion":
+                name_to_return = "Fashion"
+            return name_to_return if name_to_return in self.datasets_names else None
 
     def config_to_method_name(self,config:Union[SBConfig,CTDDConfig])->str:
         methods_names = ['CTDD lr .001', "CTDD lr .01", "CTDD lr .05","SB lr: 0.01","SB lr: 0.007"]
         def check_and_return(name_to_return):
             return name_to_return if name_to_return in self.methods_names else None
 
+        #===============================
+        # CTDD EXPERIMENTS CHECK
+        #===============================
         if isinstance(config,CTDDConfig):
             if config.trainer.learning_rate == 0.001:
                 name_to_return = 'CTDD lr .001'
@@ -148,6 +146,10 @@ class TableOfResultsReport(TableOfResults):
             elif config.trainer.learning_rate == 0.05:
                 name_to_return = 'CTDD lr .05'
                 return check_and_return(name_to_return)
+
+        #===============================
+        # SB EXPERIMENTS CHECK
+        #===============================
         if isinstance(config,SBConfig):
             if config.trainer.learning_rate == 0.01:
                 name_to_return = "SB lr: 0.01"
@@ -252,7 +254,14 @@ if __name__=="__main__":
     # JUST READ THE TABLE
     # ===================================================================
 
-    table_of_results = TableOfResultsReport()
+    datasets_names_ = ['MNIST', 'EMNIST', "Fashion"]
+    metrics_names_ = ['Best Loss', 'MSE']
+    methods_names_ = ["CTDD lr .05", 'CTDD lr .001', "CTDD lr .01"]
+
+    table_of_results = TableOfResultsGraphBridges(table_name="Nist_CTDD",
+                                                  datasets_names=datasets_names_,
+                                                  metrics_names=metrics_names_,
+                                                  methods_names=methods_names_)
     pandas_table = table_of_results.create_pandas()
 
     pprint(pandas_table)
@@ -260,20 +269,25 @@ if __name__=="__main__":
     # ===================================================================
     # DESIGN OF EXPERIMENTS
     # ===================================================================
-    """
-    from graph_bridges.configs.graphs.graph_config_ctdd import CTDDConfig
+
+    from graph_bridges.configs.graphs.graph_config_ctdd import CTDDConfig as GraphCTDD
+    from graph_bridges.configs.images.nist_config_ctdd import CTDDConfig as NistCTDD
     from graph_bridges.configs.graphs.graph_config_sb import SBConfig
+
+    from graph_bridges.models.backward_rates.ctdd_backward_rate_config import BackRateMLPConfig
 
     #datasets_names = ['Community', 'Ego', 'Grid']
     #metrics_names = ['Best Loss', 'MSE']
     #methods_names = ['CTDD lr .001', "CTDD lr .01", "CTDD lr .05", "SB lr: 0.01"]
 
-    config = CTDDConfig(experiment_name="table",
-                        experiment_type="table_report_0",
-                        delete=True)
-    
-    config.trainer.metrics = []
-    config.trainer.num_epochs = 2
+    config = NistCTDD(experiment_name="NIST",
+                      experiment_type="table_report_more_learning",
+                      delete=True)
+
+    config.model = BackRateMLPConfig(hidden_layer=350,time_embed_dim=128)
+
+    config.trainer.metrics = ["histograms"]
+    config.trainer.num_epochs = 20
     config.trainer.__post_init__()
 
     sb_config = SBConfig(experiment_name="table",
@@ -289,20 +303,21 @@ if __name__=="__main__":
 
     base_methods_configs = {'CTDD lr .001':copy.deepcopy(config),
                             "CTDD lr .01":copy.deepcopy(config),
-                            "CTDD lr .05":copy.deepcopy(config),
-                            "SB lr: 0.01":copy.deepcopy(sb_config)}
+                            "CTDD lr .05":copy.deepcopy(config)}
 
-    base_dataset_args = {"batch_size":32,"full_adjacency":False}
+    #base_dataset_args = {"batch_size":32,"full_adjacency":False}
+    base_dataset_args = {"batch_size":128}
     table_of_results.run_table(base_methods_configs,base_dataset_args)
 
     print("Final Table")
     pandas_table = table_of_results.create_pandas()
     pprint(pandas_table)
     
-    """
+
     # ===================================================================
     # READ EXPERIMENT AND CHANGE TABLE
     # ===================================================================
+    """
     parent_experiment_folder = "C:/Users/cesar/Desktop/Projects/DiffusiveGenerativeModelling/Codes"
     parent_experiment_folder2 = "C:/Users/cesar/Desktop/Projects/DiffusiveGenerativeModelling/Codes/graph-bridges/results/table/table_report_0"
 
@@ -312,7 +327,8 @@ if __name__=="__main__":
     pprint(pandas_table)
 
     """
-    
+
+    """
         #===================================================================
         # READ EXPERIMENT AND CHANGE TABLE
         #===================================================================
