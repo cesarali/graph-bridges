@@ -23,6 +23,7 @@ from graph_bridges.models.backward_rates.backward_rate_utils import load_backwar
 from graph_bridges.models.reference_process.reference_process_utils import load_reference
 from graph_bridges.utils.test_utils import check_model_devices
 import shutil
+import re
 
 @dataclass
 class SB:
@@ -76,6 +77,7 @@ class SB:
                                  new_experiment_indentifier=None,
                                  sinkhorn_iteration_to_load=0,
                                  checkpoint=None,
+                                 any=False,
                                  device=None):
         """
 
@@ -102,12 +104,29 @@ class SB:
             if best_model_to_load_path.exists():
                 results_ = torch.load(best_model_to_load_path)
                 loaded_path = best_model_to_load_path
+            elif any:
+                best_model_path_checkpoint = config_ready.experiment_files.best_model_path_checkpoint
+                extract_digits = lambda s: int(re.search(r'\d+', s).group()) if re.search(r'\d+', s) else None
+
+                generic_metric_path_ = best_model_path_checkpoint.format("*",sinkhorn_iteration_to_load)
+                generic_metric_path_to_fill = best_model_path_checkpoint.format("{0}",sinkhorn_iteration_to_load)
+                generic_metric_path_ = Path(generic_metric_path_)
+
+                # avaliable numbers
+                numbers_available = []
+                available_files = list(generic_metric_path_.parent.glob(generic_metric_path_.name))
+                for file_ in available_files:
+                    numbers_available.append(extract_digits(str(file_.name)))
+                if len(numbers_available) > 0:
+                    max_checkpoint = max(numbers_available)
+                    generic_metric_path_to_fill = generic_metric_path_to_fill.format(max_checkpoint)
+                    results_ = torch.load(generic_metric_path_to_fill)
+                    loaded_path = generic_metric_path_to_fill
         else:
             check_point_to_load_path = Path(config_ready.experiment_files.best_model_path_checkpoint.format(checkpoint, sinkhorn_iteration_to_load))
             if check_point_to_load_path.exists():
                 results_ = torch.load(check_point_to_load_path)
                 loaded_path = check_point_to_load_path
-
         if loaded_path is None:
             print("Experiment Empty")
             return None

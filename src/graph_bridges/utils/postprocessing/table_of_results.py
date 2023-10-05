@@ -303,7 +303,7 @@ class TableOfResults(ABC):
                 if info:
                     print("Metrics found in {0}".format(experiment_dir))
                     print(metrics_in_file)
-                    #results_of_reading = self.read_experiment_dir(experiment_dir)
+                    results_of_reading = self.read_experiment_dir(experiment_dir)
 
                 for key,new_posible_value in metrics_in_file.items():
                     metrics_to_id_keys = self.metrics_to_id.keys()

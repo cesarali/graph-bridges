@@ -209,7 +209,7 @@ if __name__=="__main__":
     #=========================================
 
     parent_experiment_folder = "C:/Users/cesar/Desktop/Projects/DiffusiveGenerativeModelling/Codes/graph-bridges/results/graph/sb"
-    table_of_results.sinkhorn_to_read = 0
+    table_of_results.sinkhorn_to_read = 1
     table_of_results.fill_table([parent_experiment_folder],info=True)
 
     print("Final Table")

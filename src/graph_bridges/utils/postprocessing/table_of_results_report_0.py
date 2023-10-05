@@ -209,7 +209,8 @@ class TableOfResultsGraphBridges(TableOfResults):
             elif isinstance(config,SBConfig):
                 sb = SB()
                 all_results = sb.load_from_results_folder(results_dir=experiment_dir,
-                                                          sinkhorn_iteration_to_load=self.sinkhorn_to_read)
+                                                          sinkhorn_iteration_to_load=self.sinkhorn_to_read,
+                                                          any=True)
                 if all_results is not None:
                     results, all_metrics, device = all_results
                     return sb,config,results,all_metrics,device
