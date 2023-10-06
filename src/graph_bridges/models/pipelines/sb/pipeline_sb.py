@@ -22,6 +22,7 @@ from graph_bridges.models.schedulers.scheduling_sb import SBScheduler
 from graph_bridges.models.reference_process.ctdd_reference import ReferenceProcess
 from graph_bridges.models.backward_rates.sb_backward_rate import SchrodingerBridgeBackwardRate
 from graph_bridges.data.graph_dataloaders import BridgeGraphDataLoaders
+from graph_bridges.utils.test_utils import check_model_devices
 
 class SBPipeline(DiffusionPipeline):
     r"""
@@ -159,6 +160,9 @@ class SBPipeline(DiffusionPipeline):
         data_iterator = self.select_data_iterator(sinkhorn_iteration, train)
         number_of_time_steps = len(timesteps_)
 
+        if device is None:
+            device = check_model_devices(generation_model)
+
         current_index = 0
         for databatch in data_iterator:
 
@@ -278,7 +282,8 @@ class SBPipeline(DiffusionPipeline):
         else:
             if isinstance(generation_model, SchrodingerBridgeBackwardRate):
                 assert sinkhorn_iteration >= 1
-
+        if device is None:
+            device = check_model_devices(generation_model)
         # set step values
         self.scheduler.set_timesteps(self.bridge_config.sampler.num_steps,
                                      self.bridge_config.sampler.min_t,

@@ -12,7 +12,8 @@ from graph_bridges.data.graph_dataloaders_config import GraphDataConfig
 from graph_bridges.configs.config_ctdd import CTDDConfig
 from graph_bridges.configs.config_sb import SBConfig
 import gc
-
+from graph_bridges.models.metrics.sb_metrics_utils import log_metrics as log_sb_metrics
+from graph_bridges.models.metrics.ctdd_metrics_utils import log_metrics as log_ctdd_metrics
 
 from  graph_bridges.data.graph_dataloaders_config import (
     EgoConfig,
@@ -170,12 +171,54 @@ class TableOfResultsSchrodingerBridge(TableOfResultsGraphBridges):
 
         return results_,all_metrics
 
-if __name__=="__main__":
-    from pprint import pprint
+    def read_and_log_new_metrics(self,path_of_model, metrics_names):
+        read_results = self.read_experiment_dir(path_of_model)
+        if read_results is not None:
+            sb, config, results, all_metrics, device = read_results
+            if isinstance(config,SBConfig):
+                from graph_bridges.models.pipelines.sb.pipeline_sb import SBPipeline
+                from graph_bridges.utils.test_utils import check_model_devices
 
+                sb.pipeline : SBPipeline
+                method_name = self.config_to_method_name(config)
+
+                print(method_name)
+                resersed_time_file = config.experiment_files.plot_path.format("reversed_time")
+
+                # FP  -> sb_config.pipeline.flip_time
+                # FPS  -> sb_config.pipeline.start_flip
+                # FE  -> sb_config.pipeline.flip_even
+
+                sb.pipeline.flip_time = not(sb.pipeline.flip_time)
+                sb.pipeline.start_flip = 0
+                sb.pipeline.flip_even = not(sb.pipeline.flip_even)
+
+                training_model = sb.training_model
+                past_to_train_model = sb.past_model
+
+                paths,time = sb.pipeline(training_model,1)
+
+                log_sb_metrics(sb=sb,
+                               current_model=training_model,
+                               past_to_train_model=past_to_train_model,
+                               sinkhorn_iteration=1,
+                               device=check_model_devices(past_to_train_model),
+                               epoch=None,
+                               metrics_to_log=metrics_names,
+                               where_to_log={"histograms":resersed_time_file})
+
+            elif isinstance(config, CTDDConfig):
+                    print("Hey You!")
+
+        return None
+
+if __name__=="__main__":
     # ===================================================================
     # DEFINE THE TABLE
     # ===================================================================
+
+    from pprint import pprint
+
     formatted_strings, string_to_combination = time_inversion_combinations()
 
     datasets_names_ = ['Community']
@@ -209,6 +252,8 @@ if __name__=="__main__":
     #=========================================
 
     parent_experiment_folder = "C:/Users/cesar/Desktop/Projects/DiffusiveGenerativeModelling/Codes/graph-bridges/results/graph/sb"
+    parent_experiment_folder_porous = ""
+    
     table_of_results.sinkhorn_to_read = 1
     table_of_results.fill_table([parent_experiment_folder],info=True)
 
@@ -217,3 +262,5 @@ if __name__=="__main__":
     pprint(pandas_table)
     files_pandas_table = table_of_results.create_files_pandas()
     pprint(files_pandas_table)
+
+    #table_of_results.log_new_metrics("MSE",["histograms"])

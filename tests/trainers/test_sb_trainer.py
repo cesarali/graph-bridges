@@ -104,7 +104,7 @@ class TestSBTrainer(unittest.TestCase):
         results_dir = "C:/Users/cesar/Desktop/Projects/DiffusiveGenerativeModelling/Codes/sb_experiment"
         sb = SB()
         sinkhorn_iteration = 0
-        results, metrics, device = sb.load_from_results_folder(results_dir=results_dir,
+        results, metrics, device = sb.load_from_results_folder(experiment_dir=results_dir,
                                                                sinkhorn_iteration_to_load=sinkhorn_iteration)
 
         current_model = sb.training_model

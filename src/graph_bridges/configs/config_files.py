@@ -16,7 +16,7 @@ def get_git_revisions_hash():
 @dataclass
 class ExperimentFiles:
 
-    results_path:str = results_path
+    project_results_dir:str = results_path
     experiment_indentifier:str = None
     experiment_name:str = None
     experiment_type:str= None
@@ -27,14 +27,15 @@ class ExperimentFiles:
 
     def __post_init__(self):
         if self.results_dir is None:
-            self.results_path = str(results_path)
+            self.project_results_dir = str(results_path)
             self.current_git_commit = str(get_git_revisions_hash()[0])
             if self.experiment_indentifier is None:
                 self.experiment_indentifier = str(int(time.time()))
 
-            self.experiment_dir = os.path.join(self.results_path, self.experiment_name)
+            self.experiment_dir = os.path.join(self.project_results_dir, self.experiment_name)
             self.experiment_type_dir = os.path.join(self.experiment_dir, self.experiment_type)
             self.results_dir = os.path.join(self.experiment_type_dir, self.experiment_indentifier)
+
         # doucet
         self.save_location = self.results_dir
         self.create_directories()

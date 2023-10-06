@@ -9,7 +9,7 @@ from graph_bridges.models.metrics.histograms_metrics import marginals_histograms
 from graph_bridges.models.temporal_networks.graphs_networks.graph_plots import plot_graphs_list2
 import torchvision
 
-def log_metrics(sb:SB, current_model, past_to_train_model, sinkhorn_iteration, epoch, device, metrics_to_log=None,writer=None):
+def log_metrics(sb:SB, current_model, past_to_train_model, sinkhorn_iteration, epoch, device, metrics_to_log=None,where_to_log=None,writer=None):
     """
     After the training procedure is done, the model is updated
 
@@ -24,9 +24,13 @@ def log_metrics(sb:SB, current_model, past_to_train_model, sinkhorn_iteration, e
     # HISTOGRAMS
     metric_string_name = "histograms"
     if metric_string_name in metrics_to_log:
-        histograms_plot_path_ = config.experiment_files.plot_path.format(
-            metric_string_name + "_sinkhorn_{0}_{1}".format(sinkhorn_iteration,
-                                                            epoch))
+        if where_to_log is None:
+            histograms_plot_path_ = config.experiment_files.plot_path.format(
+                metric_string_name + "_sinkhorn_{0}_{1}".format(sinkhorn_iteration,
+                                                                epoch))
+        else:
+            histograms_plot_path_ = where_to_log[metric_string_name]
+
         all_histograms = paths_marginal_histograms(sb,
                                                    sinkhorn_iteration,
                                                    device,
@@ -46,10 +50,11 @@ def log_metrics(sb:SB, current_model, past_to_train_model, sinkhorn_iteration, e
                       states_legends=state_legends,
                       save_path=histograms_plot_path_)
 
-        # Read the saved image using torchvision
-        image = torchvision.io.read_image(histograms_plot_path_)
-        # Add the image to TensorBoard
-        writer.add_image("matplotlib_plot", image, global_step=epoch)
+        if writer is not None:
+            # Read the saved image using torchvision
+            image = torchvision.io.read_image(histograms_plot_path_)
+            # Add the image to TensorBoard
+            writer.add_image("matplotlib_plot", image, global_step=epoch)
 
         metric_string_name = "mse_histograms"
         if metric_string_name in metrics_to_log:

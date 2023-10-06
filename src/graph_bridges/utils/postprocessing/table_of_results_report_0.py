@@ -208,7 +208,7 @@ class TableOfResultsGraphBridges(TableOfResults):
                     return None
             elif isinstance(config,SBConfig):
                 sb = SB()
-                all_results = sb.load_from_results_folder(results_dir=experiment_dir,
+                all_results = sb.load_from_results_folder(experiment_dir=experiment_dir,
                                                           sinkhorn_iteration_to_load=self.sinkhorn_to_read,
                                                           any=True)
                 if all_results is not None:
@@ -249,6 +249,8 @@ class TableOfResultsGraphBridges(TableOfResults):
             results_,all_metrics = sb_trainer.train_schrodinger()
         return results_,all_metrics
 
+    def read_and_log_new_metrics(self,path_of_model,metrics_names):
+        return None
 
 if __name__=="__main__":
     from pprint import pprint

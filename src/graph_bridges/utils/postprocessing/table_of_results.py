@@ -156,8 +156,14 @@ class TableOfResults(ABC):
             for results_j in range(self.number_of_metrics):
                 files_names[(self.datasets_names[dataset_i], self.metric_names[results_j])] = empty_files[:]
 
+        files_paths = {}
+        for dataset_i in range(self.number_of_datasets):
+            for results_j in range(self.number_of_metrics):
+                files_paths[(self.datasets_names[dataset_i], self.metric_names[results_j])] = empty_files[:]
+
         self.data = data
         self.files_names = files_names
+        self.files_paths = files_paths
 
 
     def create_pandas(self):
@@ -209,25 +215,43 @@ class TableOfResults(ABC):
                     if isinstance(where_is_it,str):
                         where_is_it = Path(where_is_it)
                     if isinstance(where_is_it,Path):
-                        all_row_values = self.files_names[(self.datasets_names[dataset_id], self.metric_names[metric_id])]
-                        all_row_values[method_id] = where_is_it.name
-                        self.files_names[(self.datasets_names[dataset_id], self.metric_names[metric_id])] = all_row_values
+                        all_row_values_names = self.files_names[(self.datasets_names[dataset_id], self.metric_names[metric_id])]
+                        all_row_values_names[method_id] = where_is_it.name
+                        all_row_values_paths = self.files_paths[(self.datasets_names[dataset_id], self.metric_names[metric_id])]
+                        all_row_values_paths[method_id] = where_is_it
 
+                        self.files_names[(self.datasets_names[dataset_id], self.metric_names[metric_id])] = all_row_values_names
+                        self.files_paths[(self.datasets_names[dataset_id], self.metric_names[metric_id])] = all_row_values_paths
 
-    def return_entry_names(self,
-                           dataset_name:str,
-                           metric_name:str,
-                           method_name:str):
+    def entry_from_names(self,
+                         dataset_name:str,
+                         metric_name:str,
+                         method_name:str):
         dataset_id = self.datasets_to_id[dataset_name]
         metric_id = self.metrics_to_id[metric_name]
         method_id = self.methods_to_id[method_name]
-        return self.return_entry_ids(dataset_id,metric_id,method_id)
+        return self.entry_from_id(dataset_id, metric_id, method_id)
 
-    def return_entry_ids(self,
-                         dataset_id:int,
-                         metric_id:int,
-                         method_id:int):
+    def path_from_names(self,
+                        dataset_name: str,
+                        metric_name: str,
+                        method_name: str):
+        dataset_id = self.datasets_to_id[dataset_name]
+        metric_id = self.metrics_to_id[metric_name]
+        method_id = self.methods_to_id[method_name]
+        return self.path_from_ids(dataset_id, metric_id, method_id)
+
+    def entry_from_id(self,
+                      dataset_id:int,
+                      metric_id:int,
+                      method_id:int):
         return self.data[(self.datasets_names[dataset_id], self.metric_names[metric_id])][method_id]
+
+    def path_from_ids(self,
+                      dataset_id: int,
+                      metric_id: int,
+                      method_id: int):
+        return self.files_paths[(self.datasets_names[dataset_id], self.metric_names[metric_id])][method_id]
 
     @abstractmethod
     def dataset_name_to_config(self,dataset_name,config)->Dict[int,Union[dict,dataclass]]:
@@ -384,6 +408,26 @@ class TableOfResults(ABC):
                                                     overwrite=False,
                                                     where_is_it=base_method_config.experiment_files.results_dir)
 
+    #====================================================================
+    # LOG NEW METRICS
+    #====================================================================
+    def log_new_metrics(self,metric_selector,metrics_names):
+        if metric_selector in self.metric_names:
+            for dataset_name in self.datasets_names:
+                for method_name in self.methods_names:
+                    path_of_model = self.path_from_names(dataset_name=dataset_name,metric_name=metric_selector,method_name=method_name)
+                    if isinstance(path_of_model,str):
+                        path_of_model = Path(path_of_model)
+                    self.read_and_log_new_metrics(path_of_model,metrics_names)
+    @abstractmethod
+    def read_and_log_new_metrics(self,path_of_model,metrics_names):
+        """
+        to the model located in path of model
+        :param path_of_model:
+        :param metrics_names:
+        :return:
+        """
+        return None
 
     #====================================================================
     # SAVE AND READ TABLE

@@ -72,7 +72,7 @@ class SB:
                                  experiment_name="graph",
                                  experiment_type="sb",
                                  experiment_indentifier="tutorial_sb_trainer",
-                                 results_dir=None,
+                                 experiment_dir=None,
                                  new_experiment=False,
                                  new_experiment_indentifier=None,
                                  sinkhorn_iteration_to_load=0,
@@ -95,7 +95,7 @@ class SB:
         config_ready = get_config_from_file(experiment_name=experiment_name,
                                             experiment_type=experiment_type,
                                             experiment_indentifier=experiment_indentifier,
-                                            results_dir=results_dir)
+                                            results_dir=experiment_dir)
 
         # LOADS RESULTS
         loaded_path = None
