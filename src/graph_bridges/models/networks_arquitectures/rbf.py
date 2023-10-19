@@ -17,12 +17,6 @@ class RBM(nn.Module):
         self.W = nn.Parameter(linear.weight.data)
         self.b_h = nn.Parameter(torch.zeros(n_hidden,))
         self.b_v = nn.Parameter(torch.zeros(n_visible,))
-        if data_mean is not None:
-            init_val = (data_mean / (1. - data_mean)).log()
-            self.b_v.data = init_val
-            self.init_dist = dists.Bernoulli(probs=data_mean)
-        else:
-            self.init_dist = dists.Bernoulli(probs=torch.ones((n_visible,)) * .5)
         self.data_dim = n_visible
 
     def p_v_given_h(self, h):

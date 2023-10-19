@@ -1,12 +1,11 @@
+from dataclasses import dataclass,asdict,field,fields
 from graph_bridges.configs.config_files import ExperimentFiles0
-
 from graph_bridges.data.image_dataloaders import NISTLoaderConfig
 from graph_bridges.models.pipelines.pipelines_config import OopsPipelineConfig
 from graph_bridges.data.register_configs import all_dataloaders_configs
-from dataclasses import dataclass,asdict
+from typing import List
 
 import json
-
 
 @dataclass
 class RBMConfig:
@@ -16,16 +15,20 @@ class RBMConfig:
 
 @dataclass
 class ContrastiveDivergenceTrainerConfig:
+
     name:str = "ContrastiveDivergenceTrainer"
     learning_rate:float = 0.1
     number_of_epochs:int = 10
     device:str = "cuda:0"
     save_model_epochs:int = 1000
+    save_metric_epochs:int=1000
     constrastive_diverge_sample_size = 10
+
+    metrics:List[str] = field(default_factory=lambda:["kdmm","mse_histograms","graphs","graphs_plots"])
 
     def __post_init__(self):
         self.save_model_epochs = int(.25*self.number_of_epochs)
-
+        self.save_metric_epochs = int(.25*self.number_of_epochs)
 
 all_trainers_configs = {"ContrastiveDivergenceTrainer":ContrastiveDivergenceTrainerConfig}
 all_model_configs = {"RBM":RBMConfig}
@@ -50,15 +53,19 @@ class OopsConfig:
     experiment_files:ExperimentFiles0 = None
 
     def __post_init__(self):
-        self.experiment_files = ExperimentFiles0(delete=self.delete,
-                                                 experiment_name=self.experiment_name,
-                                                 experiment_indentifier=self.experiment_indentifier,
-                                                 experiment_type=self.experiment_type)
+        if isinstance(self.experiment_files,dict):
+            self.experiment_files = ExperimentFiles0(delete=self.delete,
+                                                     experiment_dir=self.experiment_files["experiment_dir"])
+        else:
+            self.experiment_files = ExperimentFiles0(delete=self.delete,
+                                                     experiment_name=self.experiment_name,
+                                                     experiment_indentifier=self.experiment_indentifier,
+                                                     experiment_type=self.experiment_type)
 
         if isinstance(self.model, dict):
             self.model = all_model_configs[self.model["name"]](**self.model)
         if isinstance(self.data, dict):
-            self.data = all_dataloaders_configs[self.data["name"]](**self.data)
+            self.data = all_dataloaders_configs[self.data["data"]](**self.data)
         if isinstance(self.trainer,dict):
             self.trainer = all_trainers_configs[self.trainer["name"]](**self.trainer)
         if isinstance(self.pipeline,dict):

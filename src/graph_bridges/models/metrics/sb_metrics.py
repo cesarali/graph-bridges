@@ -14,7 +14,6 @@ from graph_bridges.models.metrics.data_metrics import SpinBernoulliMarginal
 from graph_bridges.utils.test_utils import check_model_devices
 from graph_bridges.data.graph_dataloaders import BinaryTensorToSpinsTransform, SpinsToBinaryTensor
 
-
 def graph_metrics_for_sb(sb,current_model,device):
     """
 

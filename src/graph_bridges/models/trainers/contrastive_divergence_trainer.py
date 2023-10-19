@@ -9,7 +9,7 @@ from dataclasses import asdict,dataclass
 from graph_bridges.configs.config_oops import OopsConfig
 from graph_bridges.data.image_dataloaders import NISTLoader
 from graph_bridges.models.generative_models.oops import OOPS
-
+from graph_bridges.models.metrics.oops_metrics_utils import log_metrics
 
 @dataclass
 class ContrastiveDivergenceTrainerState:
@@ -130,7 +130,7 @@ class ContrastiveDivergenceTrainer:
         number_of_test_step = 0
         for epoch in range(self.number_of_epochs):
             state = ContrastiveDivergenceTrainerState(self.oops,
-                                                      initial_loss,
+                                                      initial_loss.item(),
                                                       average_train_loss=0,
                                                       average_test_loss=0,
                                                       LOSS=[])
@@ -152,18 +152,28 @@ class ContrastiveDivergenceTrainer:
                 number_of_test_step+=1
             state.average_test_loss = np.asarray(test_loss).mean()
 
-            # SAVE RESULTS IF LOSS DECREASES IN VALIDATION
+            #======================================================
+            # SAVE RESULTS OR METRICS
+            #======================================================
             if state.average_test_loss  < best_loss:
-                self.save_results(state,
-                                  epoch,
-                                  checkpoint = False)
+                results = self.save_results(state,
+                                            epoch,
+                                            checkpoint = False)
 
             if (epoch + 1) % self.config.trainer.save_model_epochs == 0:
-                self.save_results(state,
-                                  epoch + 1,
-                                  checkpoint=True)
+                results = self.save_results(state,
+                                            epoch + 1,
+                                            checkpoint=True)
+
+            if (epoch + 1) % self.config.trainer.save_metric_epochs == 0:
+                all_metrics = log_metrics(oops=self.oops,
+                                          epoch=epoch + 1,
+                                          device=self.device,
+                                          writer=self.writer)
 
         self.writer.close()
+        return results,all_metrics
+
 
     def save_results(self,
                      state:ContrastiveDivergenceTrainerState,
@@ -180,3 +190,5 @@ class ContrastiveDivergenceTrainer:
             torch.save(RESULTS,self.config.experiment_files.best_model_path_checkpoint.format(epoch))
         else:
             torch.save(RESULTS,self.config.experiment_files.best_model_path)
+
+        return RESULTS

@@ -10,7 +10,6 @@ from graph_bridges.data.dataloaders_utils import load_dataloader
 from graph_bridges.data.graph_dataloaders import BridgeGraphDataLoaders
 
 from graph_bridges.models.metrics.metrics_utils import read_metric
-from graph_bridges.utils.test_utils import check_model_devices
 
 from graph_bridges.configs.config_oops import OopsConfig
 from graph_bridges.models.networks_arquitectures.rbf import RBM
@@ -27,7 +26,7 @@ class OOPS:
     from a CTDD model
 
     """
-    oops_config: OopsConfig = None
+    config: OopsConfig = None
 
     dataloader : BridgeGraphDataLoaders = None
     model: RBM = None
@@ -41,12 +40,12 @@ class OOPS:
         self.config.initialize_new_experiment()
         self.dataloader = load_dataloader(config, type="data", device=device)
         self.model = load_model_network(config, device)
-        self.pipeline = OopsPipeline(config,model=self.model,data=self.dataloader)
+        self.pipeline = OopsPipeline(config,model=self.model,data=self.dataloader,device=device)
 
     def load_from_results_folder(self,
-                                 experiment_name="graph",
-                                 experiment_type="sb",
-                                 experiment_indentifier="tutorial_sb_trainer",
+                                 experiment_name="oops",
+                                 experiment_type="mnist",
+                                 experiment_indentifier="test",
                                  experiment_dir=None,
                                  checkpoint=None,
                                  any=False,
@@ -61,49 +60,47 @@ class OOPS:
         :return: results_,all_metrics,device
         """
         from graph_bridges.configs.utils import get_config_from_file
+
         results_ = None
+        all_metrics = {}
+        device = None
 
-        config_ready:OopsConfig = None
-
-        """
         config_ready = get_config_from_file(experiment_name=experiment_name,
                                             experiment_type=experiment_type,
                                             experiment_indentifier=experiment_indentifier,
                                             results_dir=experiment_dir)
-        """
-        # LOADS RESULTS
-        loaded_path = None
-        if checkpoint is None:
-            pass
-        else:
-            pass
 
-        if loaded_path is None:
-            print("Experiment Empty")
-            return None
+        if config_ready is not None:
+            # DEVICE
+            if device is None:
+                device = torch.device(config_ready.trainer.device)
 
-        if device is None:
-            device = torch.device(config_ready.trainer.device)
+            # LOADS RESULTS
+            results_ = config_ready.experiment_files.load_results(checkpoint=checkpoint)
 
-        # SETS MODELS
+            # SETS MODELS
+            if results_ is not None:
+                self.config = config_ready
 
-        # JUST READs
-        config_ready.align_configurations()
-        self.set_classes_from_config(config_ready, device)
-        self.config = config_ready
+                self.model = results_["model"].to(device)
+                self.dataloader = load_dataloader(self.config, type="data", device=device)
+                self.model = load_model_network(self.config, device)
+                self.pipeline = OopsPipeline(self.config,model=self.model,data=self.dataloader)
 
-        #READ METRICS IF AVAILABLE
-        all_metrics = {}
-        for metric_string_identifier in self.metrics_registered:
-            all_metrics.update(read_metric(self.config,
-                                           metric_string_identifier,
-                                           checkpoint=checkpoint))
-
+            # READ METRICS IF AVAILABLE
+            """
+            # JUST READs
+            config_ready.align_configurations()
+            self.set_classes_from_config(config_ready, device)
+    
+            #READ METRICS IF AVAILABLE
+            for metric_string_identifier in self.metrics_registered:
+                all_metrics.update(read_metric(self.config,
+                                               metric_string_identifier,
+                                               checkpoint=checkpoint))
+            """
         return results_,all_metrics,device
 
-    def generate(self):
-        """
-        :param number_of_graphs:
-        :return:
-        """
+    def sample_graphs(self):
         return None
+
