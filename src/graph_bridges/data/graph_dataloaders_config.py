@@ -12,8 +12,7 @@ import json
 import numpy as np
 from pathlib import Path
 
-data_path = Path(data_path)
-graph_data_path = data_path / "raw" / "graph"
+graph_data_path = os.path.join(data_path,"raw","graph")
 
 @dataclass
 class GraphDataConfig:
@@ -267,19 +266,6 @@ class GraphSpinsDataLoaderConfig:
 
 data_path = Path(data_path)
 image_data_path = data_path / "raw"
-
-from graph_bridges.data.spin_glass_dataloaders_config import ParametrizedSpinGlassHamiltonianConfig
-
-all_dataloaders_configs = {"ego_small":EgoConfig,
-                           "community_small":CommunitySmallConfig,
-                           "community":CommunityConfig,
-                           "grid":GridConfig,
-                           "ENZYMES":EnzymesConfig,
-                           "QM9":QM9Config,
-                           "ZINC250k":ZincConfig,
-                           "ParametrizedSpinGlassHamiltonian":ParametrizedSpinGlassHamiltonianConfig,
-                           "GraphSpinsDataLoader":GraphSpinsDataLoaderConfig,
-                           "DoucetTargetData":TargetConfig}
 
 
 if __name__=="__main__":

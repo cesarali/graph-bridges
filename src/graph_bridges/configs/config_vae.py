@@ -6,9 +6,9 @@ from dataclasses import dataclass, asdict
 from graph_bridges.configs.config_files import ExperimentFiles
 from graph_bridges.models.networks_arquitectures.encoder_config import EncoderConfig
 from graph_bridges.models.networks_arquitectures.decoder_config import DecoderConfig
-from graph_bridges.trainers.vae_trainer_config import VAETrainerConfig
-from graph_bridges.data.graph_dataloaders_config import all_dataloaders_configs
-
+from graph_bridges.models.trainers.vae_trainer_config import VAETrainerConfig
+from graph_bridges.data.register_configs import all_dataloaders_configs
+from graph_bridges.data.image_dataloader_config import NISTLoaderConfig
 
 all_encoders_configs = {"Encoder":EncoderConfig}
 all_decoders_configs = {"Decoder":DecoderConfig}

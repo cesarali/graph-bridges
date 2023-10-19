@@ -8,7 +8,7 @@ import torch
 
 from graph_bridges.models.losses.loss_configs import CTDDLossConfig
 from graph_bridges.data.graph_dataloaders_config import TargetConfig, CommunityConfig, GraphDataConfig
-from graph_bridges.data.graph_dataloaders_config import all_dataloaders_configs
+from graph_bridges.data.register_configs import all_dataloaders_configs
 from graph_bridges.models.backward_rates.ctdd_backward_rate_config import BackRateMLPConfig
 from graph_bridges.models.backward_rates.ctdd_backward_rate_config import all_backward_rates_configs
 from graph_bridges.models.reference_process.reference_process_config import GaussianTargetRateConfig

@@ -5,7 +5,7 @@ from torchvision import datasets, transforms
 from torch.autograd import Variable
 import numpy as np
 
-from ssda.configs.vae_config import VAEConfig
+from graph_bridges.configs.config_vae import VAEConfig
 
 # Define the VAE model
 class Encoder(nn.Module):

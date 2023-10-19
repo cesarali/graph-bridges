@@ -5,12 +5,11 @@ import numpy as np
 from pprint import pprint
 from dataclasses import asdict
 
-from ssda.data.dataloaders import NISTLoader
+from graph_bridges.data.image_dataloaders import NISTLoader
 
-from ssda.models.vae_model import VAE
-from ssda.configs.vae_config import VAEConfig
-from ssda.losses.contrastive_loss import vae_loss
-from ssda.models.encoder_config import EncoderConfig
+from graph_bridges.configs.config_vae import VAEConfig
+from graph_bridges.models.generative_models.vae import VAE
+from graph_bridges.models.losses.vae_losses  import vae_loss
 
 class VAETrainer:
 

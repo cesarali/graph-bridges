@@ -1,6 +1,6 @@
 import torch
 from torch import nn
-from ssda.configs.vae_config import VAEConfig
+from graph_bridges.configs.config_vae import VAEConfig
 
 class Decoder(nn.Module):
     def __init__(self,config:VAEConfig):
