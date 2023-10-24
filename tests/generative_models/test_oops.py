@@ -23,5 +23,6 @@ class TestOops(unittest.TestCase):
         results, metrics, device = oops.load_from_results_folder(experiment_dir=experiment_dir)
         sample = oops.pipeline()
 
+
 if __name__=="__main__":
     unittest.main()

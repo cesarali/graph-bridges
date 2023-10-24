@@ -201,7 +201,7 @@ def edge_list_reindexed(G):
     return edges
 
 
-def orca(graph):
+def orca(graph,windows=True):
     tmp_file_path = ORCA_DIR / 'tmp.txt'
     f = open(tmp_file_path, 'w')
     f.write(str(graph.number_of_nodes()) + ' ' + str(graph.number_of_edges()) + '\n')
@@ -209,7 +209,7 @@ def orca(graph):
         f.write(str(u) + ' ' + str(v) + '\n')
     f.close()
 
-    if 'exe' in os.listdir(ORCA_DIR):
+    if windows:
         command = 'orca.exe node 4 ./tmp.txt std'
         result = sp.run(command, shell=True, cwd=ORCA_DIR, stdout=sp.PIPE, stderr=sp.PIPE)
         output = result.stdout.decode('utf-8')
@@ -363,8 +363,8 @@ if __name__=="__main__":
     graph_list_2 = [nx.barabasi_albert_graph(100,3) for i in range(20)]
 
     node_orbit_counts = orca(graph)
-    results_ = eval_graph_list(graph_list_1, graph_list_2)
 
-    print(node_orbit_counts)
-    print(results_)
+    #results_ = eval_graph_list(graph_list_1, graph_list_2)
+    #print(node_orbit_counts)
+    #print(results_)
 
