@@ -15,9 +15,11 @@ from torch.distributions import Bernoulli
 from torch.distributions import Categorical
 from torch.nn.functional import softplus,softmax
 
+import torch
 from torch.utils.data import DataLoader, TensorDataset
 from torch.distributions import Dirichlet
-import torch
+from torch.utils.tensorboard import SummaryWriter
+
 
 @dataclass
 class Config:
@@ -33,7 +35,7 @@ class Config:
     bernoulli_probability_0 :float = 0.8
 
     # process
-    gamma :float = .2
+    gamma :float = .9
 
     # model
 
@@ -44,7 +46,7 @@ class Config:
     # rate
 
     # training
-    number_of_epochs = 100
+    number_of_epochs = 300
     learning_rate = 0.01
     batch_size :int = 5
     device = "cuda:0"
@@ -250,7 +252,6 @@ def sample_x(config,x_1, x_0, time):
     sampled_x = Categorical(probs).sample().to(device).float()
     return sampled_x
 
-
 config = Config()
 if __name__=="__main__":
 
@@ -270,14 +271,16 @@ if __name__=="__main__":
                                                   number_of_states=config.number_of_states)
     tensordataset_1 = TensorDataset(dataset_1)
     dataloader_1 = DataLoader(tensordataset_1, batch_size=config.batch_size)
-
-
-
+    from graph_bridges.configs.config_files import ExperimentFiles0
 
     device = torch.device(config.device) if torch.cuda.is_available() else torch.device("cpu")
     model = ConditionalBackwardRate(config, device)
     optimizer = Adam(model.parameters(), lr=config.learning_rate)
 
+    experiment_files = ExperimentFiles0(experiment_name="crm",experiment_type="dirichlet",experiment_indentifier="test2")
+    experiment_files.create_directories()
+
+    writer = SummaryWriter(experiment_files.tensorboard_path)
     number_of_training_steps = 0
     for epoch in range(config.number_of_epochs):
         for batch_1, batch_0 in zip(dataloader_1, dataloader_0):
@@ -298,11 +301,16 @@ if __name__=="__main__":
             model_rate = model(sampled_x, time)
 
             optimizer.zero_grad()
-            loss = (conditional_rate - model_rate).sum(axis=-1).sum(axis=-1)
+            loss = (conditional_rate - model_rate)**2.
+            #loss = loss.sum(axis=-1).sum(axis=-1)
             loss = loss.mean()
             loss.backward()
             optimizer.step()
             number_of_training_steps += 1
 
+            writer.add_scalar('training loss', loss.item(), number_of_training_steps)
+
             if number_of_training_steps % 100 == 0:
                 print(f"loss {round(loss.item(), 2)}")
+
+    writer.close()
