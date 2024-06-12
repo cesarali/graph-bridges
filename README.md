@@ -30,7 +30,7 @@ In order to set up the necessary environment:
 3. Activate the enviroment
 
     ```bash
-    activate graph_bridges
+    conda activate graph_bridges
     ```
 4. Install torch enable cuda
 
